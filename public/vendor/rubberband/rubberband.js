@@ -19,6 +19,7 @@
   var FINER = 0x20000000;
   var HIGH_CONSISTENCY = 0x04000000;
   var THREAD_NEVER = 0x00010000;
+  var FORMANT_PRESERVED = 0x01000000;
   var FLAGS = REALTIME | FINER | HIGH_CONSISTENCY | THREAD_NEVER;
 
   var wasm = null;
@@ -95,24 +96,31 @@
    * Realtime stretch. timeRatio is output duration / input duration.
    * pitchAt(t) is target/source frequency at input fraction t in [0, 1]
    * (a number is treated as a constant scale). Pitch is updated about every
-   * 50 ms via rubberband_set_pitch_scale. The engine's start delay is
+   * 10 ms via rubberband_set_pitch_scale. The engine's start delay is
    * trimmed and the silent flush tail is cut so the result length is
    * round(input.length * timeRatio).
    */
-  function stretchMono(samples, sampleRate, timeRatio, pitchAt) {
+  function stretchMono(samples, sampleRate, timeRatio, pitchAt, options) {
     if (!wasm) throw new Error('Rubber Band is not loaded');
     if (!samples || samples.length === 0) return new Float32Array(0);
+    var keepVowel = !options || options.keepVowel !== false;
     var pitchOf = typeof pitchAt === 'function' ? pitchAt : function () { return pitchAt; };
     var startPitch = pitchOf(0);
     var exp = wasm.exports;
-    var state = exp.rb_new(sampleRate, 1, FLAGS, timeRatio, startPitch);
+    var flags = keepVowel ? (FLAGS | FORMANT_PRESERVED) : FLAGS;
+    var state = exp.rb_new(sampleRate, 1, flags, timeRatio, startPitch);
     if (!state) throw new Error('rubberband_new failed');
     exp.rb_set_time_ratio(state, timeRatio);
     exp.rb_set_pitch_scale(state, startPitch);
+    // Formant scale 0 is automatic. With OptionFormantPreserved, Rubber Band
+    // treats that as 1/pitchScale and keeps the vowel as the pitch moves.
+    // An explicit scale of 1 overrides the option and shifts formants (chipmunk).
+    if (typeof exp.rb_set_formant_scale === 'function') exp.rb_set_formant_scale(state, 0);
     var pad = exp.rb_get_preferred_start_pad(state);
     var delay = exp.rb_get_start_delay(state);
     var required = exp.rb_get_samples_required(state) || 2048;
-    var step = Math.min(required, Math.max(1, Math.round(0.05 * sampleRate)));
+    var step = Math.max(1, Math.round(0.01 * sampleRate));
+    if (step > required) step = required;
     var cap = Math.max(step, pad, required);
     var bufPtr = malloc(cap * 4);
     var chanPtr = malloc(4);

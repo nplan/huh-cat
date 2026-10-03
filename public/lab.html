@@ -47,12 +47,19 @@
     }
     #play { background: #243628; border-color: #6a9a74; }
     #status { margin: 0.7rem 0 0; min-height: 1.2em; color: #999; font-size: 0.9rem; }
+    .check {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin: 0 0 0.7rem; cursor: pointer;
+    }
+    .hint { margin: 0.2rem 0 0.6rem; color: #9a9a9a; font-size: 0.85rem; }
   </style>
 </head>
 <body>
   <main>
     <h1>huh lab</h1>
+    <label class="check"><input type="checkbox" id="keepVowel" checked /> Keep vowel</label>
     <div id="params"></div>
+    <p class="hint">Attack is the fade-in. Accent is a loudness bump on the pitch peak (1 is about +6 dB).</p>
     <canvas id="contour" width="640" height="180" aria-label="pitch contour in semitones"></canvas>
     <div class="actions">
       <button type="button" id="play">Play</button>
@@ -65,12 +72,14 @@
   <script>
     (function () {
       var FIELDS = [
-        ['pitchSemitones', 1],
-        ['durationScale', 2],
-        ['peakAt', 2],
-        ['riseSemitones', 1],
-        ['fallSemitones', 1],
-        ['gainDb', 1]
+        ['pitchSemitones', 1, 'pitchSemitones', '0.1'],
+        ['durationScale', 2, 'durationScale', '0.01'],
+        ['peakAt', 2, 'peakAt', '0.01'],
+        ['riseSemitones', 1, 'riseSemitones', '0.1'],
+        ['fallSemitones', 1, 'fallSemitones', '0.1'],
+        ['gainDb', 1, 'gainDb', '0.1'],
+        ['attackMs', 0, 'Attack', '1'],
+        ['accent', 2, 'Accent', '0.01']
       ];
       var playSeq = 0;
       var clipReady = null;
@@ -89,13 +98,13 @@
         var row = document.createElement('label');
         row.className = 'row';
         var title = document.createElement('span');
-        title.textContent = name;
+        title.textContent = field[2];
         var slider = document.createElement('input');
         slider.type = 'range';
         slider.id = name;
         slider.min = String(range[0]);
         slider.max = String(range[1]);
-        slider.step = name === 'durationScale' || name === 'peakAt' ? '0.01' : '0.1';
+        slider.step = field[3];
         slider.value = String(HuhAudio.DEFAULTS[name]);
         var out = document.createElement('output');
         out.id = name + '-out';
@@ -123,6 +132,7 @@
         FIELDS.forEach(function (field) {
           params[field[0]] = Number(document.getElementById(field[0]).value);
         });
+        params.keepVowel = document.getElementById('keepVowel').checked;
         return params;
       }
 
@@ -236,6 +246,7 @@
           document.getElementById(name).value = String(HuhAudio.DEFAULTS[name]);
           document.getElementById(name + '-out').textContent = format(name, HuhAudio.DEFAULTS[name]);
         });
+        document.getElementById('keepVowel').checked = !!HuhAudio.DEFAULTS.keepVowel;
         draw();
       });
 

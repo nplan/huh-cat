@@ -3,10 +3,10 @@
 /**
  * huh lab renderer.
  * Rubber Band realtime R3 does the time stretch and the pitch shift
- * independently. Offline mode freezes pitch at study(), so the contour is
- * Rubber Band's time-varying pitch API: setPitchScale every ~50 ms with
- * OptionPitchHighConsistency. The start delay is trimmed and the flush tail
- * is cut so the length is the input length times durationScale.
+ * independently. The contour is setPitchScale about every 10 ms
+ * (OptionPitchHighConsistency). OptionFormantPreserved keeps the vowel.
+ * Attack fades the start in; accent is a cosine loudness bump on peakAt.
+ * Then gainDb, then a peak limiter at 0.98.
  */
 (function (factory) {
   var api = factory();
@@ -24,7 +24,10 @@
     peakAt: 0.7,
     riseSemitones: 0,
     fallSemitones: 0,
-    gainDb: 0
+    gainDb: 0,
+    attackMs: 25,
+    accent: 0,
+    keepVowel: true
   };
 
   var RANGES = {
@@ -33,7 +36,9 @@
     peakAt: [0, 1],
     riseSemitones: [0, 12],
     fallSemitones: [0, 14],
-    gainDb: [-12, 6]
+    gainDb: [-12, 6],
+    attackMs: [5, 120],
+    accent: [0, 1]
   };
 
   var sharedCtx = null;
@@ -54,11 +59,14 @@
     var out = {};
     for (var key in DEFAULTS) {
       if (!Object.prototype.hasOwnProperty.call(DEFAULTS, key)) continue;
+      if (key === 'keepVowel') continue;
       var range = RANGES[key];
       var n = Number(src[key]);
       if (!isFinite(n)) n = DEFAULTS[key];
       out[key] = clamp(n, range[0], range[1]);
     }
+    if (src.keepVowel === undefined || src.keepVowel === null) out.keepVowel = DEFAULTS.keepVowel;
+    else out.keepVowel = !!src.keepVowel;
     return out;
   }
 
@@ -88,12 +96,30 @@
     return cosineInterp(rise, end, (x - peak) / (1 - peak));
   }
 
-  function applyGain(buffer, gainDb) {
-    var gain = Math.pow(10, gainDb / 20);
+  /** 0 at the ends, 1 at peakAt, raised cosine on each side. */
+  function accentShape(t, peakAt) {
+    var x = clamp(Number(t) || 0, 0, 1);
+    var peak = clamp(Number(peakAt) || 0, 0, 1);
+    if (peak <= 0) return cosineInterp(1, 0, x);
+    if (peak >= 1) return cosineInterp(0, 1, x);
+    if (x < peak) return cosineInterp(0, 1, x / peak);
+    return cosineInterp(1, 0, (x - peak) / (1 - peak));
+  }
+
+  function applyGain(buffer, sampleRate, params) {
+    var gain = Math.pow(10, params.gainDb / 20);
+    var attackSamples = Math.max(1, Math.round(params.attackMs * 0.001 * sampleRate));
     var out = new Float32Array(buffer.length);
     var peak = 0;
+    var last = Math.max(1, buffer.length - 1);
     for (var i = 0; i < buffer.length; i++) {
-      var s = buffer[i] * gain;
+      var attack = 1;
+      if (i < attackSamples) {
+        attack = 0.5 * (1 - Math.cos(Math.PI * i / attackSamples));
+      }
+      var bump = accentShape(i / last, params.peakAt);
+      var accent = Math.pow(10, (params.accent * 6 * bump) / 20);
+      var s = buffer[i] * attack * accent * gain;
       if (!isFinite(s)) s = 0;
       out[i] = s;
       var a = s < 0 ? -s : s;
@@ -114,8 +140,8 @@
     if (!input || input.length === 0) return new Float32Array(1);
     var rendered = rb.stretchMono(input, sampleRate, p.durationScale, function (t) {
       return Math.pow(2, (p.pitchSemitones + contourAt(t, p)) / 12);
-    });
-    return applyGain(rendered, p.gainDb);
+    }, { keepVowel: p.keepVowel });
+    return applyGain(rendered, sampleRate, p);
   }
 
   function monoChannel(audioBuffer) {
@@ -191,6 +217,7 @@
     DEFAULTS: DEFAULTS,
     RANGES: RANGES,
     contourAt: contourAt,
+    accentShape: accentShape,
     renderMono: renderMono,
     renderHuh: renderHuh,
     play: play,
