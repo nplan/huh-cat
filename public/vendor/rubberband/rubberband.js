@@ -96,7 +96,7 @@
    * Realtime stretch. timeRatio is output duration / input duration.
    * pitchAt(t) is target/source frequency at input fraction t in [0, 1]
    * (a number is treated as a constant scale). Pitch is updated about every
-   * 10 ms via rubberband_set_pitch_scale. The engine's start delay is
+   * 2 ms via rubberband_set_pitch_scale. The engine's start delay is
    * trimmed and the silent flush tail is cut so the result length is
    * round(input.length * timeRatio).
    */
@@ -119,7 +119,7 @@
     var pad = exp.rb_get_preferred_start_pad(state);
     var delay = exp.rb_get_start_delay(state);
     var required = exp.rb_get_samples_required(state) || 2048;
-    var step = Math.max(1, Math.round(0.01 * sampleRate));
+    var step = Math.max(1, Math.round(0.002 * sampleRate));
     if (step > required) step = required;
     var cap = Math.max(step, pad, required);
     var bufPtr = malloc(cap * 4);

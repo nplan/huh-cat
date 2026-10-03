@@ -58,7 +58,7 @@
 <body>
   <main>
     <h1>huh lab</h1>
-    <label class="check"><input type="checkbox" id="keepVowel" checked /> Keep vowel</label>
+    <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel</label>
     <div id="params"></div>
     <p class="hint">Press Play after you move a slider. Attack is how long the fade-in lasts, up to 400 ms. Accent keeps only the peak and silences the rest.</p>
     <canvas id="contour" width="640" height="160" aria-label="pitch contour in semitones"></canvas>
@@ -69,8 +69,8 @@
     </div>
     <p id="status"></p>
   </main>
-  <script src="vendor/rubberband/rubberband.js"></script>
-  <script src="js/huh-audio.js?v=4"></script>
+  <script src="vendor/rubberband/rubberband.js?v=6"></script>
+  <script src="js/huh-audio.js?v=6"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -90,6 +90,13 @@
       var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
       engineReady.then(function () {
         if (!status.textContent) status.textContent = 'ready';
+        return HuhAudio.loadWav('audio/A.wav');
+      }).then(function (buf) {
+        if (!buf) return;
+        clipSamples = HuhAudio.previewMono ? buf.getChannelData(0) : buf.getChannelData(0);
+        clipRate = buf.sampleRate;
+        clipReady = Promise.resolve(buf);
+        refreshWave();
       }).catch(function (err) {
         status.textContent = err && err.message ? err.message : 'Rubber Band failed to load';
       });
@@ -118,6 +125,7 @@
         slider.addEventListener('input', function () {
           out.textContent = format(name, Number(slider.value));
           draw();
+          refreshWave();
         });
       });
 
@@ -138,6 +146,14 @@
         return params;
       }
 
+
+      var clipSamples = null;
+      var clipRate = 44100;
+
+      function refreshWave() {
+        if (!clipSamples) return;
+        drawWave(HuhAudio.previewMono(clipSamples, clipRate, readParams()));
+      }
 
       var lastWave = null;
 
@@ -161,7 +177,7 @@
         g.stroke();
         g.fillStyle = '#9a9a9a';
         g.font = '11px system-ui, sans-serif';
-        g.fillText(lastWave ? 'waveform' : 'waveform (press Play)', 8, 14);
+        g.fillText('waveform', 8, 14);
         if (!lastWave || !lastWave.length) return;
         var n = lastWave.length;
         var mid = cssH / 2;
@@ -275,6 +291,11 @@
         g.arc(peakX, peakY, 3.5, 0, Math.PI * 2);
         g.fill();
       }
+
+      document.getElementById('keepVowel').addEventListener('change', function () {
+        draw();
+        refreshWave();
+      });
 
       document.getElementById('play').addEventListener('click', function () {
         var my = ++playSeq;

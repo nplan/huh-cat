@@ -28,7 +28,7 @@
     gainDb: 0,
     attackMs: 0,
     accent: 0,
-    keepVowel: true
+    keepVowel: false
   };
 
   var RANGES = {
@@ -180,6 +180,24 @@
     return applyGain(rendered, sampleRate, p);
   }
 
+  function previewMono(input, sampleRate, params) {
+    var p = normalizeParams(params);
+    if (!input || input.length === 0) return new Float32Array(1);
+    var voiced = trimSilence(input, sampleRate);
+    var outLen = Math.max(1, Math.round(voiced.length * p.durationScale));
+    var stretched = new Float32Array(outLen);
+    var last = voiced.length - 1;
+    for (var i = 0; i < outLen; i++) {
+      var src = outLen === 1 ? 0 : (i / (outLen - 1)) * last;
+      var i0 = Math.floor(src);
+      var f = src - i0;
+      var a = voiced[i0];
+      var b = voiced[Math.min(last, i0 + 1)];
+      stretched[i] = a + (b - a) * f;
+    }
+    return applyGain(stretched, sampleRate, p);
+  }
+
   function monoChannel(audioBuffer) {
     var n = audioBuffer.length;
     if (audioBuffer.numberOfChannels <= 1) return audioBuffer.getChannelData(0);
@@ -256,6 +274,7 @@
     accentShape: accentShape,
     envelopeAt: envelopeAt,
     renderMono: renderMono,
+    previewMono: previewMono,
     renderHuh: renderHuh,
     play: play,
     loadWav: loadWav,
