@@ -29,7 +29,7 @@
     canvas {
       display: block;
       width: 100%;
-      height: 160px;
+      height: 220px;
       margin: 0.9rem 0 0.8rem;
       background: #1a1a1a;
       border: 1px solid #333;
@@ -45,7 +45,6 @@
       padding: 0.45rem 0.9rem;
       font: inherit;
     }
-    #wave { height: 120px; margin-top: 0; }
     #play { background: #243628; border-color: #6a9a74; }
     #status { margin: 0.7rem 0 0; min-height: 1.2em; color: #999; font-size: 0.9rem; }
     .check {
@@ -60,9 +59,8 @@
     <h1>huh lab</h1>
     <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel</label>
     <div id="params"></div>
-    <p class="hint">Press Play after you move a slider. Attack is how long the fade-in lasts, up to 400 ms. Accent keeps only the peak and silences the rest.</p>
-    <canvas id="contour" width="640" height="160" aria-label="pitch contour in semitones"></canvas>
-    <canvas id="wave" width="640" height="120" aria-label="waveform"></canvas>
+    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the line is the pitch.</p>
+    <canvas id="diagram" width="640" height="220" aria-label="waveform and pitch"></canvas>
     <div class="actions">
       <button type="button" id="play">Play</button>
       <button type="button" id="reset">Reset</button>
@@ -70,7 +68,7 @@
     <p id="status"></p>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=6"></script>
-  <script src="js/huh-audio.js?v=6"></script>
+  <script src="js/huh-audio.js?v=7"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -93,10 +91,8 @@
         return HuhAudio.loadWav('audio/A.wav');
       }).then(function (buf) {
         if (!buf) return;
-        clipSamples = HuhAudio.previewMono ? buf.getChannelData(0) : buf.getChannelData(0);
-        clipRate = buf.sampleRate;
         clipReady = Promise.resolve(buf);
-        refreshWave();
+        scheduleRender();
       }).catch(function (err) {
         status.textContent = err && err.message ? err.message : 'Rubber Band failed to load';
       });
@@ -125,7 +121,7 @@
         slider.addEventListener('input', function () {
           out.textContent = format(name, Number(slider.value));
           draw();
-          refreshWave();
+          scheduleRender();
         });
       });
 
@@ -147,64 +143,47 @@
       }
 
 
-      var clipSamples = null;
-      var clipRate = 44100;
-
-      function refreshWave() {
-        if (!clipSamples) return;
-        drawWave(HuhAudio.previewMono(clipSamples, clipRate, readParams()));
-      }
-
+      var renderGen = 0;
+      var pending = null;
+      var latestBuffer = null;
+      var latestKey = '';
       var lastWave = null;
 
-      function drawWave(samples) {
-        lastWave = samples || lastWave;
-        var canvas = document.getElementById('wave');
-        var cssW = canvas.clientWidth || 640;
-        var cssH = canvas.clientHeight || 120;
-        var dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.max(1, Math.round(cssW * dpr));
-        canvas.height = Math.max(1, Math.round(cssH * dpr));
-        var g = canvas.getContext('2d');
-        g.setTransform(dpr, 0, 0, dpr, 0, 0);
-        g.clearRect(0, 0, cssW, cssH);
-        g.fillStyle = '#1a1a1a';
-        g.fillRect(0, 0, cssW, cssH);
-        g.strokeStyle = '#333';
-        g.beginPath();
-        g.moveTo(0, cssH / 2);
-        g.lineTo(cssW, cssH / 2);
-        g.stroke();
-        g.fillStyle = '#9a9a9a';
-        g.font = '11px system-ui, sans-serif';
-        g.fillText('waveform', 8, 14);
-        if (!lastWave || !lastWave.length) return;
-        var n = lastWave.length;
-        var mid = cssH / 2;
-        g.strokeStyle = '#d7ecff';
-        g.lineWidth = 1;
-        g.beginPath();
-        for (var x = 0; x < cssW; x++) {
-          var i0 = Math.floor(x / cssW * n);
-          var i1 = Math.max(i0 + 1, Math.floor((x + 1) / cssW * n));
-          var lo = 0, hi = 0;
-          for (var i = i0; i < i1 && i < n; i++) {
-            var s = lastWave[i];
-            if (s < lo) lo = s;
-            if (s > hi) hi = s;
-          }
-          var y1 = mid - hi * (mid - 8);
-          var y2 = mid - lo * (mid - 8);
-          g.moveTo(x + 0.5, y1);
-          g.lineTo(x + 0.5, y2);
-        }
-        g.stroke();
+      function paramsKey(params) {
+        return JSON.stringify(params);
+      }
+
+      function scheduleRender() {
+        var params = readParams();
+        var key = paramsKey(params);
+        if (latestBuffer && key === latestKey) return Promise.resolve(latestBuffer);
+        if (pending && pending.key === key) return pending.promise;
+        var gen = ++renderGen;
+        var promise = engineReady.then(function () {
+          return clipReady;
+        }).then(function (input) {
+          if (!input || gen !== renderGen) return null;
+          var rendered = HuhAudio.renderHuh(input, params);
+          if (gen !== renderGen) return null;
+          latestBuffer = rendered;
+          latestKey = key;
+          lastWave = new Float32Array(rendered.getChannelData(0));
+          draw();
+          return rendered;
+        });
+        pending = { key: key, promise: promise };
+        promise.then(function () {
+          if (pending && pending.key === key) pending = null;
+        }, function () {
+          if (pending && pending.key === key) pending = null;
+        });
+        return promise;
       }
 
       function draw() {
-        var canvas = document.getElementById('contour');
+        var canvas = document.getElementById('diagram');
         var cssW = canvas.clientWidth || 640;
-        var cssH = canvas.clientHeight || 180;
+        var cssH = canvas.clientHeight || 220;
         var dpr = window.devicePixelRatio || 1;
         canvas.width = Math.max(1, Math.round(cssW * dpr));
         canvas.height = Math.max(1, Math.round(cssH * dpr));
@@ -234,13 +213,35 @@
         var span = yMax - yMin || 1;
         var left = 36;
         var right = 10;
-        var top = 12;
-        var bottom = 22;
+        var top = 16;
+        var bottom = 16;
         var plotW = Math.max(1, w - left - right);
         var plotH = Math.max(1, h - top - bottom);
+        var mid = top + plotH / 2;
 
         function xOf(t) { return left + t * plotW; }
         function yOf(v) { return top + (yMax - v) / span * plotH; }
+
+        if (lastWave && lastWave.length) {
+          var n = lastWave.length;
+          g.strokeStyle = '#3d5c73';
+          g.lineWidth = 1;
+          g.beginPath();
+          for (var x = 0; x < plotW; x++) {
+            var i0 = Math.floor(x / plotW * n);
+            var i1 = Math.max(i0 + 1, Math.floor((x + 1) / plotW * n));
+            var lo = 0, hi = 0;
+            for (var s = i0; s < i1 && s < n; s++) {
+              var sample = lastWave[s];
+              if (sample < lo) lo = sample;
+              if (sample > hi) hi = sample;
+            }
+            var px = left + x + 0.5;
+            g.moveTo(px, mid - hi * (plotH * 0.48));
+            g.lineTo(px, mid - lo * (plotH * 0.48));
+          }
+          g.stroke();
+        }
 
         g.strokeStyle = '#333';
         g.lineWidth = 1;
@@ -255,32 +256,15 @@
         g.textBaseline = 'middle';
         g.fillText(yMax.toFixed(1), left - 4, yOf(yMax));
         g.fillText(yMin.toFixed(1), left - 4, yOf(yMin));
-        g.textAlign = 'left';
-        g.textBaseline = 'top';
-        g.fillText('semitones', left, 0);
 
         g.strokeStyle = '#8fd3ff';
         g.lineWidth = 2;
         g.beginPath();
-        for (var s = 0; s <= steps; s++) {
-          var px = xOf(s / steps);
-          var py = yOf(ys[s]);
-          if (s === 0) g.moveTo(px, py);
-          else g.lineTo(px, py);
-        }
-        g.stroke();
-
-        g.strokeStyle = '#ffb15e';
-        g.lineWidth = 2;
-        g.beginPath();
-        var dur = 0.39 * params.durationScale;
-        for (var e = 0; e <= steps; e++) {
-          var et = e / steps;
-          var env = HuhAudio.envelopeAt(et, params, dur);
-          var ex = xOf(et);
-          var ey = top + (1 - env) * plotH;
-          if (e === 0) g.moveTo(ex, ey);
-          else g.lineTo(ex, ey);
+        for (var k = 0; k <= steps; k++) {
+          var px2 = xOf(k / steps);
+          var py = yOf(ys[k]);
+          if (k === 0) g.moveTo(px2, py);
+          else g.lineTo(px2, py);
         }
         g.stroke();
 
@@ -294,7 +278,7 @@
 
       document.getElementById('keepVowel').addEventListener('change', function () {
         draw();
-        refreshWave();
+        scheduleRender();
       });
 
       document.getElementById('play').addEventListener('click', function () {
@@ -305,18 +289,8 @@
           status.textContent = err && err.message ? err.message : 'audio unavailable';
           return;
         }
-        engineReady.then(function () {
-          if (!clipReady) {
-            clipReady = HuhAudio.loadWav('audio/A.wav').catch(function (err) {
-              clipReady = null;
-              throw err;
-            });
-          }
-          return clipReady;
-        }).then(function (input) {
-          if (my !== playSeq) return;
-          var rendered = HuhAudio.renderHuh(input, readParams());
-          drawWave(rendered.getChannelData(0));
+        scheduleRender().then(function (rendered) {
+          if (my !== playSeq || !rendered) return;
           HuhAudio.play(rendered);
           status.textContent = 'playing';
         }).catch(function (err) {
@@ -333,11 +307,11 @@
         });
         document.getElementById('keepVowel').checked = !!HuhAudio.DEFAULTS.keepVowel;
         draw();
+        scheduleRender();
       });
 
-      window.addEventListener('resize', function () { draw(); drawWave(); });
+      window.addEventListener('resize', draw);
       draw();
-      drawWave();
     })();
   </script>
 </body>
