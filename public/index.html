@@ -23,29 +23,29 @@
     video { width: min(92vw, 720px); border-radius: 12px; background: #000; display: block; margin: 0 auto; }
     button {
       margin-top: 1rem;
-      font: inherit; font-size: 1.4rem; letter-spacing: 0.04em;
-      color: #fff; background: #111; border: 3px solid #fff;
-      border-radius: 999px; padding: 0.45rem 1.4rem; cursor: pointer;
+      width: 4.2rem; height: 4.2rem; border-radius: 50%;
+      color: #111; background: #fff; border: 3px solid #000;
+      cursor: pointer; display: inline-grid; place-items: center;
     }
-    button:hover { background: #fff; color: #111; }
+    button svg { width: 1.7rem; height: 1.7rem; margin-left: 0.15rem; }
+    button:hover { background: #ffe566; }
   </style>
 </head>
 <body>
   <main>
     <h1>HUH?</h1>
     <video id="huh" src="/clips/A.mp4" playsinline controls></video>
-    <button id="replay" type="button">replay</button>
+    <button id="play" type="button" aria-label="Play">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+    </button>
   </main>
   <script>
     const v = document.getElementById("huh");
-    const play = (withSound) => {
+    document.getElementById("play").addEventListener("click", () => {
+      v.muted = false;
       v.currentTime = 0;
-      v.muted = !withSound;
-      const attempt = v.play();
-      if (attempt) attempt.catch(() => { v.muted = true; v.play(); });
-    };
-    document.getElementById("replay").addEventListener("click", () => play(true));
-    window.addEventListener("load", () => setTimeout(() => play(false), 800));
+      v.play();
+    });
   </script>
 </body>
 </html>
