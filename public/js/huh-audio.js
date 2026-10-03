@@ -1,19 +1,23 @@
 'use strict';
 
 /**
- * Browser-only granular pitch shift + time stretch.
- * Pitch (playback rate) and duration (hop ratio) are independent.
- * Contour is a two-segment raised-cosine curve over the output.
+ * huh lab renderer.
+ * Rubber Band realtime R3 does the time stretch and the pitch shift
+ * independently. Offline mode freezes pitch at study(), so the contour is
+ * Rubber Band's time-varying pitch API: setPitchScale every ~50 ms with
+ * OptionPitchHighConsistency. The start delay is trimmed and the flush tail
+ * is cut so the length is the input length times durationScale.
  */
 (function (factory) {
   var api = factory();
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = api;
-  }
-  if (typeof window !== 'undefined') {
-    window.HuhAudio = api;
-  }
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.HuhAudio = api;
 })(function () {
+  var RubberBand = null;
+  if (typeof require === 'function') {
+    RubberBand = require('../vendor/rubberband/rubberband.js');
+  }
+
   var DEFAULTS = {
     pitchSemitones: 0,
     durationScale: 1,
@@ -35,6 +39,12 @@
   var sharedCtx = null;
   var activeSource = null;
 
+  function rubberband() {
+    if (RubberBand) return RubberBand;
+    if (typeof window !== 'undefined' && window.RubberBand) return window.RubberBand;
+    throw new Error('Rubber Band is not loaded');
+  }
+
   function clamp(value, lo, hi) {
     return value < lo ? lo : value > hi ? hi : value;
   }
@@ -52,7 +62,6 @@
     return out;
   }
 
-  /** Raised-cosine blend. u=0 -> a, u=1 -> b, flat derivative at both ends. */
   function cosineInterp(a, b, u) {
     var t = clamp(u, 0, 1);
     var w = 0.5 * (1 - Math.cos(Math.PI * t));
@@ -60,10 +69,10 @@
   }
 
   /**
-   * Contour in semitones at normalized output time t.
+   * Contour in semitones at normalized time t.
    * Anchors: t=0 -> 0, t=peakAt -> +rise, t=1 -> rise-fall.
-   * If peakAt is 0 or 1 the two anchors share an endpoint; t=0 stays 0 and
-   * t=1 stays rise-fall, and the zero-length segment does not draw a line.
+   * Raised cosine on each side. If peakAt is 0 or 1 the anchors share an
+   * endpoint: t=0 stays 0 and t=1 stays rise-fall.
    */
   function contourAt(t, params) {
     var p = normalizeParams(params);
@@ -79,85 +88,39 @@
     return cosineInterp(rise, end, (x - peak) / (1 - peak));
   }
 
-  function sampleAt(input, pos) {
-    var n = input.length;
-    if (n === 0 || pos < 0 || pos > n - 1) return 0;
-    var i = pos | 0;
-    if (i >= n - 1) return input[n - 1];
-    var f = pos - i;
-    return input[i] * (1 - f) + input[i + 1] * f;
-  }
-
-  /**
-   * Overlap-add grains. Output hop is fixed; input hop is output hop * inLen/outLen
-   * so durationScale does not change pitch. Each grain is resampled at
-   * 2^((pitchSemitones + contour)/12) with a Hann window.
-   */
-  function renderMono(input, sampleRate, params) {
-    var p = normalizeParams(params);
-    var inLen = input.length;
-    var sr = sampleRate;
-    if (!(sr > 0) || !isFinite(sr)) {
-      throw new Error('sampleRate must be positive');
-    }
-    var outLen = Math.max(1, Math.round(inLen * p.durationScale));
-    if (inLen === 0) {
-      return new Float32Array(1);
-    }
-
-    var grain = Math.round(0.04 * sr);
-    if (grain < 8) grain = 8;
-    if (grain % 2) grain += 1;
-
-    var hopOut = Math.max(1, Math.round(grain / 4));
-    var hopIn = hopOut * (inLen / outLen);
-
-    var hann = new Float32Array(grain);
-    for (var i = 0; i < grain; i++) {
-      hann[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / grain));
-    }
-
-    var output = new Float32Array(outLen);
-    var weight = new Float32Array(outLen);
-    var grainIndex = 0;
-
-    for (var o = 0; o < outLen; o += hopOut, grainIndex++) {
-      var center = (o + grain * 0.5) / outLen;
-      var semis = p.pitchSemitones + contourAt(center, p);
-      var rate = Math.pow(2, semis / 12);
-      var inStart = grainIndex * hopIn;
-      var limit = grain;
-      if (o + limit > outLen) limit = outLen - o;
-      for (var k = 0; k < limit; k++) {
-        var s = sampleAt(input, inStart + k * rate);
-        var w = hann[k];
-        var oi = o + k;
-        output[oi] += s * w;
-        weight[oi] += w;
-      }
-    }
-
-    var gain = Math.pow(10, p.gainDb / 20);
+  function applyGain(buffer, gainDb) {
+    var gain = Math.pow(10, gainDb / 20);
+    var out = new Float32Array(buffer.length);
     var peak = 0;
-    for (var n = 0; n < outLen; n++) {
-      var wsum = weight[n];
-      var sample = wsum > 1e-8 ? (output[n] / wsum) * gain : 0;
-      output[n] = sample;
-      var a = sample < 0 ? -sample : sample;
+    for (var i = 0; i < buffer.length; i++) {
+      var s = buffer[i] * gain;
+      if (!isFinite(s)) s = 0;
+      out[i] = s;
+      var a = s < 0 ? -s : s;
       if (a > peak) peak = a;
     }
     if (peak > 0.98) {
       var trim = 0.98 / peak;
-      for (var m = 0; m < outLen; m++) output[m] *= trim;
+      for (var j = 0; j < out.length; j++) out[j] *= trim;
     }
-    return output;
+    return out;
+  }
+
+  function renderMono(input, sampleRate, params) {
+    var p = normalizeParams(params);
+    var rb = rubberband();
+    if (!rb.isReady()) throw new Error('Rubber Band is not loaded');
+    if (!(sampleRate > 0) || !isFinite(sampleRate)) throw new Error('sampleRate must be positive');
+    if (!input || input.length === 0) return new Float32Array(1);
+    var rendered = rb.stretchMono(input, sampleRate, p.durationScale, function (t) {
+      return Math.pow(2, (p.pitchSemitones + contourAt(t, p)) / 12);
+    });
+    return applyGain(rendered, p.gainDb);
   }
 
   function monoChannel(audioBuffer) {
     var n = audioBuffer.length;
-    if (audioBuffer.numberOfChannels <= 1) {
-      return audioBuffer.getChannelData(0);
-    }
+    if (audioBuffer.numberOfChannels <= 1) return audioBuffer.getChannelData(0);
     var mixed = new Float32Array(n);
     var chs = audioBuffer.numberOfChannels;
     for (var c = 0; c < chs; c++) {
@@ -186,9 +149,7 @@
   }
 
   function ensureContext() {
-    if (typeof AudioContext === 'undefined') {
-      throw new Error('AudioContext is not available');
-    }
+    if (typeof AudioContext === 'undefined') throw new Error('AudioContext is not available');
     if (!sharedCtx) sharedCtx = new AudioContext();
     if (sharedCtx.state === 'suspended') sharedCtx.resume();
     return sharedCtx;
@@ -222,6 +183,10 @@
     });
   }
 
+  function loadEngine(source) {
+    return rubberband().load(source);
+  }
+
   return {
     DEFAULTS: DEFAULTS,
     RANGES: RANGES,
@@ -230,6 +195,7 @@
     renderHuh: renderHuh,
     play: play,
     loadWav: loadWav,
+    loadEngine: loadEngine,
     ensureContext: ensureContext
   };
 });

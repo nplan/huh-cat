@@ -16,19 +16,6 @@
     }
     main { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
     h1 { font-size: 1.15rem; font-weight: 650; margin: 0 0 0.9rem; letter-spacing: 0.01em; }
-    .clips { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
-    .clips button, .actions button {
-      background: #1e1e1e;
-      color: #eee;
-      border: 1px solid #3a3a3a;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .clips button {
-      width: 2.6rem; height: 2.4rem;
-      font: 650 1rem system-ui, sans-serif;
-    }
-    .clips button[aria-pressed="true"] { background: #2c4a62; border-color: #7eb6d6; }
     .row {
       display: grid;
       grid-template-columns: 9.5rem 1fr 4.2rem;
@@ -49,7 +36,15 @@
       border-radius: 6px;
     }
     .actions { display: flex; gap: 0.5rem; align-items: center; }
-    .actions button { padding: 0.45rem 0.9rem; font: inherit; }
+    .actions button {
+      background: #1e1e1e;
+      color: #eee;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0.45rem 0.9rem;
+      font: inherit;
+    }
     #play { background: #243628; border-color: #6a9a74; }
     #status { margin: 0.7rem 0 0; min-height: 1.2em; color: #999; font-size: 0.9rem; }
   </style>
@@ -57,12 +52,6 @@
 <body>
   <main>
     <h1>huh lab</h1>
-    <div class="clips" role="group" aria-label="clip">
-      <button type="button" data-clip="A" aria-pressed="true">A</button>
-      <button type="button" data-clip="B" aria-pressed="false">B</button>
-      <button type="button" data-clip="C" aria-pressed="false">C</button>
-      <button type="button" data-clip="D" aria-pressed="false">D</button>
-    </div>
     <div id="params"></div>
     <canvas id="contour" width="640" height="180" aria-label="pitch contour in semitones"></canvas>
     <div class="actions">
@@ -71,6 +60,7 @@
     </div>
     <p id="status"></p>
   </main>
+  <script src="vendor/rubberband/rubberband.js"></script>
   <script src="js/huh-audio.js"></script>
   <script>
     (function () {
@@ -82,10 +72,16 @@
         ['fallSemitones', 1],
         ['gainDb', 1]
       ];
-      var clip = 'A';
-      var cache = Object.create(null);
       var playSeq = 0;
+      var clipReady = null;
       var box = document.getElementById('params');
+      var status = document.getElementById('status');
+      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
+      engineReady.then(function () {
+        if (!status.textContent) status.textContent = 'ready';
+      }).catch(function (err) {
+        status.textContent = err && err.message ? err.message : 'Rubber Band failed to load';
+      });
 
       FIELDS.forEach(function (field) {
         var name = field[0];
@@ -174,9 +170,8 @@
         g.strokeStyle = '#333';
         g.lineWidth = 1;
         g.beginPath();
-        var zeroY = yOf(0);
-        g.moveTo(left, zeroY);
-        g.lineTo(left + plotW, zeroY);
+        g.moveTo(left, yOf(0));
+        g.lineTo(left + plotW, yOf(0));
         g.stroke();
 
         g.fillStyle = '#888';
@@ -208,37 +203,27 @@
         g.fill();
       }
 
-      document.querySelectorAll('.clips button').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          clip = btn.getAttribute('data-clip');
-          document.querySelectorAll('.clips button').forEach(function (other) {
-            other.setAttribute('aria-pressed', other === btn ? 'true' : 'false');
-          });
-        });
-      });
-
       document.getElementById('play').addEventListener('click', function () {
-        var status = document.getElementById('status');
         var my = ++playSeq;
-        var id = clip;
-        status.textContent = '';
-        try {
-          HuhAudio.ensureContext();
-        } catch (err) {
+        status.textContent = 'rendering…';
+        try { HuhAudio.ensureContext(); }
+        catch (err) {
           status.textContent = err && err.message ? err.message : 'audio unavailable';
           return;
         }
-        if (!cache[id]) {
-          cache[id] = HuhAudio.loadWav('audio/' + id + '.wav').catch(function (err) {
-            delete cache[id];
-            throw err;
-          });
-        }
-        cache[id].then(function (input) {
+        engineReady.then(function () {
+          if (!clipReady) {
+            clipReady = HuhAudio.loadWav('audio/A.wav').catch(function (err) {
+              clipReady = null;
+              throw err;
+            });
+          }
+          return clipReady;
+        }).then(function (input) {
           if (my !== playSeq) return;
           var rendered = HuhAudio.renderHuh(input, readParams());
           HuhAudio.play(rendered);
-          status.textContent = 'playing ' + id;
+          status.textContent = 'playing';
         }).catch(function (err) {
           if (my !== playSeq) return;
           status.textContent = err && err.message ? err.message : 'playback failed';
@@ -248,8 +233,7 @@
       document.getElementById('reset').addEventListener('click', function () {
         FIELDS.forEach(function (field) {
           var name = field[0];
-          var slider = document.getElementById(name);
-          slider.value = String(HuhAudio.DEFAULTS[name]);
+          document.getElementById(name).value = String(HuhAudio.DEFAULTS[name]);
           document.getElementById(name + '-out').textContent = format(name, HuhAudio.DEFAULTS[name]);
         });
         draw();
