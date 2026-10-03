@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>huh lab</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #121212;
+      color: #e6e6e6;
+      font: 15px/1.4 system-ui, sans-serif;
+    }
+    main { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
+    h1 { font-size: 1.15rem; font-weight: 650; margin: 0 0 0.9rem; letter-spacing: 0.01em; }
+    .clips { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+    .clips button, .actions button {
+      background: #1e1e1e;
+      color: #eee;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .clips button {
+      width: 2.6rem; height: 2.4rem;
+      font: 650 1rem system-ui, sans-serif;
+    }
+    .clips button[aria-pressed="true"] { background: #2c4a62; border-color: #7eb6d6; }
+    .row {
+      display: grid;
+      grid-template-columns: 9.5rem 1fr 4.2rem;
+      gap: 0.6rem;
+      align-items: center;
+      margin: 0.35rem 0;
+    }
+    .row span { font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; accent-color: #8fd3ff; }
+    output { text-align: right; font-variant-numeric: tabular-nums; color: #cfe8f6; }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 180px;
+      margin: 0.9rem 0 0.8rem;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    .actions { display: flex; gap: 0.5rem; align-items: center; }
+    .actions button { padding: 0.45rem 0.9rem; font: inherit; }
+    #play { background: #243628; border-color: #6a9a74; }
+    #status { margin: 0.7rem 0 0; min-height: 1.2em; color: #999; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>huh lab</h1>
+    <div class="clips" role="group" aria-label="clip">
+      <button type="button" data-clip="A" aria-pressed="true">A</button>
+      <button type="button" data-clip="B" aria-pressed="false">B</button>
+      <button type="button" data-clip="C" aria-pressed="false">C</button>
+      <button type="button" data-clip="D" aria-pressed="false">D</button>
+    </div>
+    <div id="params"></div>
+    <canvas id="contour" width="640" height="180" aria-label="pitch contour in semitones"></canvas>
+    <div class="actions">
+      <button type="button" id="play">Play</button>
+      <button type="button" id="reset">Reset</button>
+    </div>
+    <p id="status"></p>
+  </main>
+  <script src="js/huh-audio.js"></script>
+  <script>
+    (function () {
+      var FIELDS = [
+        ['pitchSemitones', 1],
+        ['durationScale', 2],
+        ['peakAt', 2],
+        ['riseSemitones', 1],
+        ['fallSemitones', 1],
+        ['gainDb', 1]
+      ];
+      var clip = 'A';
+      var cache = Object.create(null);
+      var playSeq = 0;
+      var box = document.getElementById('params');
+
+      FIELDS.forEach(function (field) {
+        var name = field[0];
+        var range = HuhAudio.RANGES[name];
+        var row = document.createElement('label');
+        row.className = 'row';
+        var title = document.createElement('span');
+        title.textContent = name;
+        var slider = document.createElement('input');
+        slider.type = 'range';
+        slider.id = name;
+        slider.min = String(range[0]);
+        slider.max = String(range[1]);
+        slider.step = name === 'durationScale' || name === 'peakAt' ? '0.01' : '0.1';
+        slider.value = String(HuhAudio.DEFAULTS[name]);
+        var out = document.createElement('output');
+        out.id = name + '-out';
+        out.textContent = format(name, HuhAudio.DEFAULTS[name]);
+        row.appendChild(title);
+        row.appendChild(slider);
+        row.appendChild(out);
+        box.appendChild(row);
+        slider.addEventListener('input', function () {
+          out.textContent = format(name, Number(slider.value));
+          draw();
+        });
+      });
+
+      function format(name, value) {
+        var digits = 1;
+        for (var i = 0; i < FIELDS.length; i++) {
+          if (FIELDS[i][0] === name) digits = FIELDS[i][1];
+        }
+        return Number(value).toFixed(digits);
+      }
+
+      function readParams() {
+        var params = {};
+        FIELDS.forEach(function (field) {
+          params[field[0]] = Number(document.getElementById(field[0]).value);
+        });
+        return params;
+      }
+
+      function draw() {
+        var canvas = document.getElementById('contour');
+        var cssW = canvas.clientWidth || 640;
+        var cssH = canvas.clientHeight || 180;
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.round(cssW * dpr));
+        canvas.height = Math.max(1, Math.round(cssH * dpr));
+        var g = canvas.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var w = cssW;
+        var h = cssH;
+        g.clearRect(0, 0, w, h);
+        g.fillStyle = '#1a1a1a';
+        g.fillRect(0, 0, w, h);
+
+        var params = readParams();
+        var steps = 240;
+        var ys = new Array(steps + 1);
+        var yMin = 0;
+        var yMax = 0;
+        for (var i = 0; i <= steps; i++) {
+          var t = i / steps;
+          var y = params.pitchSemitones + HuhAudio.contourAt(t, params);
+          ys[i] = y;
+          if (y < yMin) yMin = y;
+          if (y > yMax) yMax = y;
+        }
+        var pad = Math.max(1, (yMax - yMin) * 0.12);
+        yMin -= pad;
+        yMax += pad;
+        var span = yMax - yMin || 1;
+        var left = 36;
+        var right = 10;
+        var top = 12;
+        var bottom = 22;
+        var plotW = Math.max(1, w - left - right);
+        var plotH = Math.max(1, h - top - bottom);
+
+        function xOf(t) { return left + t * plotW; }
+        function yOf(v) { return top + (yMax - v) / span * plotH; }
+
+        g.strokeStyle = '#333';
+        g.lineWidth = 1;
+        g.beginPath();
+        var zeroY = yOf(0);
+        g.moveTo(left, zeroY);
+        g.lineTo(left + plotW, zeroY);
+        g.stroke();
+
+        g.fillStyle = '#888';
+        g.font = '11px system-ui, sans-serif';
+        g.textAlign = 'right';
+        g.textBaseline = 'middle';
+        g.fillText(yMax.toFixed(1), left - 4, yOf(yMax));
+        g.fillText(yMin.toFixed(1), left - 4, yOf(yMin));
+        g.textAlign = 'left';
+        g.textBaseline = 'top';
+        g.fillText('semitones', left, 0);
+
+        g.strokeStyle = '#8fd3ff';
+        g.lineWidth = 2;
+        g.beginPath();
+        for (var s = 0; s <= steps; s++) {
+          var px = xOf(s / steps);
+          var py = yOf(ys[s]);
+          if (s === 0) g.moveTo(px, py);
+          else g.lineTo(px, py);
+        }
+        g.stroke();
+
+        var peakX = xOf(params.peakAt);
+        var peakY = yOf(params.pitchSemitones + HuhAudio.contourAt(params.peakAt, params));
+        g.fillStyle = '#ffe566';
+        g.beginPath();
+        g.arc(peakX, peakY, 3.5, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      document.querySelectorAll('.clips button').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          clip = btn.getAttribute('data-clip');
+          document.querySelectorAll('.clips button').forEach(function (other) {
+            other.setAttribute('aria-pressed', other === btn ? 'true' : 'false');
+          });
+        });
+      });
+
+      document.getElementById('play').addEventListener('click', function () {
+        var status = document.getElementById('status');
+        var my = ++playSeq;
+        var id = clip;
+        status.textContent = '';
+        try {
+          HuhAudio.ensureContext();
+        } catch (err) {
+          status.textContent = err && err.message ? err.message : 'audio unavailable';
+          return;
+        }
+        if (!cache[id]) {
+          cache[id] = HuhAudio.loadWav('audio/' + id + '.wav').catch(function (err) {
+            delete cache[id];
+            throw err;
+          });
+        }
+        cache[id].then(function (input) {
+          if (my !== playSeq) return;
+          var rendered = HuhAudio.renderHuh(input, readParams());
+          HuhAudio.play(rendered);
+          status.textContent = 'playing ' + id;
+        }).catch(function (err) {
+          if (my !== playSeq) return;
+          status.textContent = err && err.message ? err.message : 'playback failed';
+        });
+      });
+
+      document.getElementById('reset').addEventListener('click', function () {
+        FIELDS.forEach(function (field) {
+          var name = field[0];
+          var slider = document.getElementById(name);
+          slider.value = String(HuhAudio.DEFAULTS[name]);
+          document.getElementById(name + '-out').textContent = format(name, HuhAudio.DEFAULTS[name]);
+        });
+        draw();
+      });
+
+      window.addEventListener('resize', draw);
+      draw();
+    })();
+  </script>
+</body>
+</html>
