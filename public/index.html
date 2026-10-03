@@ -5,48 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Huh?</title>
   <style>
-    :root { color-scheme: dark; }
     body {
       margin: 0; min-height: 100vh; display: grid; place-items: center;
-      background: #0b0b0c; color: #fff;
+      background: linear-gradient(160deg, #1a0533 0%, #0b1b3a 45%, #062018 100%);
+      color: #fff;
       font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
     }
     main { text-align: center; padding: 1.5rem; }
     h1 {
-      position: relative; margin: 0 0 1rem;
+      margin: 0 0 1rem;
       font-size: clamp(4.5rem, 18vw, 9rem); line-height: 0.9;
-      letter-spacing: -0.03em; font-weight: 900; color: #fff;
-      animation: jitter 2.4s steps(2, end) infinite;
+      letter-spacing: -0.03em; font-weight: 900;
+      color: #fff;
+      -webkit-text-stroke: 8px #000;
+      paint-order: stroke fill;
     }
-    h1::before, h1::after {
-      content: "HUH?"; position: absolute; inset: 0;
+    video { width: min(92vw, 720px); border-radius: 12px; background: #000; display: block; margin: 0 auto; }
+    button {
+      margin-top: 1rem;
+      font: inherit; font-size: 1.4rem; letter-spacing: 0.04em;
+      color: #fff; background: #111; border: 3px solid #fff;
+      border-radius: 999px; padding: 0.45rem 1.4rem; cursor: pointer;
     }
-    h1::before { color: #ff2a2a; transform: translate(-4px, 0); mix-blend-mode: screen; animation: shift 1.6s infinite; }
-    h1::after { color: #22e0ff; transform: translate(4px, 0); mix-blend-mode: screen; animation: shift 1.3s infinite reverse; }
-    video { width: min(92vw, 720px); border-radius: 12px; background: #000; }
-    @keyframes jitter {
-      0%, 88%, 100% { transform: none; }
-      90% { transform: translate(2px, -1px); }
-      94% { transform: translate(-3px, 1px); }
-    }
-    @keyframes shift {
-      0%, 100% { clip-path: inset(0 0 80% 0); }
-      25% { clip-path: inset(30% 0 40% 0); }
-      50% { clip-path: inset(70% 0 5% 0); }
-      75% { clip-path: inset(10% 0 60% 0); }
-    }
+    button:hover { background: #fff; color: #111; }
   </style>
 </head>
 <body>
   <main>
     <h1>HUH?</h1>
-    <video id="huh" src="/clips/A.mp4" muted autoplay playsinline controls></video>
+    <video id="huh" src="/clips/A.mp4" playsinline controls></video>
+    <button id="replay" type="button">replay</button>
   </main>
   <script>
     const v = document.getElementById("huh");
-    v.addEventListener("ended", () => {
-      setTimeout(() => { v.currentTime = 0; v.play(); }, 2000);
-    });
+    const play = () => { v.currentTime = 0; v.muted = false; v.play(); };
+    document.getElementById("replay").addEventListener("click", play);
+    window.addEventListener("load", () => setTimeout(play, 800));
   </script>
 </body>
 </html>
