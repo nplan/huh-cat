@@ -59,7 +59,7 @@
     <h1>huh lab</h1>
     <label class="check"><input type="checkbox" id="keepVowel" checked /> Keep vowel</label>
     <div id="params"></div>
-    <p class="hint">Attack fades in the start of the voice. Accent ducks the rest so only the peak stays loud.</p>
+    <p class="hint">Press Play after you move a slider. Attack is how long the fade-in lasts, up to 400 ms. Accent keeps only the peak and silences the rest.</p>
     <canvas id="contour" width="640" height="180" aria-label="pitch contour in semitones"></canvas>
     <div class="actions">
       <button type="button" id="play">Play</button>
@@ -68,7 +68,7 @@
     <p id="status"></p>
   </main>
   <script src="vendor/rubberband/rubberband.js"></script>
-  <script src="js/huh-audio.js"></script>
+  <script src="js/huh-audio.js?v=4"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -202,6 +202,20 @@
           var py = yOf(ys[s]);
           if (s === 0) g.moveTo(px, py);
           else g.lineTo(px, py);
+        }
+        g.stroke();
+
+        g.strokeStyle = '#ffb15e';
+        g.lineWidth = 2;
+        g.beginPath();
+        var dur = 0.39 * params.durationScale;
+        for (var e = 0; e <= steps; e++) {
+          var et = e / steps;
+          var env = HuhAudio.envelopeAt(et, params, dur);
+          var ex = xOf(et);
+          var ey = top + (1 - env) * plotH;
+          if (e === 0) g.moveTo(ex, ey);
+          else g.lineTo(ex, ey);
         }
         g.stroke();
 

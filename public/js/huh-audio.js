@@ -26,7 +26,7 @@
     riseSemitones: 0,
     fallSemitones: 0,
     gainDb: 0,
-    attackMs: 25,
+    attackMs: 0,
     accent: 0,
     keepVowel: true
   };
@@ -38,7 +38,7 @@
     riseSemitones: [0, 12],
     fallSemitones: [0, 14],
     gainDb: [-12, 6],
-    attackMs: [5, 120],
+    attackMs: [0, 400],
     accent: [0, 1]
   };
 
@@ -122,19 +122,19 @@
 
   function applyGain(buffer, sampleRate, params) {
     var gain = Math.pow(10, params.gainDb / 20);
-    var attackSamples = Math.max(1, Math.round(params.attackMs * 0.001 * sampleRate));
-    attackSamples = Math.min(attackSamples, Math.round(buffer.length * 0.7));
+    var attackSamples = Math.round(params.attackMs * 0.001 * sampleRate);
+    attackSamples = Math.min(Math.max(0, attackSamples), Math.round(buffer.length * 0.98));
     var out = new Float32Array(buffer.length);
     var peak = 0;
     var last = Math.max(1, buffer.length - 1);
-    var floor = 0.08;
     for (var i = 0; i < buffer.length; i++) {
       var attack = 1;
-      if (i < attackSamples) {
-        attack = 0.5 * (1 - Math.cos(Math.PI * i / attackSamples));
+      if (attackSamples > 0 && i < attackSamples) {
+        var u = i / attackSamples;
+        attack = u * u;
       }
       var bump = accentShape(i / last, params.peakAt);
-      var shaped = floor + (1 - floor) * bump;
+      var shaped = bump * bump * bump;
       var accent = (1 - params.accent) + params.accent * shaped;
       var s = buffer[i] * attack * accent * gain;
       if (!isFinite(s)) s = 0;
@@ -147,6 +147,24 @@
       for (var j = 0; j < out.length; j++) out[j] *= trim;
     }
     return out;
+  }
+
+
+  function envelopeAt(t, params, durationSec) {
+    var p = normalizeParams(params);
+    var x = clamp(Number(t) || 0, 0, 1);
+    var dur = Number(durationSec);
+    if (!(dur > 0)) dur = 0.39;
+    var attackFrac = Math.min(0.98, (p.attackMs * 0.001) / dur);
+    var attack = 1;
+    if (attackFrac > 0 && x < attackFrac) {
+      var u = x / attackFrac;
+      attack = u * u;
+    }
+    var bump = accentShape(x, p.peakAt);
+    var shaped = bump * bump * bump;
+    var accent = (1 - p.accent) + p.accent * shaped;
+    return attack * accent;
   }
 
   function renderMono(input, sampleRate, params) {
@@ -236,6 +254,7 @@
     RANGES: RANGES,
     contourAt: contourAt,
     accentShape: accentShape,
+    envelopeAt: envelopeAt,
     renderMono: renderMono,
     renderHuh: renderHuh,
     play: play,
