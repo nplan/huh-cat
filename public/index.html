@@ -38,9 +38,14 @@
   </main>
   <script>
     const v = document.getElementById("huh");
-    const play = () => { v.currentTime = 0; v.muted = false; v.play(); };
-    document.getElementById("replay").addEventListener("click", play);
-    window.addEventListener("load", () => setTimeout(play, 800));
+    const play = (withSound) => {
+      v.currentTime = 0;
+      v.muted = !withSound;
+      const attempt = v.play();
+      if (attempt) attempt.catch(() => { v.muted = true; v.play(); });
+    };
+    document.getElementById("replay").addEventListener("click", () => play(true));
+    window.addEventListener("load", () => setTimeout(() => play(false), 800));
   </script>
 </body>
 </html>
