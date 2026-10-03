@@ -21,26 +21,50 @@
       paint-order: stroke fill;
     }
     video { width: min(92vw, 720px); border-radius: 12px; background: #000; display: block; margin: 0 auto; }
-    button {
-      margin-top: 1rem;
-      width: 4.2rem; height: 4.2rem; border-radius: 50%;
-      color: #111; background: #fff; border: 3px solid #000;
-      cursor: pointer; display: inline-grid; place-items: center;
+    .row { display: flex; gap: 0.6rem; justify-content: center; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+    .clips { display: flex; gap: 0.45rem; }
+    .clips button, #play {
+      color: #111; background: #fff; border: 3px solid #000; cursor: pointer;
     }
-    button svg { width: 1.7rem; height: 1.7rem; margin-left: 0.15rem; }
-    button:hover { background: #ffe566; }
+    .clips button {
+      width: 3.1rem; height: 3.1rem; border-radius: 10px;
+      font: 900 1.35rem Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+    }
+    .clips button[aria-pressed="true"], .clips button:hover, #play:hover { background: #ffe566; }
+    #play {
+      width: 4.2rem; height: 4.2rem; border-radius: 50%;
+      display: inline-grid; place-items: center;
+    }
+    #play svg { width: 1.7rem; height: 1.7rem; margin-left: 0.15rem; }
   </style>
 </head>
 <body>
   <main>
     <h1>HUUUH?</h1>
     <video id="huh" src="/clips/A.mp4" playsinline controls></video>
-    <button id="play" type="button" aria-label="Play">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
-    </button>
+    <div class="row">
+      <div class="clips" role="group" aria-label="Clip">
+        <button type="button" data-clip="A" aria-pressed="true">A</button>
+        <button type="button" data-clip="B" aria-pressed="false">B</button>
+        <button type="button" data-clip="C" aria-pressed="false">C</button>
+        <button type="button" data-clip="D" aria-pressed="false">D</button>
+      </div>
+      <button id="play" type="button" aria-label="Play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
   </main>
   <script>
     const v = document.getElementById("huh");
+    const picks = [...document.querySelectorAll(".clips button")];
+    let clip = "A";
+    picks.forEach((b) => b.addEventListener("click", () => {
+      clip = b.dataset.clip;
+      picks.forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      v.pause();
+      v.src = "/clips/" + clip + ".mp4";
+      v.load();
+    }));
     document.getElementById("play").addEventListener("click", () => {
       v.muted = false;
       v.currentTime = 0;
