@@ -59,7 +59,7 @@
     <h1>huh lab</h1>
     <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel</label>
     <div id="params"></div>
-    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the line is the pitch.</p>
+    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the blue line is the pitch, and the orange line is attack and accent.</p>
     <canvas id="diagram" width="640" height="220" aria-label="waveform and pitch"></canvas>
     <div class="actions">
       <button type="button" id="play">Play</button>
@@ -68,7 +68,7 @@
     <p id="status"></p>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=6"></script>
-  <script src="js/huh-audio.js?v=7"></script>
+  <script src="js/huh-audio.js?v=8"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -265,6 +265,20 @@
           var py = yOf(ys[k]);
           if (k === 0) g.moveTo(px2, py);
           else g.lineTo(px2, py);
+        }
+        g.stroke();
+
+        g.strokeStyle = '#ffb15e';
+        g.lineWidth = 2;
+        g.beginPath();
+        var dur = Math.max(0.05, (lastWave ? lastWave.length / 44100 : 0.39));
+        for (var e = 0; e <= steps; e++) {
+          var et = e / steps;
+          var env = HuhAudio.envelopeAt(et, params, dur);
+          var ex = xOf(et);
+          var ey = top + (1 - env) * plotH;
+          if (e === 0) g.moveTo(ex, ey);
+          else g.lineTo(ex, ey);
         }
         g.stroke();
 
