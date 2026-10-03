@@ -5,7 +5,8 @@
  * Rubber Band realtime R3 does the time stretch and the pitch shift
  * independently. The contour is setPitchScale about every 10 ms
  * (OptionPitchHighConsistency). OptionFormantPreserved keeps the vowel.
- * Attack fades the start in; accent is a cosine loudness bump on peakAt.
+ * Leading silence is trimmed first, so attack and accent sit on the voice.
+ * Attack fades the start in. Accent ducks the ends toward the peak.
  * Then gainDb, then a peak limiter at 0.98.
  */
 (function (factory) {
@@ -106,19 +107,35 @@
     return cosineInterp(1, 0, (x - peak) / (1 - peak));
   }
 
+  function trimSilence(input, sampleRate) {
+    var thresh = 0.02;
+    var start = 0;
+    var end = input.length - 1;
+    while (start < end && Math.abs(input[start]) < thresh) start++;
+    while (end > start && Math.abs(input[end]) < thresh) end--;
+    var pad = Math.round(0.015 * sampleRate);
+    start = Math.max(0, start - pad);
+    end = Math.min(input.length - 1, end + pad);
+    if (end - start < Math.round(0.05 * sampleRate)) return input;
+    return input.subarray(start, end + 1);
+  }
+
   function applyGain(buffer, sampleRate, params) {
     var gain = Math.pow(10, params.gainDb / 20);
     var attackSamples = Math.max(1, Math.round(params.attackMs * 0.001 * sampleRate));
+    attackSamples = Math.min(attackSamples, Math.round(buffer.length * 0.7));
     var out = new Float32Array(buffer.length);
     var peak = 0;
     var last = Math.max(1, buffer.length - 1);
+    var floor = 0.08;
     for (var i = 0; i < buffer.length; i++) {
       var attack = 1;
       if (i < attackSamples) {
         attack = 0.5 * (1 - Math.cos(Math.PI * i / attackSamples));
       }
       var bump = accentShape(i / last, params.peakAt);
-      var accent = Math.pow(10, (params.accent * 6 * bump) / 20);
+      var shaped = floor + (1 - floor) * bump;
+      var accent = (1 - params.accent) + params.accent * shaped;
       var s = buffer[i] * attack * accent * gain;
       if (!isFinite(s)) s = 0;
       out[i] = s;
@@ -138,7 +155,8 @@
     if (!rb.isReady()) throw new Error('Rubber Band is not loaded');
     if (!(sampleRate > 0) || !isFinite(sampleRate)) throw new Error('sampleRate must be positive');
     if (!input || input.length === 0) return new Float32Array(1);
-    var rendered = rb.stretchMono(input, sampleRate, p.durationScale, function (t) {
+    var voiced = trimSilence(input, sampleRate);
+    var rendered = rb.stretchMono(voiced, sampleRate, p.durationScale, function (t) {
       return Math.pow(2, (p.pitchSemitones + contourAt(t, p)) / 12);
     }, { keepVowel: p.keepVowel });
     return applyGain(rendered, sampleRate, p);
