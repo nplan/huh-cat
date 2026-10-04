@@ -288,9 +288,28 @@
 
   function ensureContext() {
     if (typeof AudioContext === 'undefined') throw new Error('AudioContext is not available');
-    if (!sharedCtx) sharedCtx = new AudioContext();
-    if (sharedCtx.state === 'suspended') sharedCtx.resume();
+    if (!sharedCtx || sharedCtx.state === 'closed') sharedCtx = new AudioContext();
     return sharedCtx;
+  }
+
+  function replaceContext() {
+    var previous = sharedCtx;
+    if (previous && previous.state !== 'closed') {
+      try { previous.close(); } catch (e) {}
+    }
+    sharedCtx = new AudioContext();
+    return sharedCtx;
+  }
+
+  // Call only from a user gesture. resume() at load does not unlock audio.
+  function resumeForGesture() {
+    var ctx = ensureContext();
+    try { ctx.resume(); } catch (e) {}
+    if (ctx.state !== 'running') {
+      ctx = replaceContext();
+      try { ctx.resume(); } catch (e2) {}
+    }
+    return ctx;
   }
 
   function play(buffer) {
@@ -338,6 +357,8 @@
     loadWav: loadWav,
     loadEngine: loadEngine,
     ensureContext: ensureContext,
+    replaceContext: replaceContext,
+    resumeForGesture: resumeForGesture,
     mixParams: mixParams
   };
 });
