@@ -36,12 +36,58 @@
       display: inline-grid; place-items: center;
     }
     #play svg { width: 1.7rem; height: 1.7rem; margin-left: 0.15rem; }
+    .pad-stage {
+      width: min(92vw, 520px);
+      margin: 1.15rem auto 0;
+      display: grid;
+      grid-template-columns: minmax(4.8rem, auto) minmax(168px, 260px) minmax(3.8rem, auto);
+      grid-template-rows: auto auto auto;
+      align-items: center;
+      justify-content: center;
+      column-gap: 0.5rem;
+      row-gap: 0.35rem;
+      font-family: system-ui, sans-serif;
+      font-weight: 700;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .edge-n { grid-column: 2; grid-row: 1; }
+    .edge-w { grid-column: 1; grid-row: 2; }
+    .edge-e { grid-column: 3; grid-row: 2; }
+    .edge-s { grid-column: 2; grid-row: 3; }
+    #pad {
+      grid-column: 2;
+      grid-row: 2;
+      width: 100%;
+      aspect-ratio: 1;
+      position: relative;
+      border: 3px solid #000;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.08);
+      touch-action: none;
+      user-select: none;
+      cursor: grab;
+    }
+    #dot {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      box-sizing: border-box;
+      border-radius: 50%;
+      background: #ffe566;
+      border: 3px solid #000;
+      transform: translate(-50%, -50%);
+      left: 50%;
+      top: 50%;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>HUUUH?</h1>
-    <video id="huh" src="/clips/A.mp4" playsinline controls></video>
+    <video id="huh" src="/clips/A.mp4" playsinline muted preload="auto"></video>
     <div class="row">
       <div class="clips" role="group" aria-label="Clip">
         <button type="button" data-clip="A" aria-pressed="true">A</button>
@@ -53,23 +99,307 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
       </button>
     </div>
+    <div class="pad-stage">
+      <div class="edge-n">Shocked</div>
+      <div class="edge-w">Unbothered</div>
+      <div id="pad" aria-label="Mood. Left unbothered, right annoyed, down dry, up shocked.">
+        <div id="dot"></div>
+      </div>
+      <div class="edge-e">Annoyed</div>
+      <div class="edge-s">Dry</div>
+    </div>
   </main>
+  <script src="vendor/rubberband/rubberband.js?v=6"></script>
+  <script src="js/huh-audio.js?v=9"></script>
   <script>
-    const v = document.getElementById("huh");
-    const picks = [...document.querySelectorAll(".clips button")];
-    let clip = "A";
-    picks.forEach((b) => b.addEventListener("click", () => {
-      clip = b.dataset.clip;
-      picks.forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
-      v.pause();
-      v.src = "/clips/" + clip + ".mp4";
-      v.load();
-    }));
-    document.getElementById("play").addEventListener("click", () => {
-      v.muted = false;
-      v.currentTime = 0;
-      v.play();
-    });
+    (function () {
+      var DOT = 26;
+      var video = document.getElementById('huh');
+      var pad = document.getElementById('pad');
+      var dot = document.getElementById('dot');
+      var picks = [].slice.call(document.querySelectorAll('.clips button'));
+      var clip = 'A';
+      var padX = 0;
+      var padY = 0;
+      var dragging = false;
+      var primed = false;
+      var active = false;
+      var pendingStart = false;
+      var syncToken = 0;
+      var rafId = 0;
+      var sourceNode = null;
+      var latestBuffer = null;
+      var latestKey = '';
+      var renderSerial = Promise.resolve();
+      var debounceTimer = 0;
+      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
+      var wavReady = engineReady.then(function () {
+        return HuhAudio.loadWav('audio/A.wav');
+      });
+
+      video.muted = true;
+      video.controls = false;
+
+      function readCorners() {
+        try {
+          var raw = JSON.parse(localStorage.getItem('huh-corners') || 'null');
+          if (raw && typeof raw === 'object') return raw;
+        } catch (e) {}
+        return null;
+      }
+
+      function clamp(v, lo, hi) {
+        return v < lo ? lo : v > hi ? hi : v;
+      }
+
+      function placeDot() {
+        var innerW = Math.max(1, pad.clientWidth - DOT);
+        var innerH = Math.max(1, pad.clientHeight - DOT);
+        var inset = DOT / 2;
+        dot.style.left = (inset + ((padX + 1) / 2) * innerW) + 'px';
+        dot.style.top = (inset + ((1 - padY) / 2) * innerH) + 'px';
+      }
+
+      function pointFromEvent(e) {
+        var rect = pad.getBoundingClientRect();
+        var style = window.getComputedStyle(pad);
+        var borderL = parseFloat(style.borderLeftWidth) || 0;
+        var borderT = parseFloat(style.borderTopWidth) || 0;
+        var innerW = Math.max(1, pad.clientWidth - DOT);
+        var innerH = Math.max(1, pad.clientHeight - DOT);
+        var inset = DOT / 2;
+        var localX = clamp(e.clientX - rect.left - borderL, inset, inset + innerW);
+        var localY = clamp(e.clientY - rect.top - borderT, inset, inset + innerH);
+        padX = clamp(((localX - inset) / innerW) * 2 - 1, -1, 1);
+        padY = clamp(1 - ((localY - inset) / innerH) * 2, -1, 1);
+        placeDot();
+      }
+
+      function requestRender() {
+        var job = renderSerial.then(function () {
+          var params = HuhAudio.mixParams(padX, padY, readCorners());
+          var key = JSON.stringify(params);
+          if (latestBuffer && latestKey === key) return latestBuffer;
+          return engineReady.then(function () {
+            return wavReady;
+          }).then(function (input) {
+            var fresh = HuhAudio.mixParams(padX, padY, readCorners());
+            var freshKey = JSON.stringify(fresh);
+            if (latestBuffer && latestKey === freshKey) return latestBuffer;
+            try {
+              if (input) {
+                latestBuffer = HuhAudio.renderHuh(input, fresh);
+                latestKey = freshKey;
+              }
+            } catch (e) {}
+            return latestBuffer;
+          });
+        });
+        renderSerial = job.then(function () {}, function () {});
+        return job;
+      }
+
+      function scheduleRender() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(requestRender, 70);
+      }
+
+      function haltPlayback() {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = 0;
+        if (sourceNode) {
+          sourceNode.onended = null;
+          try { sourceNode.stop(0); } catch (e) {}
+          try { sourceNode.disconnect(); } catch (e2) {}
+          sourceNode = null;
+        }
+        active = false;
+        video.pause();
+      }
+
+      function waitMetadata() {
+        if (isFinite(video.duration) && video.duration > 0) return Promise.resolve();
+        return new Promise(function (resolve) {
+          function onMeta() {
+            video.removeEventListener('loadedmetadata', onMeta);
+            resolve();
+          }
+          video.addEventListener('loadedmetadata', onMeta);
+        });
+      }
+
+      function seekZero() {
+        video.pause();
+        if (!(video.currentTime > 0.001)) return Promise.resolve();
+        return new Promise(function (resolve) {
+          var settled = false;
+          function finish() {
+            if (settled) return;
+            settled = true;
+            video.removeEventListener('seeked', finish);
+            resolve();
+          }
+          video.addEventListener('seeked', finish);
+          try { video.currentTime = 0; }
+          catch (e) { finish(); }
+        });
+      }
+
+      function beginPlayback() {
+        var ctx;
+        try { ctx = HuhAudio.ensureContext(); }
+        catch (e) { return; }
+        ctx.resume();
+        var token = ++syncToken;
+        pendingStart = true;
+        clearTimeout(debounceTimer);
+        haltPlayback();
+        video.muted = true;
+        requestRender().then(function (buffer) {
+          if (token !== syncToken) return null;
+          if (!buffer) { pendingStart = false; return null; }
+          return waitMetadata().then(function () {
+            if (token !== syncToken) return null;
+            var picture = video.duration;
+            var sound = buffer.duration;
+            var rate = picture / sound;
+            if (!isFinite(picture) || !isFinite(sound) || !(picture > 0) || !(sound > 0) || !isFinite(rate) || !(rate > 0)) {
+              pendingStart = false;
+              return null;
+            }
+            video.playbackRate = rate;
+            return seekZero().then(function () {
+              return buffer;
+            });
+          });
+        }).then(function (buffer) {
+          if (!buffer || token !== syncToken) return;
+          video.muted = true;
+          var audioStart = ctx.currentTime + 0.05;
+          var node = ctx.createBufferSource();
+          node.buffer = buffer;
+          node.connect(ctx.destination);
+          try { node.start(audioStart); }
+          catch (e) { pendingStart = false; return; }
+          sourceNode = node;
+          active = true;
+          var nominalRate = video.playbackRate;
+          node.onended = function () {
+            if (token !== syncToken) return;
+            active = false;
+            pendingStart = false;
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = 0;
+            video.pause();
+            if (sourceNode === node) sourceNode = null;
+          };
+          function frame() {
+            if (token !== syncToken) return;
+            video.muted = true;
+            var elapsed = ctx.currentTime - audioStart;
+            if (elapsed >= buffer.duration) {
+              active = false;
+              pendingStart = false;
+              video.pause();
+              rafId = 0;
+              return;
+            }
+            if (elapsed >= 0 && !video.seeking) {
+              var expected = elapsed * nominalRate;
+              // These clips have a single keyframe at 0, so writing currentTime
+              // mid-play snaps the picture back to the start. Close a gap over
+              // 40ms by fitting the rest of the picture into the rest of the sound.
+              if (isFinite(expected) && Math.abs(video.currentTime - expected) > 0.04) {
+                var remainSound = buffer.duration - elapsed;
+                var remainPicture = video.duration - video.currentTime;
+                if (remainSound > 0.04 && remainPicture > 0) {
+                  var catchRate = remainPicture / remainSound;
+                  if (isFinite(catchRate) && catchRate > 0) video.playbackRate = Math.min(4, Math.max(0.25, catchRate));
+                }
+              }
+            }
+            rafId = requestAnimationFrame(frame);
+          }
+          function kick() {
+            if (token !== syncToken) return;
+            if (ctx.currentTime + 0.004 < audioStart) {
+              rafId = requestAnimationFrame(kick);
+              return;
+            }
+            video.muted = true;
+            var started = video.play();
+            if (started && started.catch) started.catch(function () {});
+            frame();
+          }
+          kick();
+        }).catch(function () {
+          if (token === syncToken) pendingStart = false;
+        });
+      }
+
+      function unlockMedia() {
+        var ctx;
+        try { ctx = HuhAudio.ensureContext(); }
+        catch (e) { return; }
+        ctx.resume();
+        if (primed) return;
+        primed = true;
+        video.muted = true;
+        var started = video.play();
+        video.pause();
+        if (started && started.then) {
+          started.then(function () {
+            if (!active && !pendingStart) video.pause();
+          }).catch(function () {});
+        }
+      }
+
+      document.addEventListener('pointerdown', unlockMedia, true);
+
+      pad.addEventListener('pointerdown', function (e) {
+        dragging = true;
+        if (pad.setPointerCapture) pad.setPointerCapture(e.pointerId);
+        pointFromEvent(e);
+      });
+      pad.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        pointFromEvent(e);
+      });
+      function endDrag(e) {
+        if (!dragging) return;
+        dragging = false;
+        if (e) pointFromEvent(e);
+        scheduleRender();
+      }
+      pad.addEventListener('pointerup', endDrag);
+      pad.addEventListener('pointercancel', endDrag);
+
+      picks.forEach(function (b) {
+        b.addEventListener('click', function () {
+          var next = b.dataset.clip;
+          var restart = active || pendingStart;
+          if (next !== clip) {
+            clip = next;
+            picks.forEach(function (x) {
+              x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+            });
+            video.pause();
+            video.src = '/clips/' + clip + '.mp4';
+            video.load();
+            video.muted = true;
+          }
+          if (restart) beginPlayback();
+        });
+      });
+
+      document.getElementById('play').addEventListener('click', function () {
+        beginPlayback();
+      });
+
+      window.addEventListener('resize', placeDot);
+      placeDot();
+      requestRender();
+    })();
   </script>
 </body>
 </html>

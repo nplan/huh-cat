@@ -71,6 +71,64 @@
     return out;
   }
 
+  var MIX_KEYS = [
+    'pitchSemitones',
+    'durationScale',
+    'peakAt',
+    'riseSemitones',
+    'fallSemitones',
+    'gainDb',
+    'attackMs',
+    'accent'
+  ];
+
+  function cornerParam(corners, id, key) {
+    var corner = corners && corners[id];
+    if (!corner) return DEFAULTS[key];
+    var n = Number(corner[key]);
+    if (!isFinite(n)) return DEFAULTS[key];
+    return n;
+  }
+
+  function bilinearParam(tx, ty, corners, key) {
+    var unbotheredDry = cornerParam(corners, 'unbotheredDry', key);
+    var annoyedDry = cornerParam(corners, 'annoyedDry', key);
+    var unbotheredShocked = cornerParam(corners, 'unbotheredShocked', key);
+    var annoyedShocked = cornerParam(corners, 'annoyedShocked', key);
+    return (1 - tx) * (1 - ty) * unbotheredDry
+      + tx * (1 - ty) * annoyedDry
+      + (1 - tx) * ty * unbotheredShocked
+      + tx * ty * annoyedShocked;
+  }
+
+  /**
+   * Bilinear blend of the four corners, then pin the center to DEFAULTS.
+   * x is -1 unbothered .. +1 annoyed. y is -1 dry .. +1 shocked.
+   * keepVowel is not mixed.
+   */
+  function mixParams(x, y, corners) {
+    var nx = Number(x);
+    var ny = Number(y);
+    if (!isFinite(nx)) nx = 0;
+    if (!isFinite(ny)) ny = 0;
+    nx = clamp(nx, -1, 1);
+    ny = clamp(ny, -1, 1);
+    var tx = (nx + 1) / 2;
+    var ty = (ny + 1) / 2;
+    var pin = (1 - Math.abs(nx)) * (1 - Math.abs(ny));
+    var out = {};
+    for (var i = 0; i < MIX_KEYS.length; i++) {
+      var key = MIX_KEYS[i];
+      var blended = bilinearParam(tx, ty, corners, key);
+      var atCenter = bilinearParam(0.5, 0.5, corners, key);
+      var value = blended + (DEFAULTS[key] - atCenter) * pin;
+      var range = RANGES[key];
+      out[key] = clamp(value, range[0], range[1]);
+    }
+    out.keepVowel = false;
+    return out;
+  }
+
   function cosineInterp(a, b, u) {
     var t = clamp(u, 0, 1);
     var w = 0.5 * (1 - Math.cos(Math.PI * t));
@@ -279,6 +337,7 @@
     play: play,
     loadWav: loadWav,
     loadEngine: loadEngine,
-    ensureContext: ensureContext
+    ensureContext: ensureContext,
+    mixParams: mixParams
   };
 });

@@ -52,6 +52,22 @@
       margin: 0 0 0.7rem; cursor: pointer;
     }
     .hint { margin: 0.2rem 0 0.6rem; color: #9a9a9a; font-size: 0.85rem; }
+    .corners {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem;
+      margin: 0.85rem 0 0.15rem;
+    }
+    .corners button {
+      background: #1e1e1e;
+      color: #eee;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0.45rem 0.55rem;
+      font: inherit;
+    }
+    .corners button:hover { border-color: #6a9a74; }
   </style>
 </head>
 <body>
@@ -59,6 +75,12 @@
     <h1>huh lab</h1>
     <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel</label>
     <div id="params"></div>
+    <div class="corners" role="group" aria-label="Save corner">
+      <button type="button" data-corner="unbotheredShocked">Unbothered + Shocked</button>
+      <button type="button" data-corner="annoyedShocked">Annoyed + Shocked</button>
+      <button type="button" data-corner="unbotheredDry">Unbothered + Dry</button>
+      <button type="button" data-corner="annoyedDry">Annoyed + Dry</button>
+    </div>
     <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the blue line is the pitch, and the orange line is attack and accent.</p>
     <canvas id="diagram" width="640" height="220" aria-label="waveform and pitch"></canvas>
     <div class="actions">
@@ -68,7 +90,7 @@
     <p id="status"></p>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=6"></script>
-  <script src="js/huh-audio.js?v=8"></script>
+  <script src="js/huh-audio.js?v=9"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -83,6 +105,54 @@
       ];
       var playSeq = 0;
       var clipReady = null;
+      var CORNER_IDS = ['unbotheredDry', 'annoyedDry', 'unbotheredShocked', 'annoyedShocked'];
+      var CORNER_LABELS = {
+        unbotheredDry: 'Unbothered + Dry',
+        annoyedDry: 'Annoyed + Dry',
+        unbotheredShocked: 'Unbothered + Shocked',
+        annoyedShocked: 'Annoyed + Shocked'
+      };
+      var corners = loadCorners();
+
+      function blankCorner() {
+        var params = {};
+        FIELDS.forEach(function (field) {
+          params[field[0]] = HuhAudio.DEFAULTS[field[0]];
+        });
+        return params;
+      }
+
+      function copyCorner(src) {
+        var params = blankCorner();
+        if (!src) return params;
+        FIELDS.forEach(function (field) {
+          var n = Number(src[field[0]]);
+          if (isFinite(n)) params[field[0]] = n;
+        });
+        return params;
+      }
+
+      function loadCorners() {
+        var stored = {};
+        try {
+          stored = JSON.parse(localStorage.getItem('huh-corners') || 'null') || {};
+        } catch (e) {
+          stored = {};
+        }
+        var out = {};
+        CORNER_IDS.forEach(function (id) {
+          out[id] = copyCorner(stored[id]);
+        });
+        return out;
+      }
+
+      function cornerPayload() {
+        var out = {};
+        CORNER_IDS.forEach(function (id) {
+          out[id] = copyCorner(corners[id]);
+        });
+        return out;
+      }
       var box = document.getElementById('params');
       var status = document.getElementById('status');
       var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
@@ -322,6 +392,24 @@
         document.getElementById('keepVowel').checked = !!HuhAudio.DEFAULTS.keepVowel;
         draw();
         scheduleRender();
+      });
+
+      document.querySelectorAll('.corners button').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var id = button.getAttribute('data-corner');
+          var current = readParams();
+          var stored = {};
+          FIELDS.forEach(function (field) {
+            stored[field[0]] = current[field[0]];
+          });
+          corners[id] = stored;
+          try {
+            localStorage.setItem('huh-corners', JSON.stringify(cornerPayload()));
+            status.textContent = 'Saved ' + CORNER_LABELS[id];
+          } catch (err) {
+            status.textContent = 'Could not save corners';
+          }
+        });
       });
 
       window.addEventListener('resize', draw);
