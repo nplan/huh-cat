@@ -8,120 +8,129 @@
     body { margin: 1.5rem; font: 16px/1.4 system-ui, sans-serif; background: #111; color: #eee; }
     button { font: inherit; padding: 0.6rem 1.1rem; }
     pre { white-space: pre-wrap; }
+    #voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   </style>
 </head>
 <body>
+  <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
   <button type="button" id="play">Play</button>
   <pre id="report"></pre>
   <script src="vendor/rubberband/rubberband.js?v=6"></script>
-  <script src="js/huh-audio.js?v=12"></script>
+  <script src="js/huh-audio.js?v=13"></script>
   <script>
     (function () {
-      window.__huhCheck = { state: '', started: false, duration: 0, peak: 0, error: '' };
-      var decoded = null;
-      var renderedReady = null;
-      var decoding = null;
-      var engineReadyFlag = false;
-      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm').then(function () {
-        engineReadyFlag = true;
-      });
-      var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
+      var audio = document.getElementById('voice');
+      if (!audio.getAttribute('src')) audio.src = 'audio/A.wav';
+      var encodedPeak = 0;
+      var encodedDuration = 0;
+      var blobUrl = '';
+      var queuedUrl = '';
+      var playStamp = 0;
+      window.__huhCheck = { started: false, error: '', duration: 0, peak: 0, srcKind: 'file' };
+
+      function srcKind() {
+        var src = audio.currentSrc || audio.src || '';
+        return src.indexOf('blob:') >= 0 ? 'blob' : 'file';
+      }
 
       function writeCheck(info) {
         window.__huhCheck = {
-          state: info.state || '',
           started: !!info.started,
+          error: info.error || '',
           duration: Number(info.duration) || 0,
           peak: Number(info.peak) || 0,
-          error: info.error || ''
+          srcKind: info.srcKind === 'blob' ? 'blob' : 'file'
         };
         document.getElementById('report').textContent =
-          'state: ' + window.__huhCheck.state + '\n' +
           'started: ' + window.__huhCheck.started + '\n' +
+          'error: ' + window.__huhCheck.error + '\n' +
           'duration: ' + window.__huhCheck.duration + '\n' +
           'peak: ' + window.__huhCheck.peak + '\n' +
-          'error: ' + window.__huhCheck.error + '\n';
+          'srcKind: ' + window.__huhCheck.srcKind + '\n';
       }
 
-      function fromResult(result) {
-        writeCheck({
-          state: result.ctx ? result.ctx.state : '',
-          started: !!result.started,
-          duration: result.duration,
-          peak: result.peak,
-          error: result.error || ''
-        });
+      function swapSrc(url) {
+        var previous = blobUrl;
+        audio.src = url;
+        blobUrl = url;
+        if (previous) URL.revokeObjectURL(previous);
       }
 
-      function fromError(err, ctx) {
+      function useBlob(rendered) {
+        if (!rendered) return;
+        encodedPeak = HuhAudio.peakOf(rendered);
+        encodedDuration = rendered.duration || 0;
+        var url = URL.createObjectURL(HuhAudio.encodeWav(rendered));
+        if (!audio.paused && !audio.ended) {
+          if (queuedUrl) URL.revokeObjectURL(queuedUrl);
+          queuedUrl = url;
+          return;
+        }
+        swapSrc(url);
+      }
+
+      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
+      var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
+      Promise.all([bytesReady, engineReady]).then(function (parts) {
+        return HuhAudio.decodeWavOffline(parts[0]);
+      }).then(function (buf) {
+        var rendered = HuhAudio.renderHuh(buf, HuhAudio.mixParams(0, 0, null));
+        useBlob(rendered);
+      }).catch(function (err) {
         writeCheck({
-          state: ctx && ctx.state ? ctx.state : '',
           started: false,
+          error: err && err.message ? err.message : String(err),
           duration: 0,
           peak: 0,
-          error: err && err.message ? err.message : String(err || 'playback failed')
+          srcKind: srcKind()
         });
-      }
-
-      function ensureDecoded(ctx) {
-        if (decoded) return Promise.resolve(decoded);
-        if (decoding) return decoding;
-        decoding = Promise.all([bytesReady, engineReady]).then(function (parts) {
-          if (decoded) return decoded;
-          return HuhAudio.decodeOnContext(ctx, parts[0]);
-        }).then(function (buf) {
-          if (!decoded) decoded = buf;
-          return decoded;
-        }, function (err) {
-          decoding = null;
-          throw err;
-        });
-        return decoding;
-      }
+      });
 
       function onPlayClick() {
-        var cached = renderedReady;
-        var result;
+        var now = Date.now();
+        if (now - playStamp < 350) return;
+        playStamp = now;
+        audio.currentTime = 0;
+        var p;
         try {
-          result = HuhAudio.playBufferInGesture(cached);
+          p = audio.play();
         } catch (err) {
-          fromError(err, null);
+          writeCheck({
+            started: false,
+            error: err && err.message ? err.message : String(err),
+            duration: isFinite(audio.duration) ? audio.duration : encodedDuration,
+            peak: encodedPeak,
+            srcKind: srcKind()
+          });
           return;
         }
-        if (!result.silent) {
-          fromResult(result);
-          return;
-        }
-        if (decoded && engineReadyFlag) {
-          try {
-            var rendered = HuhAudio.renderHuh(decoded, HuhAudio.mixParams(0, 0, null));
-            renderedReady = rendered;
-            var again = HuhAudio.startBufferIfCurrent(result.token, rendered);
-            if (again) fromResult(again);
-            return;
-          } catch (err2) {
-            fromError(err2, result.ctx);
-            return;
-          }
-        }
-        fromResult(result);
-        var token = result.token;
-        var ctx = result.ctx;
-        ensureDecoded(ctx).then(function (input) {
-          if (!input || token !== HuhAudio.currentPlayToken()) return null;
-          var rendered = HuhAudio.renderHuh(input, HuhAudio.mixParams(0, 0, null));
-          renderedReady = rendered;
-          return HuhAudio.startBufferIfCurrent(token, rendered);
-        }).then(function (again) {
-          if (!again) return;
-          fromResult(again);
-        }).catch(function (err3) {
-          if (token !== HuhAudio.currentPlayToken()) return;
-          fromError(err3, ctx);
+        var duration = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : encodedDuration;
+        writeCheck({
+          started: true,
+          error: '',
+          duration: duration,
+          peak: encodedPeak,
+          srcKind: srcKind()
         });
+        if (p && typeof p.catch === 'function') {
+          p.catch(function (err) {
+            writeCheck({
+              started: true,
+              error: err && err.message ? err.message : String(err),
+              duration: duration,
+              peak: encodedPeak,
+              srcKind: srcKind()
+            });
+          });
+        }
       }
 
-      document.getElementById('play').addEventListener('click', onPlayClick);
+      var playButton = document.getElementById('play');
+      playButton.addEventListener('click', onPlayClick);
+      playButton.addEventListener('touchend', function (e) {
+        if (e.cancelable) e.preventDefault();
+        onPlayClick();
+      });
     })();
   </script>
 </body>

@@ -323,9 +323,29 @@
       throw new Error('bufferOnContext expects an AudioBuffer');
     }
     var channels = audioBuffer.numberOfChannels;
-    var copy = ctx.createBuffer(channels, audioBuffer.length, audioBuffer.sampleRate);
+    var srcRate = audioBuffer.sampleRate;
+    var dstRate = ctx.sampleRate > 0 ? ctx.sampleRate : srcRate;
+    var dstLen = audioBuffer.length;
+    if (srcRate > 0 && dstRate !== srcRate) {
+      dstLen = Math.max(1, Math.round(audioBuffer.length * dstRate / srcRate));
+    }
+    var copy = ctx.createBuffer(channels, dstLen, dstRate);
     for (var c = 0; c < channels; c++) {
-      copy.getChannelData(c).set(audioBuffer.getChannelData(c));
+      var src = audioBuffer.getChannelData(c);
+      var dst = copy.getChannelData(c);
+      if (dstLen === src.length) {
+        dst.set(src);
+        continue;
+      }
+      var last = Math.max(0, src.length - 1);
+      for (var i = 0; i < dstLen; i++) {
+        var pos = dstLen === 1 ? 0 : (i / (dstLen - 1)) * last;
+        var i0 = Math.floor(pos);
+        var frac = pos - i0;
+        var a = src[i0] || 0;
+        var b = src[Math.min(last, i0 + 1)] || 0;
+        dst[i] = a + (b - a) * frac;
+      }
     }
     return copy;
   }
@@ -422,8 +442,142 @@
     return playToken;
   }
 
-  function play(buffer) {
-    return playBufferInGesture(buffer).source;
+  function play() {
+    throw new Error('Play the voice with the audio element');
+  }
+
+
+  function peakOf(audioBuffer) {
+    return peakAbs(audioBuffer);
+  }
+
+  function encodeWav(audioBuffer) {
+    var samples = monoChannel(audioBuffer);
+    var rate = audioBuffer.sampleRate > 0 ? Math.round(audioBuffer.sampleRate) : 44100;
+    var n = samples.length;
+    var bytes = new ArrayBuffer(44 + n * 2);
+    var view = new DataView(bytes);
+    function writeStr(offset, str) {
+      for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    }
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + n * 2, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, rate, true);
+    view.setUint32(28, rate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, n * 2, true);
+    var offset = 44;
+    for (var i = 0; i < n; i++) {
+      var s = samples[i];
+      if (!isFinite(s)) s = 0;
+      if (s > 1) s = 1;
+      else if (s < -1) s = -1;
+      var q = s < 0 ? Math.round(s * 32768) : Math.round(s * 32767);
+      if (q < -32768) q = -32768;
+      if (q > 32767) q = 32767;
+      view.setInt16(offset, q, true);
+      offset += 2;
+    }
+    return new Blob([bytes], { type: 'audio/wav' });
+  }
+
+  function wavSampleRate(bytes) {
+    if (!bytes || bytes.byteLength < 28) return 44100;
+    try {
+      var view = new DataView(bytes);
+      var rate = view.getUint32(24, true);
+      if (rate >= 8000 && rate <= 192000) return rate;
+    } catch (err) {}
+    return 44100;
+  }
+
+  function offlineAt(rate) {
+    var Ctor = null;
+    if (typeof OfflineAudioContext !== 'undefined') Ctor = OfflineAudioContext;
+    else if (typeof webkitOfflineAudioContext !== 'undefined') Ctor = webkitOfflineAudioContext;
+    if (!Ctor) throw new Error('OfflineAudioContext is not available');
+    try { return new Ctor(1, 1, rate); }
+    catch (err) { return new Ctor(1, 1, 44100); }
+  }
+
+  function decodePcmWav(bytes) {
+    var view = new DataView(bytes);
+    if (view.byteLength < 44) throw new Error('wav too small');
+    var channels = view.getUint16(22, true) || 1;
+    var rate = view.getUint32(24, true) || 44100;
+    var bits = view.getUint16(34, true) || 16;
+    var offset = 12;
+    var dataOffset = 44;
+    var dataSize = view.byteLength - 44;
+    while (offset + 8 <= view.byteLength) {
+      var id = String.fromCharCode(
+        view.getUint8(offset),
+        view.getUint8(offset + 1),
+        view.getUint8(offset + 2),
+        view.getUint8(offset + 3)
+      );
+      var size = view.getUint32(offset + 4, true);
+      if (id === 'data') {
+        dataOffset = offset + 8;
+        dataSize = size;
+        break;
+      }
+      offset += 8 + size + (size & 1);
+    }
+    var width = Math.max(1, bits >> 3);
+    var frames = Math.floor(dataSize / (width * channels));
+    var mono = new Float32Array(Math.max(1, frames));
+    for (var i = 0; i < frames; i++) {
+      var acc = 0;
+      for (var c = 0; c < channels; c++) {
+        var pos = dataOffset + (i * channels + c) * width;
+        var s = 0;
+        if (bits === 16) {
+          var sample = view.getInt16(pos, true);
+          s = sample < 0 ? sample / 32768 : sample / 32767;
+        } else if (bits === 8) {
+          s = (view.getUint8(pos) - 128) / 128;
+        } else if (bits === 32) {
+          s = view.getFloat32(pos, true);
+        }
+        acc += s;
+      }
+      mono[i] = acc / channels;
+    }
+    return audioBufferFromMono(mono, rate);
+  }
+
+  function decodeWavOffline(bytes) {
+    var copy = bytes.slice(0);
+    var rate = wavSampleRate(bytes);
+    var offline;
+    try { offline = offlineAt(rate); }
+    catch (err) { return Promise.resolve(decodePcmWav(bytes)); }
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      function ok(buf) {
+        if (settled) return;
+        settled = true;
+        resolve(buf);
+      }
+      function bad(err) {
+        if (settled) return;
+        settled = true;
+        try { resolve(decodePcmWav(bytes)); }
+        catch (err2) { reject(err || err2 || new Error('decodeAudioData failed')); }
+      }
+      var pending;
+      try { pending = offline.decodeAudioData(copy, ok, bad); }
+      catch (err3) { bad(err3); return; }
+      if (pending && typeof pending.then === 'function') pending.then(ok, bad);
+    });
   }
 
   function fetchWavBytes(url) {
@@ -461,10 +615,7 @@
 
   function loadWav(url) {
     return fetchWavBytes(url).then(function (bytes) {
-      if (!sharedCtx || sharedCtx.state === 'closed') {
-        throw new Error('decodeAudioData only runs on the Play AudioContext');
-      }
-      return decodeOnContext(sharedCtx, bytes);
+      return decodeWavOffline(bytes);
     });
   }
 
@@ -493,6 +644,9 @@
     startBufferIfCurrent: startBufferIfCurrent,
     currentPlayToken: currentPlayToken,
     fetchWavBytes: fetchWavBytes,
-    decodeOnContext: decodeOnContext
+    decodeOnContext: decodeOnContext,
+    decodeWavOffline: decodeWavOffline,
+    encodeWav: encodeWav,
+    peakOf: peakOf
   };
 });

@@ -47,6 +47,7 @@
     }
     #play { background: #243628; border-color: #6a9a74; }
     #status { margin: 0.7rem 0 0; min-height: 1.2em; color: #999; font-size: 0.9rem; }
+    #voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     .check {
       display: flex; align-items: center; gap: 0.5rem;
       margin: 0 0 0.7rem; cursor: pointer;
@@ -83,6 +84,7 @@
     </div>
     <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the blue line is the pitch, and the orange line is attack and accent.</p>
     <canvas id="diagram" width="640" height="220" aria-label="waveform and pitch"></canvas>
+    <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
     <div class="actions">
       <button type="button" id="play">Play</button>
       <button type="button" id="reset">Reset</button>
@@ -90,7 +92,7 @@
     <p id="status"></p>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=6"></script>
-  <script src="js/huh-audio.js?v=12"></script>
+  <script src="js/huh-audio.js?v=13"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -156,11 +158,20 @@
       }
       var box = document.getElementById('params');
       var status = document.getElementById('status');
+      var audio = document.getElementById('voice');
+      var blobUrl = '';
+      var queuedUrl = '';
+      var playStamp = 0;
+      if (!audio.getAttribute('src')) audio.src = 'audio/A.wav';
       var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
       var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
-      engineReady.then(function () {
+      Promise.all([bytesReady, engineReady]).then(function (parts) {
         engineReadyFlag = true;
         if (!status.textContent) status.textContent = 'ready';
+        return HuhAudio.decodeWavOffline(parts[0]);
+      }).then(function (buf) {
+        rawClip = buf;
+        scheduleRender();
       }).catch(function (err) {
         status.textContent = err && err.message ? err.message : 'Rubber Band failed to load';
       });
@@ -236,6 +247,7 @@
           latestKey = key;
           lastWave = new Float32Array(rendered.getChannelData(0));
           draw();
+          useBlob(rendered);
           return rendered;
         });
         pending = { key: key, promise: promise };
@@ -362,84 +374,56 @@
         scheduleRender();
       });
 
-      function adoptRender(rendered, key) {
-        latestBuffer = rendered;
-        latestKey = key;
-        lastWave = new Float32Array(rendered.getChannelData(0));
-        draw();
+      function swapSrc(url) {
+        var previous = blobUrl;
+        audio.src = url;
+        blobUrl = url;
+        if (previous) URL.revokeObjectURL(previous);
       }
 
-      function ensureDecoded(ctx) {
-        if (rawClip) return Promise.resolve(rawClip);
-        if (decoding) return decoding;
-        decoding = Promise.all([bytesReady, engineReady]).then(function (parts) {
-          if (rawClip) return rawClip;
-          return HuhAudio.decodeOnContext(ctx, parts[0]);
-        }).then(function (decoded) {
-          if (!rawClip) rawClip = decoded;
-          return rawClip;
-        }, function (err) {
-          decoding = null;
-          throw err;
-        });
-        return decoding;
+      function useBlob(rendered) {
+        if (!rendered) return;
+        var url = URL.createObjectURL(HuhAudio.encodeWav(rendered));
+        if (!audio.paused && !audio.ended) {
+          if (queuedUrl) URL.revokeObjectURL(queuedUrl);
+          queuedUrl = url;
+          return;
+        }
+        swapSrc(url);
       }
 
-      document.getElementById('play').addEventListener('click', function () {
-        var cached = null;
+      audio.addEventListener('ended', function () {
+        if (!queuedUrl) return;
+        var url = queuedUrl;
+        queuedUrl = '';
+        swapSrc(url);
+      });
+
+      function onPlayClick() {
+        var now = Date.now();
+        if (now - playStamp < 350) return;
+        playStamp = now;
+        audio.currentTime = 0;
+        var p;
         try {
-          var params = readParams();
-          var key = paramsKey(params);
-          if (latestBuffer && latestKey === key) cached = latestBuffer;
+          p = audio.play();
         } catch (err) {
-          console.error(err);
-          status.textContent = err && err.message ? err.message : 'playback failed';
+          status.textContent = err && err.message ? err.message : String(err);
           return;
         }
-        var result;
-        try {
-          result = HuhAudio.playBufferInGesture(cached);
-        } catch (err2) {
-          console.error(err2);
-          status.textContent = err2 && err2.message ? err2.message : 'playback failed';
-          return;
+        status.textContent = 'playing';
+        if (p && typeof p.catch === 'function') {
+          p.catch(function (err) {
+            status.textContent = err && err.message ? err.message : String(err);
+          });
         }
-        if (!result.silent) {
-          status.textContent = 'playing';
-          return;
-        }
-        if (rawClip && engineReadyFlag) {
-          try {
-            var fresh = readParams();
-            var rendered = HuhAudio.renderHuh(rawClip, fresh);
-            adoptRender(rendered, paramsKey(fresh));
-            var again = HuhAudio.startBufferIfCurrent(result.token, rendered);
-            if (!again) return;
-            status.textContent = 'playing';
-            return;
-          } catch (err3) {
-            console.error(err3);
-            status.textContent = err3 && err3.message ? err3.message : 'playback failed';
-            return;
-          }
-        }
-        var token = result.token;
-        var ctx = result.ctx;
-        if (status.textContent === 'playing') status.textContent = '';
-        ensureDecoded(ctx).then(function (input) {
-          if (!input || token !== HuhAudio.currentPlayToken()) return null;
-          var now = readParams();
-          var rendered = HuhAudio.renderHuh(input, now);
-          adoptRender(rendered, paramsKey(now));
-          return HuhAudio.startBufferIfCurrent(token, rendered);
-        }).then(function (again) {
-          if (!again) return;
-          status.textContent = 'playing';
-        }).catch(function (err4) {
-          console.error(err4);
-          if (token !== HuhAudio.currentPlayToken()) return;
-          status.textContent = err4 && err4.message ? err4.message : 'playback failed';
-        });
+      }
+
+      var playButton = document.getElementById('play');
+      playButton.addEventListener('click', onPlayClick);
+      playButton.addEventListener('touchend', function (e) {
+        if (e.cancelable) e.preventDefault();
+        onPlayClick();
       });
 
       document.getElementById('reset').addEventListener('click', function () {
