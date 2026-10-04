@@ -44,6 +44,7 @@
 
   var sharedCtx = null;
   var activeSource = null;
+  var playToken = 0;
 
   function rubberband() {
     if (RubberBand) return RubberBand;
@@ -286,26 +287,34 @@
     return audioBufferFromMono(rendered, audioBuffer.sampleRate);
   }
 
+  function gestureContext() {
+    var Ctor = null;
+    if (typeof AudioContext !== 'undefined') Ctor = AudioContext;
+    else if (typeof webkitAudioContext !== 'undefined') Ctor = webkitAudioContext;
+    if (!Ctor) throw new Error('AudioContext is not available');
+    if (!sharedCtx || sharedCtx.state === 'closed') sharedCtx = new Ctor();
+    try {
+      var resumed = sharedCtx.resume();
+      if (resumed && typeof resumed.catch === 'function') resumed.catch(function () {});
+    } catch (err) {}
+    return sharedCtx;
+  }
+
   function ensureContext() {
-    if (typeof AudioContext === 'undefined') throw new Error('AudioContext is not available');
-    if (!sharedCtx || sharedCtx.state === 'closed') sharedCtx = new AudioContext();
+    if (!sharedCtx || sharedCtx.state === 'closed') throw new Error('AudioContext is created on Play');
     return sharedCtx;
   }
 
+  // Do not call this from a page-load or document pointerdown path.
+  // Closing the context iOS unlocked makes the next buffer silent.
   function replaceContext() {
-    var previous = sharedCtx;
-    if (previous && previous.state !== 'closed') {
-      try { previous.close(); } catch (e) {}
-    }
-    sharedCtx = new AudioContext();
-    return sharedCtx;
+    throw new Error('AudioContext stays the one created on Play');
   }
 
-  // Resume only. Never close or replace here; that belongs in the Play click.
   function resumeForGesture() {
-    var ctx = ensureContext();
-    try { ctx.resume(); } catch (e) {}
-    return ctx;
+    if (!sharedCtx || sharedCtx.state === 'closed') return null;
+    try { sharedCtx.resume(); } catch (err) {}
+    return sharedCtx;
   }
 
   function bufferOnContext(ctx, audioBuffer) {
@@ -321,31 +330,141 @@
     return copy;
   }
 
-  function play(buffer) {
-    var ctx = ensureContext();
-    if (activeSource) {
-      try { activeSource.stop(0); } catch (e) {}
-      try { activeSource.disconnect(); } catch (e2) {}
-      activeSource = null;
+  function stopActive() {
+    if (!activeSource) return;
+    var src = activeSource;
+    activeSource = null;
+    try { src.stop(0); } catch (err) {}
+    try { src.disconnect(); } catch (err2) {}
+  }
+
+  function peakAbs(audioBuffer) {
+    var peak = 0;
+    var channels = audioBuffer.numberOfChannels || 1;
+    for (var c = 0; c < channels; c++) {
+      var data = audioBuffer.getChannelData(c);
+      for (var i = 0; i < data.length; i++) {
+        var a = data[i] < 0 ? -data[i] : data[i];
+        if (a > peak) peak = a;
+      }
     }
+    return peak;
+  }
+
+  function silentBuffer(ctx) {
+    var rate = ctx.sampleRate > 0 ? ctx.sampleRate : 44100;
+    var frames = Math.max(128, Math.round(rate * 0.02));
+    return ctx.createBuffer(1, frames, rate);
+  }
+
+  // Call this synchronously from the Play click or touch.
+  // source.start(0) runs before this function returns.
+  function playBufferInGesture(buffer) {
+    var token = ++playToken;
+    var ctx = gestureContext();
+    stopActive();
+    var silent = !(buffer && typeof buffer.getChannelData === 'function' && buffer.length > 0);
+    var playBuf = silent ? silentBuffer(ctx) : bufferOnContext(ctx, buffer);
     var src = ctx.createBufferSource();
-    src.buffer = buffer;
+    src.buffer = playBuf;
     src.connect(ctx.destination);
     src.start(0);
     activeSource = src;
     src.onended = function () {
       if (activeSource === src) activeSource = null;
     };
-    return src;
+    return {
+      token: token,
+      ctx: ctx,
+      source: src,
+      started: true,
+      silent: silent,
+      duration: playBuf.duration,
+      peak: peakAbs(playBuf),
+      error: null
+    };
   }
 
-  function loadWav(url) {
-    var ctx = ensureContext();
+  function startBufferIfCurrent(token, buffer) {
+    if (token !== playToken) return null;
+    var ctx = sharedCtx;
+    if (!ctx || ctx.state === 'closed') throw new Error('audio context closed');
+    if (!buffer || typeof buffer.getChannelData !== 'function' || !(buffer.length > 0)) {
+      throw new Error('no audio buffer');
+    }
+    try {
+      var resumed = ctx.resume();
+      if (resumed && typeof resumed.catch === 'function') resumed.catch(function () {});
+    } catch (err) {}
+    stopActive();
+    var playBuf = bufferOnContext(ctx, buffer);
+    var src = ctx.createBufferSource();
+    src.buffer = playBuf;
+    src.connect(ctx.destination);
+    src.start(0);
+    activeSource = src;
+    src.onended = function () {
+      if (activeSource === src) activeSource = null;
+    };
+    return {
+      token: token,
+      ctx: ctx,
+      source: src,
+      started: true,
+      silent: false,
+      duration: playBuf.duration,
+      peak: peakAbs(playBuf),
+      error: null
+    };
+  }
+
+  function currentPlayToken() {
+    return playToken;
+  }
+
+  function play(buffer) {
+    return playBufferInGesture(buffer).source;
+  }
+
+  function fetchWavBytes(url) {
     return fetch(url).then(function (res) {
       if (!res.ok) throw new Error('Could not load ' + url + ' (' + res.status + ')');
       return res.arrayBuffer();
-    }).then(function (bytes) {
-      return ctx.decodeAudioData(bytes.slice(0));
+    });
+  }
+
+  function decodeOnContext(ctx, bytes) {
+    if (!ctx || ctx.state === 'closed') throw new Error('decode needs the playing AudioContext');
+    var copy = bytes.slice(0);
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      function ok(buf) {
+        if (settled) return;
+        settled = true;
+        resolve(buf);
+      }
+      function bad(err) {
+        if (settled) return;
+        settled = true;
+        reject(err || new Error('decodeAudioData failed'));
+      }
+      var pending;
+      try {
+        pending = ctx.decodeAudioData(copy, ok, bad);
+      } catch (err) {
+        bad(err);
+        return;
+      }
+      if (pending && typeof pending.then === 'function') pending.then(ok, bad);
+    });
+  }
+
+  function loadWav(url) {
+    return fetchWavBytes(url).then(function (bytes) {
+      if (!sharedCtx || sharedCtx.state === 'closed') {
+        throw new Error('decodeAudioData only runs on the Play AudioContext');
+      }
+      return decodeOnContext(sharedCtx, bytes);
     });
   }
 
@@ -369,6 +488,11 @@
     replaceContext: replaceContext,
     resumeForGesture: resumeForGesture,
     bufferOnContext: bufferOnContext,
-    mixParams: mixParams
+    mixParams: mixParams,
+    playBufferInGesture: playBufferInGesture,
+    startBufferIfCurrent: startBufferIfCurrent,
+    currentPlayToken: currentPlayToken,
+    fetchWavBytes: fetchWavBytes,
+    decodeOnContext: decodeOnContext
   };
 });

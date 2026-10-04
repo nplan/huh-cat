@@ -110,7 +110,7 @@
     </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=6"></script>
-  <script src="js/huh-audio.js?v=11"></script>
+  <script src="js/huh-audio.js?v=12"></script>
   <script>
     (function () {
       var DOT = 26;
@@ -122,30 +122,21 @@
       var padX = 0;
       var padY = 0;
       var dragging = false;
-      var primed = false;
       var active = false;
       var pendingStart = false;
-      var syncToken = 0;
       var rafId = 0;
       var sourceNode = null;
       var latestBuffer = null;
       var latestKey = '';
       var renderSerial = Promise.resolve();
       var debounceTimer = 0;
-      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
-      var rawClip = null;
-      var wavReady = engineReady.then(function () {
-        return HuhAudio.loadWav('audio/A.wav');
-      }).then(function (buf) {
-        rawClip = buf;
-        return buf;
-      }, function (err) {
-        console.error(err);
-        return HuhAudio.loadWav('audio/A.wav').then(function (buf) {
-          rawClip = buf;
-          return buf;
-        });
+      var engineReadyFlag = false;
+      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm').then(function () {
+        engineReadyFlag = true;
       });
+      var rawClip = null;
+      var decoding = null;
+      var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
 
       video.muted = true;
       video.controls = false;
@@ -186,21 +177,19 @@
       }
 
       function requestRender() {
+        if (!rawClip) return Promise.resolve(null);
         var job = renderSerial.then(function () {
           var params = HuhAudio.mixParams(padX, padY, readCorners());
           var key = JSON.stringify(params);
           if (latestBuffer && latestKey === key) return latestBuffer;
           return engineReady.then(function () {
-            return wavReady;
-          }).then(function (input) {
+            if (!rawClip) return latestBuffer;
             var fresh = HuhAudio.mixParams(padX, padY, readCorners());
             var freshKey = JSON.stringify(fresh);
             if (latestBuffer && latestKey === freshKey) return latestBuffer;
             try {
-              if (input) {
-                latestBuffer = HuhAudio.renderHuh(input, fresh);
-                latestKey = freshKey;
-              }
+              latestBuffer = HuhAudio.renderHuh(rawClip, fresh);
+              latestKey = freshKey;
             } catch (e) {
               console.error(e);
             }
@@ -229,84 +218,33 @@
         video.pause();
       }
 
-      function whenRunning(ctx) {
-        if (ctx && ctx.state === 'running') return Promise.resolve(ctx);
-        return new Promise(function (resolve, reject) {
-          if (!ctx) { reject(new Error('no audio context')); return; }
-          var settled = false;
-          function finish(err) {
-            if (settled) return;
-            settled = true;
-            ctx.removeEventListener('statechange', onState);
-            if (err) reject(err);
-            else resolve(ctx);
-          }
-          function onState() {
-            if (ctx.state === 'running') finish();
-            else if (ctx.state === 'closed') finish(new Error('audio context closed'));
-          }
-          ctx.addEventListener('statechange', onState);
-          var pending;
-          try { pending = ctx.resume(); }
-          catch (e) { finish(e); return; }
-          if (pending && pending.then) {
-            pending.then(function () {
-              if (ctx.state === 'running') finish();
-              else finish(new Error('audio context stayed ' + ctx.state));
-            }, finish);
-          } else if (ctx.state === 'running') finish();
-          else finish(new Error('audio context stayed ' + ctx.state));
+      function ensureDecoded(ctx) {
+        if (rawClip) return Promise.resolve(rawClip);
+        if (decoding) return decoding;
+        decoding = Promise.all([bytesReady, engineReady]).then(function (parts) {
+          if (rawClip) return rawClip;
+          return HuhAudio.decodeOnContext(ctx, parts[0]);
+        }).then(function (decoded) {
+          if (!rawClip) rawClip = decoded;
+          return rawClip;
+        }, function (err) {
+          decoding = null;
+          throw err;
         });
+        return decoding;
       }
 
-      function bufferForClick() {
-        var params = HuhAudio.mixParams(padX, padY, readCorners());
-        var key = JSON.stringify(params);
-        if (latestBuffer && latestKey === key) return latestBuffer;
-        if (!latestBuffer && rawClip) console.error(new Error('rendered huh is not ready; playing A.wav'));
-        else if (latestBuffer && latestKey !== key && rawClip) console.error(new Error('pad render is stale; playing A.wav'));
-        return rawClip || latestBuffer;
-      }
-
-      function onPlayClick() {
-        var buffer = bufferForClick();
-        if (!buffer) {
-          console.error(new Error('no audio buffer yet'));
-          return;
-        }
-        var channelCount = buffer.numberOfChannels;
-        var sampleRate = buffer.sampleRate;
-        var length = buffer.length;
-        var channels = [];
-        try {
-          for (var c = 0; c < channelCount; c++) channels.push(new Float32Array(buffer.getChannelData(c)));
-        } catch (e0) { console.error(e0); return; }
-        var ctx;
-        try { ctx = HuhAudio.ensureContext(); }
-        catch (e) { console.error(e); return; }
-        try { ctx.resume(); }
-        catch (e2) { console.error(e2); }
-        if (ctx.state !== 'running') {
-          try { ctx = HuhAudio.replaceContext(); }
-          catch (e3) { console.error(e3); return; }
-          try { ctx.resume(); }
-          catch (e4) { console.error(e4); }
-        }
-        var copy;
-        try {
-          copy = ctx.createBuffer(channelCount, length, sampleRate);
-          for (var i = 0; i < channelCount; i++) copy.getChannelData(i).set(channels[i]);
-        } catch (e5) { console.error(e5); return; }
-        var token = ++syncToken;
+      function beginPicture(token, ctx, node, sound) {
+        if (token !== HuhAudio.currentPlayToken()) return;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = 0;
+        sourceNode = node;
+        active = true;
         pendingStart = true;
-        clearTimeout(debounceTimer);
-        haltPlayback();
         video.muted = true;
-        try { if (video.currentTime > 0.001) video.currentTime = 0; }
-        catch (e6) {}
+        try { if (video.currentTime > 0.001) video.currentTime = 0; } catch (e0) {}
         var nominalRate = video.playbackRate || 1;
         var picture = video.duration;
-        var sound = copy.duration;
         var rate = picture / sound;
         if (isFinite(picture) && picture > 0 && sound > 0 && isFinite(rate) && rate > 0) {
           video.playbackRate = rate;
@@ -314,7 +252,7 @@
         } else {
           video.addEventListener('loadedmetadata', function onMeta() {
             video.removeEventListener('loadedmetadata', onMeta);
-            if (token !== syncToken) return;
+            if (token !== HuhAudio.currentPlayToken()) return;
             var next = video.duration / sound;
             if (isFinite(video.duration) && video.duration > 0 && sound > 0 && isFinite(next) && next > 0) {
               video.playbackRate = next;
@@ -322,15 +260,9 @@
             }
           });
         }
-        var node = ctx.createBufferSource();
-        node.buffer = copy;
-        node.connect(ctx.destination);
         var audioStart = ctx.currentTime;
-        node.start(0);
-        sourceNode = node;
-        active = true;
         node.onended = function () {
-          if (token !== syncToken) return;
+          if (token !== HuhAudio.currentPlayToken()) return;
           active = false;
           pendingStart = false;
           if (rafId) cancelAnimationFrame(rafId);
@@ -341,10 +273,10 @@
         var started = video.play();
         if (started && started.catch) started.catch(function (err) { console.error(err); });
         function frame() {
-          if (token !== syncToken) return;
+          if (token !== HuhAudio.currentPlayToken()) return;
           video.muted = true;
           var elapsed = ctx.currentTime - audioStart;
-          if (elapsed >= sound) {
+          if (!(sound > 0) || elapsed >= sound) {
             active = false;
             pendingStart = false;
             video.pause();
@@ -358,7 +290,9 @@
               var remainPicture = video.duration - video.currentTime;
               if (remainSound > 0.04 && remainPicture > 0) {
                 var catchRate = remainPicture / remainSound;
-                if (isFinite(catchRate) && catchRate > 0) video.playbackRate = Math.min(4, Math.max(0.25, catchRate));
+                if (isFinite(catchRate) && catchRate > 0) {
+                  video.playbackRate = Math.min(4, Math.max(0.25, catchRate));
+                }
               }
             }
           }
@@ -367,24 +301,72 @@
         frame();
       }
 
-      function unlockMedia() {
-        try {
-          var ctx = HuhAudio.ensureContext();
-          ctx.resume();
-        } catch (e) { console.error(e); return; }
-        if (primed) return;
-        primed = true;
+      function unlockVideo(token) {
         video.muted = true;
         var started = video.play();
-        video.pause();
         if (started && started.then) {
           started.then(function () {
-            if (!active && !pendingStart) video.pause();
+            if (token !== HuhAudio.currentPlayToken() || !active) video.pause();
           }).catch(function () {});
         }
       }
 
-      document.addEventListener('pointerdown', unlockMedia, true);
+      function playRenderedLater(token, ctx) {
+        ensureDecoded(ctx).then(function (input) {
+          if (!input || token !== HuhAudio.currentPlayToken()) return null;
+          var params = HuhAudio.mixParams(padX, padY, readCorners());
+          var rendered = HuhAudio.renderHuh(input, params);
+          latestBuffer = rendered;
+          latestKey = JSON.stringify(params);
+          return HuhAudio.startBufferIfCurrent(token, rendered);
+        }).then(function (again) {
+          if (!again) return;
+          beginPicture(again.token, again.ctx, again.source, again.duration);
+        }).catch(function (err) {
+          console.error(err);
+          if (token !== HuhAudio.currentPlayToken()) return;
+          active = false;
+          pendingStart = false;
+        });
+      }
+
+      function onPlayClick() {
+        clearTimeout(debounceTimer);
+        haltPlayback();
+        pendingStart = true;
+        var cached = null;
+        var params = HuhAudio.mixParams(padX, padY, readCorners());
+        var key = JSON.stringify(params);
+        if (latestBuffer && latestKey === key) cached = latestBuffer;
+        var result;
+        try {
+          result = HuhAudio.playBufferInGesture(cached);
+        } catch (err) {
+          console.error(err);
+          pendingStart = false;
+          return;
+        }
+        if (!result.silent) {
+          beginPicture(result.token, result.ctx, result.source, result.duration);
+          return;
+        }
+        if (rawClip && engineReadyFlag) {
+          try {
+            var fresh = HuhAudio.mixParams(padX, padY, readCorners());
+            var rendered = HuhAudio.renderHuh(rawClip, fresh);
+            latestBuffer = rendered;
+            latestKey = JSON.stringify(fresh);
+            var again = HuhAudio.startBufferIfCurrent(result.token, rendered);
+            if (again) beginPicture(again.token, again.ctx, again.source, again.duration);
+            return;
+          } catch (err2) {
+            console.error(err2);
+          }
+        }
+        unlockVideo(result.token);
+        playRenderedLater(result.token, result.ctx);
+      }
+
 
       pad.addEventListener('pointerdown', function (e) {
         dragging = true;
@@ -426,18 +408,6 @@
 
       window.addEventListener('resize', placeDot);
       placeDot();
-      wavReady.then(function (input) {
-        if (!input || latestBuffer) return null;
-        try {
-          var params = HuhAudio.mixParams(0, 0, readCorners());
-          latestBuffer = HuhAudio.renderHuh(input, params);
-          latestKey = JSON.stringify(params);
-          return latestBuffer;
-        } catch (err) {
-          console.error(err);
-          return null;
-        }
-      });
       requestRender();
     })();
   </script>

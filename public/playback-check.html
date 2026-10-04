@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>huh playback check</title>
+  <style>
+    body { margin: 1.5rem; font: 16px/1.4 system-ui, sans-serif; background: #111; color: #eee; }
+    button { font: inherit; padding: 0.6rem 1.1rem; }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <button type="button" id="play">Play</button>
+  <pre id="report"></pre>
+  <script src="vendor/rubberband/rubberband.js?v=6"></script>
+  <script src="js/huh-audio.js?v=12"></script>
+  <script>
+    (function () {
+      window.__huhCheck = { state: '', started: false, duration: 0, peak: 0, error: '' };
+      var decoded = null;
+      var renderedReady = null;
+      var decoding = null;
+      var engineReadyFlag = false;
+      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm').then(function () {
+        engineReadyFlag = true;
+      });
+      var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
+
+      function writeCheck(info) {
+        window.__huhCheck = {
+          state: info.state || '',
+          started: !!info.started,
+          duration: Number(info.duration) || 0,
+          peak: Number(info.peak) || 0,
+          error: info.error || ''
+        };
+        document.getElementById('report').textContent =
+          'state: ' + window.__huhCheck.state + '\n' +
+          'started: ' + window.__huhCheck.started + '\n' +
+          'duration: ' + window.__huhCheck.duration + '\n' +
+          'peak: ' + window.__huhCheck.peak + '\n' +
+          'error: ' + window.__huhCheck.error + '\n';
+      }
+
+      function fromResult(result) {
+        writeCheck({
+          state: result.ctx ? result.ctx.state : '',
+          started: !!result.started,
+          duration: result.duration,
+          peak: result.peak,
+          error: result.error || ''
+        });
+      }
+
+      function fromError(err, ctx) {
+        writeCheck({
+          state: ctx && ctx.state ? ctx.state : '',
+          started: false,
+          duration: 0,
+          peak: 0,
+          error: err && err.message ? err.message : String(err || 'playback failed')
+        });
+      }
+
+      function ensureDecoded(ctx) {
+        if (decoded) return Promise.resolve(decoded);
+        if (decoding) return decoding;
+        decoding = Promise.all([bytesReady, engineReady]).then(function (parts) {
+          if (decoded) return decoded;
+          return HuhAudio.decodeOnContext(ctx, parts[0]);
+        }).then(function (buf) {
+          if (!decoded) decoded = buf;
+          return decoded;
+        }, function (err) {
+          decoding = null;
+          throw err;
+        });
+        return decoding;
+      }
+
+      function onPlayClick() {
+        var cached = renderedReady;
+        var result;
+        try {
+          result = HuhAudio.playBufferInGesture(cached);
+        } catch (err) {
+          fromError(err, null);
+          return;
+        }
+        if (!result.silent) {
+          fromResult(result);
+          return;
+        }
+        if (decoded && engineReadyFlag) {
+          try {
+            var rendered = HuhAudio.renderHuh(decoded, HuhAudio.mixParams(0, 0, null));
+            renderedReady = rendered;
+            var again = HuhAudio.startBufferIfCurrent(result.token, rendered);
+            if (again) fromResult(again);
+            return;
+          } catch (err2) {
+            fromError(err2, result.ctx);
+            return;
+          }
+        }
+        fromResult(result);
+        var token = result.token;
+        var ctx = result.ctx;
+        ensureDecoded(ctx).then(function (input) {
+          if (!input || token !== HuhAudio.currentPlayToken()) return null;
+          var rendered = HuhAudio.renderHuh(input, HuhAudio.mixParams(0, 0, null));
+          renderedReady = rendered;
+          return HuhAudio.startBufferIfCurrent(token, rendered);
+        }).then(function (again) {
+          if (!again) return;
+          fromResult(again);
+        }).catch(function (err3) {
+          if (token !== HuhAudio.currentPlayToken()) return;
+          fromError(err3, ctx);
+        });
+      }
+
+      document.getElementById('play').addEventListener('click', onPlayClick);
+    })();
+  </script>
+</body>
+</html>
