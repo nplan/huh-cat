@@ -90,7 +90,7 @@
     <p id="status"></p>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=6"></script>
-  <script src="js/huh-audio.js?v=10"></script>
+  <script src="js/huh-audio.js?v=11"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -105,6 +105,7 @@
       ];
       var playSeq = 0;
       var clipReady = null;
+      var rawClip = null;
       var CORNER_IDS = ['unbotheredDry', 'annoyedDry', 'unbotheredShocked', 'annoyedShocked'];
       var CORNER_LABELS = {
         unbotheredDry: 'Unbothered + Dry',
@@ -161,6 +162,7 @@
         return HuhAudio.loadWav('audio/A.wav');
       }).then(function (buf) {
         if (!buf) return;
+        rawClip = buf;
         clipReady = Promise.resolve(buf);
         scheduleRender();
       }).catch(function (err) {
@@ -366,45 +368,88 @@
       });
 
       function whenRunning(ctx) {
-        if (ctx.state === 'running') return Promise.resolve(ctx);
+        if (ctx && ctx.state === 'running') return Promise.resolve(ctx);
         return new Promise(function (resolve, reject) {
-          function done() {
-            if (ctx.state === 'running') {
-              ctx.removeEventListener('statechange', done);
-              resolve(ctx);
-            } else if (ctx.state === 'closed') {
-              ctx.removeEventListener('statechange', done);
-              reject(new Error('audio context closed'));
-            }
+          if (!ctx) { reject(new Error('no audio context')); return; }
+          var settled = false;
+          function finish(err) {
+            if (settled) return;
+            settled = true;
+            ctx.removeEventListener('statechange', onState);
+            if (err) reject(err);
+            else resolve(ctx);
           }
-          ctx.addEventListener('statechange', done);
-          try {
-            var pending = ctx.resume();
-            if (pending && pending.then) pending.then(done, done);
-          } catch (e) { done(); }
+          function onState() {
+            if (ctx.state === 'running') finish();
+            else if (ctx.state === 'closed') finish(new Error('audio context closed'));
+          }
+          ctx.addEventListener('statechange', onState);
+          var pending;
+          try { pending = ctx.resume(); }
+          catch (e) { finish(e); return; }
+          if (pending && pending.then) {
+            pending.then(function () {
+              if (ctx.state === 'running') finish();
+              else finish(new Error('audio context stayed ' + ctx.state));
+            }, finish);
+          } else if (ctx.state === 'running') finish();
+          else finish(new Error('audio context stayed ' + ctx.state));
         });
       }
 
       document.getElementById('play').addEventListener('click', function () {
-        var my = ++playSeq;
-        status.textContent = 'rendering…';
-        var ctx;
-        try { ctx = HuhAudio.resumeForGesture(); }
-        catch (err) {
-          status.textContent = err && err.message ? err.message : 'audio unavailable';
+        var key = paramsKey(readParams());
+        var buffer = (latestBuffer && latestKey === key) ? latestBuffer : (rawClip || latestBuffer);
+        if (!(latestBuffer && latestKey === key) && rawClip) {
+          console.error(new Error('lab render is not ready; playing A.wav'));
+        }
+        if (!buffer) {
+          console.error(new Error('no audio buffer yet'));
+          status.textContent = 'audio not ready';
           return;
         }
-        scheduleRender().then(function (rendered) {
-          if (my !== playSeq || !rendered) return null;
-          return whenRunning(ctx).then(function () {
-            if (my !== playSeq) return;
-            HuhAudio.play(rendered);
-            status.textContent = 'playing';
-          });
-        }).catch(function (err) {
-          if (my !== playSeq) return;
+        var channelCount = buffer.numberOfChannels;
+        var sampleRate = buffer.sampleRate;
+        var length = buffer.length;
+        var channels = [];
+        try {
+          for (var c = 0; c < channelCount; c++) channels.push(new Float32Array(buffer.getChannelData(c)));
+        } catch (err) {
+          console.error(err);
           status.textContent = err && err.message ? err.message : 'playback failed';
-        });
+          return;
+        }
+        var ctx;
+        try { ctx = HuhAudio.ensureContext(); }
+        catch (err2) {
+          console.error(err2);
+          status.textContent = err2 && err2.message ? err2.message : 'audio unavailable';
+          return;
+        }
+        try { ctx.resume(); }
+        catch (err3) { console.error(err3); }
+        if (ctx.state !== 'running') {
+          try { ctx = HuhAudio.replaceContext(); }
+          catch (err4) {
+            console.error(err4);
+            status.textContent = 'audio unavailable';
+            return;
+          }
+          try { ctx.resume(); }
+          catch (err5) { console.error(err5); }
+        }
+        try {
+          var copy = ctx.createBuffer(channelCount, length, sampleRate);
+          for (var i = 0; i < channelCount; i++) copy.getChannelData(i).set(channels[i]);
+          var node = ctx.createBufferSource();
+          node.buffer = copy;
+          node.connect(ctx.destination);
+          node.start(0);
+          status.textContent = 'playing';
+        } catch (err6) {
+          console.error(err6);
+          status.textContent = err6 && err6.message ? err6.message : 'playback failed';
+        }
       });
 
       document.getElementById('reset').addEventListener('click', function () {

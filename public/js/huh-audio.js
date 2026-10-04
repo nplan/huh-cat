@@ -301,15 +301,24 @@
     return sharedCtx;
   }
 
-  // Call only from a user gesture. resume() at load does not unlock audio.
+  // Resume only. Never close or replace here; that belongs in the Play click.
   function resumeForGesture() {
     var ctx = ensureContext();
     try { ctx.resume(); } catch (e) {}
-    if (ctx.state !== 'running') {
-      ctx = replaceContext();
-      try { ctx.resume(); } catch (e2) {}
-    }
     return ctx;
+  }
+
+  function bufferOnContext(ctx, audioBuffer) {
+    if (!ctx) throw new Error('bufferOnContext needs an AudioContext');
+    if (!audioBuffer || typeof audioBuffer.getChannelData !== 'function') {
+      throw new Error('bufferOnContext expects an AudioBuffer');
+    }
+    var channels = audioBuffer.numberOfChannels;
+    var copy = ctx.createBuffer(channels, audioBuffer.length, audioBuffer.sampleRate);
+    for (var c = 0; c < channels; c++) {
+      copy.getChannelData(c).set(audioBuffer.getChannelData(c));
+    }
+    return copy;
   }
 
   function play(buffer) {
@@ -359,6 +368,7 @@
     ensureContext: ensureContext,
     replaceContext: replaceContext,
     resumeForGesture: resumeForGesture,
+    bufferOnContext: bufferOnContext,
     mixParams: mixParams
   };
 });
