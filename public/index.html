@@ -136,6 +136,7 @@
       var audio = document.getElementById('voice');
       var status = document.getElementById('status');
       var active = false;
+      var waitingForSound = false;
       var rafId = 0;
       var playStamp = 0;
       var latestBuffer = null;
@@ -144,7 +145,12 @@
       var debounceTimer = 0;
       var blobUrl = '';
       var queuedUrl = '';
+      var queuedDuration = 0;
+      var soundDuration = 0;
+      var baseRate = 1;
+      var engineLoaded = false;
       var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
+      engineReady.then(function () { engineLoaded = true; }, function () {});
       var rawClip = null;
       var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
       if (!audio.getAttribute('src')) audio.src = 'audio/A.wav';
@@ -187,24 +193,30 @@
         placeDot();
       }
 
+      // Renders the sound for the current dot synchronously. Returns true when
+      // a new sound was made. With swapNow the audio src changes even if the
+      // old sound is still playing (Play is about to restart anyway).
+      function renderNow(swapNow) {
+        if (!rawClip || !engineLoaded) return false;
+        var params = HuhAudio.mixParams(padX, padY, readCorners());
+        var key = JSON.stringify(params);
+        if (latestBuffer && latestKey === key) return false;
+        try {
+          latestBuffer = HuhAudio.renderHuh(rawClip, params);
+          latestKey = key;
+          useBlob(latestBuffer, swapNow);
+          return true;
+        } catch (e) {
+          console.error(e);
+          return false;
+        }
+      }
+
       function requestRender() {
         if (!rawClip) return Promise.resolve(null);
         var job = renderSerial.then(function () {
-          var params = HuhAudio.mixParams(padX, padY, readCorners());
-          var key = JSON.stringify(params);
-          if (latestBuffer && latestKey === key) return latestBuffer;
           return engineReady.then(function () {
-            if (!rawClip) return latestBuffer;
-            var fresh = HuhAudio.mixParams(padX, padY, readCorners());
-            var freshKey = JSON.stringify(fresh);
-            if (latestBuffer && latestKey === freshKey) return latestBuffer;
-            try {
-              latestBuffer = HuhAudio.renderHuh(rawClip, fresh);
-              latestKey = freshKey;
-              useBlob(latestBuffer);
-            } catch (e) {
-              console.error(e);
-            }
+            renderNow(false);
             return latestBuffer;
           });
         });
@@ -217,37 +229,55 @@
         debounceTimer = setTimeout(requestRender, 70);
       }
 
-      function swapSrc(url) {
+      function swapSrc(url, duration) {
         var previous = blobUrl;
         audio.src = url;
         blobUrl = url;
+        soundDuration = duration || 0;
         if (previous) URL.revokeObjectURL(previous);
       }
 
       function flushQueued() {
         if (!queuedUrl) return;
         var url = queuedUrl;
+        var duration = queuedDuration;
         queuedUrl = '';
-        swapSrc(url);
+        queuedDuration = 0;
+        swapSrc(url, duration);
       }
 
-      function useBlob(rendered) {
+      function useBlob(rendered, swapNow) {
         if (!rendered) return;
         var url = URL.createObjectURL(HuhAudio.encodeWav(rendered));
-        if (!audio.paused && !audio.ended) {
+        if (!swapNow && !audio.paused && !audio.ended) {
           if (queuedUrl) URL.revokeObjectURL(queuedUrl);
           queuedUrl = url;
+          queuedDuration = rendered.duration;
           return;
         }
-        swapSrc(url);
+        if (queuedUrl) URL.revokeObjectURL(queuedUrl);
+        queuedUrl = '';
+        queuedDuration = 0;
+        swapSrc(url, rendered.duration);
+      }
+
+      // Length of the sound that is loaded right now. Known from the render,
+      // so it is correct before the new file's metadata has loaded.
+      function currentSoundDuration() {
+        if (soundDuration > 0) return soundDuration;
+        var d = audio.duration;
+        return isFinite(d) && d > 0 ? d : 0;
       }
 
       function applyRate() {
         var picture = video.duration;
-        var sound = audio.duration;
-        if (!(isFinite(picture) && picture > 0 && isFinite(sound) && sound > 0)) return;
+        var sound = currentSoundDuration();
+        if (!(isFinite(picture) && picture > 0 && sound > 0)) return;
         var rate = picture / sound;
-        if (isFinite(rate) && rate > 0) video.playbackRate = rate;
+        if (isFinite(rate) && rate > 0) {
+          baseRate = rate;
+          video.playbackRate = rate;
+        }
       }
 
       function onPlayClick() {
@@ -256,8 +286,15 @@
         playStamp = now;
         if (rafId) cancelAnimationFrame(rafId);
         rafId = 0;
+        // Make sure the sound matches the dot before playing. A pending
+        // render is done right here, inside the tap, instead of waiting.
+        clearTimeout(debounceTimer);
+        if (!renderNow(true)) flushQueued();
         active = true;
+        waitingForSound = true;
+        audio.pause();
         audio.currentTime = 0;
+        video.pause();
         try { video.currentTime = 0; } catch (e0) {}
         video.muted = true;
         applyRate();
@@ -267,11 +304,10 @@
         } catch (err) {
           status.textContent = err && err.message ? err.message : String(err);
           active = false;
+          waitingForSound = false;
           return;
         }
-        var started = video.play();
         status.textContent = '';
-        if (started && started.catch) started.catch(function (err) { console.error(err); });
         if (p && typeof p.catch === 'function') {
           p.catch(function (err) {
             status.textContent = err && err.message ? err.message : String(err);
@@ -291,10 +327,11 @@
             flushQueued();
             return;
           }
-          var rate = video.playbackRate;
-          if (isFinite(audio.currentTime) && isFinite(rate) && !video.seeking) {
-            if (Math.abs(video.currentTime - audio.currentTime * rate) > 0.04) {
-              var remainSound = audio.duration - audio.currentTime;
+          if (!waitingForSound && isFinite(audio.currentTime) && !video.seeking) {
+            var expected = audio.currentTime * baseRate;
+            var drift = video.currentTime - expected;
+            if (Math.abs(drift) > 0.03) {
+              var remainSound = currentSoundDuration() - audio.currentTime;
               var remainPicture = video.duration - video.currentTime;
               if (remainSound > 0.04 && remainPicture > 0) {
                 var catchRate = remainPicture / remainSound;
@@ -302,6 +339,8 @@
                   video.playbackRate = Math.min(4, Math.max(0.25, catchRate));
                 }
               }
+            } else if (Math.abs(video.playbackRate - baseRate) > 0.001) {
+              video.playbackRate = baseRate;
             }
           }
           rafId = requestAnimationFrame(frame);
@@ -315,6 +354,13 @@
         rafId = 0;
         video.pause();
         flushQueued();
+      });
+      audio.addEventListener('playing', function () {
+        if (!active || !waitingForSound) return;
+        waitingForSound = false;
+        applyRate();
+        var started = video.play();
+        if (started && started.catch) started.catch(function (err) { console.error(err); });
       });
       audio.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
       video.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
@@ -332,7 +378,7 @@
         if (!dragging) return;
         dragging = false;
         if (e) pointFromEvent(e);
-        scheduleRender();
+        requestRender();
       }
       pad.addEventListener('pointerup', endDrag);
       pad.addEventListener('pointercancel', endDrag);
