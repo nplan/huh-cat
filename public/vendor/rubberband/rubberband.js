@@ -220,15 +220,19 @@
 
   /**
    * Offline stretch. timeRatio is output duration / input duration.
-   * pitchAt(t) is target/source frequency at input fraction t in [0, 1]
-   * (a number is a constant scale). The result is exactly
-   * round(input.length * timeRatio) long, and output fraction t carries
-   * pitchAt(t), so a contour drawn over the output lines up with it.
+   * pitchAt(t) is target/source frequency at output fraction t in [0, 1]
+   * (a number is a constant scale), so a contour drawn over the output
+   * lines up with it.
    *
-   * Rubber Band stretches each stretch of input by timeRatio * pitchAt(t)
-   * at pitch 1 (key frames every 10 ms), then the resample reads that back
-   * pitchAt(t) times faster, which shifts pitch by pitchAt(t) and brings
-   * the time back to timeRatio.
+   * options.split = { at, after, ramp } stretches input from sample `at`
+   * on by an extra factor `after` (ramping in over `ramp` samples), while
+   * the input before `at` keeps timeRatio. Without it the stretch is even
+   * and the result is exactly round(input.length * timeRatio) long.
+   *
+   * Rubber Band stretches each stretch of input by its local time ratio
+   * times pitchAt at pitch 1 (key frames every 10 ms), then the resample
+   * reads that back pitchAt times faster, which shifts pitch by pitchAt
+   * and brings the time back to the local time ratio.
    *
    * keepVowel: formant scale is also fixed per offline pass. With a flat
    * pitch one pass at formant scale 1/pitch holds the vowel. With a
@@ -247,15 +251,40 @@
       if (Math.abs(pitchOf(i / 64) - p0) > 1e-9) { flat = false; break; }
     }
 
-    // stretched[i] = position after Rubber Band for input sample i
+    var split = options && options.split;
+    var even = !split || !(split.after > 0) || split.after === 1 || !(split.at >= 0) || split.at >= n;
+    var at = even ? n : Math.max(0, Math.floor(split.at));
+    var ramp = even ? 1 : Math.max(1, Math.round(split.ramp || 1));
+    function localRatio(x) {
+      if (x < at) return 1;
+      if (x >= at + ramp) return split.after;
+      return 1 + (split.after - 1) * ((x - at + 0.5) / ramp);
+    }
+
+    // outAt[i] = output position of input sample i (uneven stretch only).
+    // pitchIn[i] = pitch at input sample i, read on the output timeline.
+    var outAt = null;
+    var outTotal = n * timeRatio;
+    var pitchIn = new Float64Array(n);
+    if (even) {
+      for (var x0 = 0; x0 < n; x0++) pitchIn[x0] = pitchOf((x0 + 0.5) / n);
+    } else {
+      outAt = new Float64Array(n + 1);
+      for (var x1 = 0; x1 < n; x1++) outAt[x1 + 1] = outAt[x1] + timeRatio * localRatio(x1);
+      outTotal = outAt[n];
+      for (var x2 = 0; x2 < n; x2++) pitchIn[x2] = pitchOf((outAt[x2] + outAt[x2 + 1]) * 0.5 / outTotal);
+    }
+
+    // stretchedAt[i] = position after Rubber Band for input sample i
     var stretchedAt = new Float64Array(n + 1);
     for (var x = 0; x < n; x++) {
-      stretchedAt[x + 1] = stretchedAt[x] + timeRatio * pitchOf((x + 0.5) / n);
+      var local = even ? timeRatio : outAt[x + 1] - outAt[x];
+      stretchedAt[x + 1] = stretchedAt[x] + local * pitchIn[x];
     }
     var stretchedLen = Math.max(1, Math.round(stretchedAt[n]));
     var ratio = stretchedLen / n;
     var keyFrames = [];
-    if (!flat) {
+    if (!flat || !even) {
       var step = Math.max(1, Math.round(KEY_FRAME_SEC * sampleRate));
       for (var kx = step; kx < n - step / 2; kx += step) {
         keyFrames.push([kx, Math.round(stretchedAt[kx])]);
@@ -268,10 +297,15 @@
     } else if (flat) {
       stretched = offlinePass(samples, sampleRate, ratio, keyFrames, 1 / p0);
     } else {
-      stretched = vowelBlend(samples, sampleRate, ratio, keyFrames, pitchOf, p0, stretchedAt);
+      stretched = vowelBlend(samples, sampleRate, ratio, keyFrames, function (x) {
+        if (even) return pitchOf(x / n);
+        var xi = Math.min(n - 1, Math.max(0, Math.floor(x)));
+        var o = outAt[xi] + (outAt[xi + 1] - outAt[xi]) * (x - xi);
+        return pitchOf(o / outTotal);
+      }, p0, stretchedAt);
     }
 
-    var target = Math.max(1, Math.round(n * timeRatio));
+    var target = Math.max(1, Math.round(even ? n * timeRatio : outTotal));
     if (flat && p0 === 1) {
       if (stretched.length === target) return stretched;
       var same = new Float32Array(target);
@@ -281,19 +315,29 @@
     var pos = new Float64Array(target);
     var rate = new Float64Array(target);
     var fit = stretched.length / stretchedAt[n];
+    var walk = 0;
     for (var j = 0; j < target; j++) {
-      var src = target === 1 ? 0 : (j / target) * n;
+      var src;
+      if (even) {
+        src = target === 1 ? 0 : (j / target) * n;
+      } else {
+        var want = (j / target) * outTotal;
+        while (walk < n - 1 && outAt[walk + 1] <= want) walk++;
+        var seg = outAt[walk + 1] - outAt[walk];
+        src = walk + (seg > 0 ? (want - outAt[walk]) / seg : 0);
+      }
       var xi = Math.min(n - 1, Math.floor(src));
       var f = src - xi;
       pos[j] = (stretchedAt[xi] + (stretchedAt[xi + 1] - stretchedAt[xi]) * f) * fit;
-      rate[j] = pitchOf(src / n);
+      rate[j] = even ? pitchOf(src / n) : pitchOf(j / target);
     }
     return resample(stretched, pos, rate);
   }
 
-  function vowelBlend(samples, sampleRate, ratio, keyFrames, pitchOf, p0, stretchedAt) {
+  // pitchAtInput(x) = pitch at input sample position x.
+  function vowelBlend(samples, sampleRate, ratio, keyFrames, pitchAtInput, p0, stretchedAt) {
     var n = samples.length;
-    function semis(x) { return 12 * Math.log2(pitchOf(x / n) / p0); }
+    function semis(x) { return 12 * Math.log2(pitchAtInput(x) / p0); }
     var lo = Infinity;
     var hi = -Infinity;
     for (var i = 0; i <= 256; i++) {

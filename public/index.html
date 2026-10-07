@@ -120,8 +120,8 @@
       <div class="edge-s">Dry</div>
     </div>
   </main>
-  <script src="vendor/rubberband/rubberband.js?v=7"></script>
-  <script src="js/huh-audio.js?v=14"></script>
+  <script src="vendor/rubberband/rubberband.js?v=8"></script>
+  <script src="js/huh-audio.js?v=15"></script>
   <script>
     (function () {
       var DOT = 26;
@@ -428,6 +428,22 @@
         return HuhAudio.decodeWavOffline(parts[0]);
       }).then(function (buf) {
         rawClip = buf;
+        // Do the breath / u-length analysis now, not inside the Play tap.
+        var corners = readCorners();
+        var needsWork = false;
+        var needsBreath = false;
+        if (corners) {
+          for (var id in corners) {
+            var c = corners[id];
+            if (!c || typeof c !== 'object') continue;
+            var vs = c.vowelScale === undefined ? 1 : Number(c.vowelScale);
+            if (Number(c.breath) > 0) needsBreath = true;
+            if (needsBreath || (isFinite(vs) && vs !== 1)) needsWork = true;
+          }
+        }
+        if (needsWork) {
+          try { HuhAudio.prepareClip(buf, needsBreath); } catch (e) { console.error(e); }
+        }
         return requestRender();
       }).catch(function (err) {
         console.error(err);

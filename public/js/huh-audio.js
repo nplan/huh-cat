@@ -6,6 +6,10 @@
  * mode cannot move pitch during a pass, so the contour is a key-frame map
  * (time) plus a variable-rate resample (pitch); see vendor/rubberband.
  * keepVowel holds the vowel with Rubber Band's formant scale.
+ * breath swaps the voiced (harmonic) part of the u for formant-shaped
+ * whisper noise before Rubber Band. vowelScale stretches only the input
+ * after the h|u boundary (first steady voicing). Pitch follows the output
+ * timeline, so peakAt and the lab diagram match what plays.
  * Leading silence is trimmed first, so attack and accent sit on the voice.
  * Attack fades the start in. Accent ducks the ends toward the peak.
  * Then gainDb, then a peak limiter at 0.98.
@@ -29,6 +33,8 @@
     gainDb: 0,
     attackMs: 0,
     accent: 0,
+    breath: 0,
+    vowelScale: 1,
     keepVowel: false
   };
 
@@ -40,7 +46,9 @@
     fallSemitones: [0, 14],
     gainDb: [-12, 6],
     attackMs: [0, 400],
-    accent: [0, 1]
+    accent: [0, 1],
+    breath: [0, 1],
+    vowelScale: [0.3, 1.5]
   };
 
   var sharedCtx = null;
@@ -68,6 +76,10 @@
       if (!isFinite(n)) n = DEFAULTS[key];
       out[key] = clamp(n, range[0], range[1]);
     }
+    // Pad blends can land a hair off the defaults; snap so the default
+    // render path (no analysis, even stretch) is taken.
+    if (out.breath < 1e-6) out.breath = 0;
+    if (Math.abs(out.vowelScale - 1) < 1e-6) out.vowelScale = 1;
     if (src.keepVowel === undefined || src.keepVowel === null) out.keepVowel = DEFAULTS.keepVowel;
     else out.keepVowel = !!src.keepVowel;
     return out;
@@ -81,7 +93,9 @@
     'fallSemitones',
     'gainDb',
     'attackMs',
-    'accent'
+    'accent',
+    'breath',
+    'vowelScale'
   ];
 
   function cornerParam(corners, id, key) {
@@ -127,6 +141,8 @@
       var range = RANGES[key];
       out[key] = clamp(value, range[0], range[1]);
     }
+    if (out.breath < 1e-6) out.breath = 0;
+    if (Math.abs(out.vowelScale - 1) < 1e-6) out.vowelScale = 1;
     out.keepVowel = false;
     return out;
   }
@@ -227,6 +243,426 @@
     return attack * accent;
   }
 
+
+  // ---- voice analysis: f0, periodicity, and the h|u boundary ----
+
+  function fft(re, im) {
+    var n = re.length;
+    for (var i = 1, j = 0; i < n; i++) {
+      var bit = n >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) {
+        var tr = re[i]; re[i] = re[j]; re[j] = tr;
+        var ti = im[i]; im[i] = im[j]; im[j] = ti;
+      }
+    }
+    for (var len = 2; len <= n; len <<= 1) {
+      var ang = -2 * Math.PI / len;
+      var wr = Math.cos(ang);
+      var wi = Math.sin(ang);
+      var halfLen = len >> 1;
+      for (var s = 0; s < n; s += len) {
+        var cr = 1;
+        var ci = 0;
+        for (var k = 0; k < halfLen; k++) {
+          var a = s + k;
+          var b = a + halfLen;
+          var vr = re[b] * cr - im[b] * ci;
+          var vi = re[b] * ci + im[b] * cr;
+          re[b] = re[a] - vr;
+          im[b] = im[a] - vi;
+          re[a] += vr;
+          im[a] += vi;
+          var t = cr * wr - ci * wi;
+          ci = cr * wi + ci * wr;
+          cr = t;
+        }
+      }
+    }
+  }
+
+  function ifft(re, im) {
+    for (var i = 0; i < im.length; i++) im[i] = -im[i];
+    fft(re, im);
+    var inv = 1 / re.length;
+    for (var j = 0; j < re.length; j++) {
+      re[j] *= inv;
+      im[j] = -im[j] * inv;
+    }
+  }
+
+  // Lowpass then keep every factor-th sample (for the f0 search only).
+  function decimate(x, factor) {
+    if (factor <= 1) return x;
+    var taps = 8 * factor + 1;
+    var mid = (taps - 1) / 2;
+    var cut = 0.45 / factor;
+    var h = new Float64Array(taps);
+    var sum = 0;
+    for (var i = 0; i < taps; i++) {
+      var d = i - mid;
+      var sinc = d === 0 ? 2 * cut : Math.sin(2 * Math.PI * cut * d) / (Math.PI * d);
+      h[i] = sinc * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / (taps - 1)));
+      sum += h[i];
+    }
+    var out = new Float32Array(Math.floor(x.length / factor));
+    for (var o = 0; o < out.length; o++) {
+      var c = o * factor;
+      var acc = 0;
+      for (var k = 0; k < taps; k++) {
+        var at = c + k - mid;
+        if (at >= 0 && at < x.length) acc += x[at] * h[k];
+      }
+      out[o] = acc / sum;
+    }
+    return out;
+  }
+
+  var VOICED_AP = 0.3;
+  var VOICED_FLOOR_DB = 30;
+  var VOICED_RUN = 4;
+
+  /**
+   * YIN f0 and aperiodicity every 5 ms on a ~11 kHz copy of the voice.
+   * boundary is the first sample of the "u": the start of the first run of
+   * VOICED_RUN voiced frames (aperiodicity under VOICED_AP and within
+   * VOICED_FLOOR_DB of the loudest frame), moved back a quarter window.
+   * boundary is null when no voiced run is found.
+   */
+  function analyzeVoice(voiced, sampleRate, tuning) {
+    var apLimit = tuning && tuning.ap ? tuning.ap : VOICED_AP;
+    var floorDb = tuning && tuning.floorDb ? tuning.floorDb : VOICED_FLOOR_DB;
+    var needRun = tuning && tuning.run ? tuning.run : VOICED_RUN;
+    var factor = Math.max(1, Math.round(sampleRate / 11025));
+    var rate = sampleRate / factor;
+    var y = decimate(voiced, factor);
+    var win = Math.round(0.03 * rate);
+    var hop = Math.round(0.005 * rate);
+    var minLag = Math.max(2, Math.floor(rate / 600));
+    var maxLag = Math.ceil(rate / 60);
+    var frames = [];
+    var d = new Float64Array(maxLag + 2);
+    for (var start = 0; start + win + maxLag + 1 <= y.length; start += hop) {
+      var e = 0;
+      for (var i = 0; i < win; i++) e += y[start + i] * y[start + i];
+      var run = 0;
+      d[0] = 1;
+      for (var tau = 1; tau <= maxLag + 1; tau++) {
+        var acc = 0;
+        for (var j = 0; j < win; j++) {
+          var q = y[start + j] - y[start + j + tau];
+          acc += q * q;
+        }
+        run += acc;
+        d[tau] = run > 0 ? acc * tau / run : 1;
+      }
+      var best = -1;
+      for (var t = minLag; t <= maxLag; t++) {
+        if (d[t] < 0.25 && d[t] < d[t - 1] && d[t] <= d[t + 1]) { best = t; break; }
+      }
+      if (best < 0) {
+        var bv = Infinity;
+        for (var t2 = minLag; t2 <= maxLag; t2++) if (d[t2] < bv) { bv = d[t2]; best = t2; }
+      }
+      var a0 = d[best - 1];
+      var b0 = d[best];
+      var c0 = d[best + 1];
+      var den = a0 - 2 * b0 + c0;
+      var shift = den > 0 ? 0.5 * (a0 - c0) / den : 0;
+      if (shift > 0.5) shift = 0.5;
+      if (shift < -0.5) shift = -0.5;
+      frames.push({
+        center: (start + win / 2) * factor,
+        f0: rate / (best + shift),
+        ap: Math.max(0, b0),
+        db: 10 * Math.log10(e / win + 1e-12)
+      });
+    }
+    var loud = -Infinity;
+    for (var f = 0; f < frames.length; f++) if (frames[f].db > loud) loud = frames[f].db;
+    for (var g = 0; g < frames.length; g++) {
+      frames[g].voiced = frames[g].ap < apLimit && frames[g].db > loud - floorDb;
+    }
+    var boundary = null;
+    for (var k = 0; k + needRun <= frames.length; k++) {
+      var all = true;
+      for (var r = 0; r < needRun; r++) if (!frames[k + r].voiced) { all = false; break; }
+      if (all) {
+        boundary = Math.max(0, Math.round(frames[k].center - 0.25 * win * factor));
+        break;
+      }
+    }
+    return { frames: frames, boundary: boundary, length: voiced.length, sampleRate: sampleRate };
+  }
+
+  // Frame data at sample position pos (linear between 5 ms frames).
+  function frameAt(frames, pos) {
+    if (!frames.length) return null;
+    if (pos <= frames[0].center) return frames[0];
+    var last = frames[frames.length - 1];
+    if (pos >= last.center) return last;
+    var lo = 0;
+    var hi = frames.length - 1;
+    while (hi - lo > 1) {
+      var m = (lo + hi) >> 1;
+      if (frames[m].center <= pos) lo = m; else hi = m;
+    }
+    var a = frames[lo];
+    var b = frames[hi];
+    var u = (pos - a.center) / (b.center - a.center);
+    return {
+      f0: a.f0 + (b.f0 - a.f0) * u,
+      ap: a.ap + (b.ap - a.ap) * u,
+      db: a.db + (b.db - a.db) * u,
+      df0: (b.f0 - a.f0) / (b.center - a.center)
+    };
+  }
+
+  var analysisCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+
+  // The trimmed voice is a subarray of the decoded clip, so cache on the clip.
+  function cachedAnalysis(input, voiced, sampleRate) {
+    var key = voiced.byteOffset + ':' + voiced.length + ':' + sampleRate;
+    var slot = analysisCache ? analysisCache.get(input) : null;
+    if (slot && slot.key === key) return slot;
+    slot = { key: key, voice: analyzeVoice(voiced, sampleRate), breath: null };
+    if (analysisCache) analysisCache.set(input, slot);
+    return slot;
+  }
+
+  // ---- breath: harmonic part out, whisper noise in ----
+
+  var BREATH_MAKEUP = 0.5;
+
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /**
+   * Splits the voice once into two time signals, so any breath amount is a
+   * cheap mix afterwards (see applyBreath).
+   *   harmonic: a soft comb mask on each STFT frame at the measured f0
+   *     (refined per frame), only where the frame is voiced.
+   *   whisper: noise with random phase whose magnitude is the frame's
+   *     smoothed spectral envelope (cepstral lifter below the f0 period),
+   *     so it keeps the vowel's formants but has no pitch. Its energy is
+   *     BREATH_MAKEUP^2 of the harmonic energy in that frame (-6 dB).
+   * Unvoiced frames (the h) get nothing, so the h passes through as is.
+   */
+  function breathParts(voiced, sampleRate, voice) {
+    var size = 1;
+    while (size < 0.046 * sampleRate) size <<= 1;
+    var hop = size >> 2;
+    var bins = (size >> 1) + 1;
+    var binHz = sampleRate / size;
+    var pad = size >> 1;
+    var total = voiced.length + 2 * pad;
+    var win = new Float64Array(size);
+    for (var i = 0; i < size; i++) win[i] = Math.sqrt(0.5 - 0.5 * Math.cos(2 * Math.PI * i / size));
+    var harmOut = new Float64Array(total);
+    var whisperOut = new Float64Array(total);
+    var norm = new Float64Array(total);
+    var hre = new Float64Array(size);
+    var him = new Float64Array(size);
+    var re = new Float64Array(size);
+    var im = new Float64Array(size);
+    var cre = new Float64Array(size);
+    var cim = new Float64Array(size);
+    var mag = new Float64Array(bins);
+    var mask = new Float64Array(bins);
+    var env = new Float64Array(bins);
+    var rand = mulberry32(0x68756821);
+    var maxHarmHz = Math.min(7000, sampleRate * 0.45);
+    var touched = false;
+    var loud = -Infinity;
+    for (var lf = 0; lf < voice.frames.length; lf++) if (voice.frames[lf].db > loud) loud = voice.frames[lf].db;
+
+    for (var start = 0; start + size <= total; start += hop) {
+      for (var w = 0; w < size; w++) norm[start + w] += win[w] * win[w];
+      var center = start + (size >> 1) - pad;
+      var info = frameAt(voice.frames, center);
+      var voicing = 0;
+      if (info) {
+        voicing = clamp((0.4 - info.ap) / 0.2, 0, 1);
+        voicing *= clamp((info.db - (loud - VOICED_FLOOR_DB)) / 6, 0, 1);
+      }
+      if (voicing <= 0) continue;
+      touched = true;
+
+      for (var k = 0; k < size; k++) {
+        var at = start + k - pad;
+        re[k] = (at >= 0 && at < voiced.length ? voiced[at] : 0) * win[k];
+        im[k] = 0;
+      }
+      fft(re, im);
+      for (var b = 0; b < bins; b++) mag[b] = Math.sqrt(re[b] * re[b] + im[b] * im[b]);
+
+      // refine f0 within +-3% by the harmonic sum below 3 kHz
+      var f0 = info.f0;
+      var bestF0 = f0;
+      var bestScore = -1;
+      for (var step = -12; step <= 12; step++) {
+        var cand = f0 * (1 + step * 0.0025);
+        var score = 0;
+        for (var m = 1; m * cand < 3000; m++) {
+          var pos = m * cand / binHz;
+          var p0 = Math.floor(pos);
+          score += mag[p0] + (mag[p0 + 1] - mag[p0]) * (pos - p0);
+        }
+        if (score > bestScore) { bestScore = score; bestF0 = cand; }
+      }
+      f0 = bestF0;
+
+      // soft comb mask; wider for high harmonics when f0 glides in the window
+      var glide = Math.abs(info.df0 || 0) * size * 0.5;
+      var harmE = 0;
+      for (var b2 = 0; b2 < bins; b2++) {
+        var hz = b2 * binHz;
+        if (hz < f0 * 0.5 || hz > maxHarmHz) { mask[b2] = 0; continue; }
+        var hn = Math.round(hz / f0);
+        var dist = Math.abs(hz - hn * f0);
+        var sigma = 1.25 * binHz + 0.5 * hn * glide;
+        var fade = hz < maxHarmHz - 2500 ? 1 : (maxHarmHz - hz) / 2500;
+        mask[b2] = voicing * fade * Math.exp(-0.5 * (dist / sigma) * (dist / sigma));
+        harmE += mask[b2] * mask[b2] * mag[b2] * mag[b2];
+      }
+
+      // smoothed spectral envelope (cepstrum, lifter below the f0 period)
+      for (var c = 0; c < size; c++) {
+        var cb = c < bins ? c : size - c;
+        cre[c] = Math.log(mag[cb] * mag[cb] + 1e-12);
+        cim[c] = 0;
+      }
+      ifft(cre, cim);
+      var lift = Math.max(8, Math.floor(0.5 * sampleRate / f0));
+      for (var q = 0; q < size; q++) {
+        var qd = q < size - q ? q : size - q;
+        var keep = qd < lift ? 0.5 + 0.5 * Math.cos(Math.PI * qd / lift) : 0;
+        cre[q] *= keep;
+        cim[q] *= keep;
+      }
+      fft(cre, cim);
+      var envE = 0;
+      for (var e = 0; e < bins; e++) {
+        var hz2 = e * binHz;
+        var tilt = hz2 / Math.sqrt(hz2 * hz2 + 250 * 250);
+        var fadeTop = hz2 > maxHarmHz ? 0 : 1;
+        env[e] = Math.exp(0.5 * cre[e]) * tilt * fadeTop;
+        envE += env[e] * env[e];
+      }
+      var gain = envE > 0 ? Math.sqrt(harmE / envE) : 0;
+
+      // harmonic and whisper spectra (conjugate-symmetric for a real result)
+      for (var d = 0; d < bins; d++) {
+        var ph = 2 * Math.PI * rand();
+        var amp = gain * env[d];
+        var hr = mask[d] * re[d];
+        var hi = mask[d] * im[d];
+        var wr = d === 0 || d === bins - 1 ? amp : amp * Math.cos(ph);
+        var wi = d === 0 || d === bins - 1 ? 0 : amp * Math.sin(ph);
+        if (d === 0 || d === bins - 1) hi = 0;
+        hre[d] = hr; him[d] = hi;
+        re[d] = wr; im[d] = wi;
+        if (d > 0 && d < bins - 1) {
+          hre[size - d] = hr; him[size - d] = -hi;
+          re[size - d] = wr; im[size - d] = -wi;
+        }
+      }
+      ifft(hre, him);
+      ifft(re, im);
+      for (var o = 0; o < size; o++) {
+        harmOut[start + o] += hre[o] * win[o];
+        whisperOut[start + o] += re[o] * win[o];
+      }
+    }
+
+    var harmonic = new Float32Array(voiced.length);
+    var whisper = new Float32Array(voiced.length);
+    if (touched) {
+      var harmSum = 0;
+      var whisperSum = 0;
+      for (var s = 0; s < voiced.length; s++) {
+        var at2 = s + pad;
+        if (norm[at2] > 1e-9) {
+          harmonic[s] = harmOut[at2] / norm[at2];
+          whisper[s] = whisperOut[at2] / norm[at2];
+          harmSum += harmonic[s] * harmonic[s];
+          whisperSum += whisper[s] * whisper[s];
+        }
+      }
+      // Random-phase frames add up incoherently in the overlap-add, so they
+      // come out quieter than the per-frame gain says. Rescale once so the
+      // whisper is BREATH_MAKEUP^2 of the harmonic energy over the clip.
+      var fix = whisperSum > 0 ? BREATH_MAKEUP * Math.sqrt(harmSum / whisperSum) : 0;
+      for (var s2 = 0; s2 < voiced.length; s2++) whisper[s2] *= fix;
+    }
+    return { harmonic: harmonic, whisper: whisper };
+  }
+
+  /**
+   * breath b removes 1 - (1 - b)^2 of the harmonic part (-12 dB at 0.5,
+   * all of it at 1) and adds b times the whisper. The h is untouched.
+   */
+  function applyBreath(voiced, amount, slot, sampleRate) {
+    if (!(amount > 0)) return voiced;
+    if (!slot.breath) slot.breath = breathParts(voiced, sampleRate, slot.voice);
+    var keep = (1 - amount) * (1 - amount);
+    var cut = 1 - keep;
+    var harm = slot.breath.harmonic;
+    var whisper = slot.breath.whisper;
+    var out = new Float32Array(voiced.length);
+    for (var i = 0; i < voiced.length; i++) out[i] = voiced[i] - cut * harm[i] + amount * whisper[i];
+    return out;
+  }
+
+  var U_RAMP_SEC = 0.015;
+
+  /** Output fraction where the u starts, or null. info is HuhAudio.analyzeClip. */
+  function boundaryAt(params, info) {
+    if (!info || info.boundary === null || !(info.length > 0)) return null;
+    var p = normalizeParams(params);
+    var b = info.boundary;
+    var n = info.length;
+    var ramp = Math.round(U_RAMP_SEC * info.sampleRate);
+    var r = Math.min(ramp, n - b);
+    var outLen = b + r * (1 + p.vowelScale) / 2 + Math.max(0, n - b - r) * p.vowelScale;
+    return outLen > 0 ? b / outLen : null;
+  }
+
+  /**
+   * Runs the clip analysis and, when needsBreath, the breath split ahead of
+   * time so a later render (for example inside a Play tap) only mixes.
+   */
+  function prepareClip(audioBuffer, needsBreath) {
+    var input = monoChannel(audioBuffer);
+    var rate = audioBuffer.sampleRate;
+    var voiced = trimSilence(input, rate);
+    var slot = cachedAnalysis(input, voiced, rate);
+    if (needsBreath && !slot.breath) slot.breath = breathParts(voiced, rate, slot.voice);
+  }
+
+  /** Analysis of the trimmed clip: boundary (samples into it) and length. */
+  function analyzeClip(audioBuffer) {
+    var input = monoChannel(audioBuffer);
+    var rate = audioBuffer.sampleRate;
+    var voiced = trimSilence(input, rate);
+    var slot = cachedAnalysis(input, voiced, rate);
+    return {
+      boundary: slot.voice.boundary,
+      boundarySec: slot.voice.boundary === null ? null : slot.voice.boundary / rate,
+      length: voiced.length,
+      sampleRate: rate
+    };
+  }
+
   function renderMono(input, sampleRate, params) {
     var p = normalizeParams(params);
     var rb = rubberband();
@@ -234,9 +670,21 @@
     if (!(sampleRate > 0) || !isFinite(sampleRate)) throw new Error('sampleRate must be positive');
     if (!input || input.length === 0) return new Float32Array(1);
     var voiced = trimSilence(input, sampleRate);
+    var options = { keepVowel: p.keepVowel };
+    if (p.breath > 0 || p.vowelScale !== 1) {
+      var slot = cachedAnalysis(input, voiced, sampleRate);
+      voiced = applyBreath(voiced, p.breath, slot, sampleRate);
+      if (p.vowelScale !== 1 && slot.voice.boundary !== null) {
+        options.split = {
+          at: slot.voice.boundary,
+          after: p.vowelScale,
+          ramp: Math.round(U_RAMP_SEC * sampleRate)
+        };
+      }
+    }
     var rendered = rb.stretchMono(voiced, sampleRate, p.durationScale, function (t) {
       return Math.pow(2, (p.pitchSemitones + contourAt(t, p)) / 12);
-    }, { keepVowel: p.keepVowel });
+    }, options);
     return applyGain(rendered, sampleRate, p);
   }
 
@@ -630,6 +1078,11 @@
     contourAt: contourAt,
     accentShape: accentShape,
     envelopeAt: envelopeAt,
+    analyzeClip: analyzeClip,
+    prepareClip: prepareClip,
+    boundaryAt: boundaryAt,
+    _analyzeVoice: analyzeVoice,
+    _breathParts: breathParts,
     renderMono: renderMono,
     previewMono: previewMono,
     renderHuh: renderHuh,

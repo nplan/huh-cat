@@ -206,7 +206,7 @@
         <button type="button" id="reset">Reset to default</button>
       </div>
     </section>
-    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the blue line is the pitch, and the orange line is attack and accent.</p>
+    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the blue line is the pitch, the orange line is attack and accent, and the dashed line is where the h ends and the u starts.</p>
     <canvas id="diagram" width="640" height="220" aria-label="waveform and pitch"></canvas>
     <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
     <div class="actions">
@@ -214,8 +214,8 @@
     </div>
     <p id="status"></p>
   </main>
-  <script src="vendor/rubberband/rubberband.js?v=7"></script>
-  <script src="js/huh-audio.js?v=14"></script>
+  <script src="vendor/rubberband/rubberband.js?v=8"></script>
+  <script src="js/huh-audio.js?v=15"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -226,9 +226,12 @@
         ['fallSemitones', 1, 'fallSemitones', '0.1'],
         ['gainDb', 1, 'gainDb', '0.1'],
         ['attackMs', 0, 'Attack', '1'],
-        ['accent', 2, 'Accent', '0.01']
+        ['accent', 2, 'Accent', '0.01'],
+        ['breath', 2, 'Less voice, more breath', '0.01'],
+        ['vowelScale', 2, 'u length', '0.01']
       ];
       var rawClip = null;
+      var clipInfo = null;
       var decoding = null;
       var engineReadyFlag = false;
       var CORNER_IDS = ['unbotheredDry', 'annoyedDry', 'unbotheredShocked', 'annoyedShocked'];
@@ -294,6 +297,7 @@
         return HuhAudio.decodeWavOffline(parts[0]);
       }).then(function (buf) {
         rawClip = buf;
+        try { clipInfo = HuhAudio.analyzeClip(buf); } catch (e) { clipInfo = null; }
         scheduleRender();
       }).catch(function (err) {
         status.textContent = err && err.message ? err.message : 'Rubber Band failed to load';
@@ -484,6 +488,23 @@
           else g.lineTo(ex, ey);
         }
         g.stroke();
+
+        var cut = clipInfo ? HuhAudio.boundaryAt(params, clipInfo) : null;
+        if (cut !== null && cut > 0 && cut < 1) {
+          var cutX = Math.round(xOf(cut)) + 0.5;
+          g.strokeStyle = '#9a9a9a';
+          g.lineWidth = 1;
+          g.setLineDash([4, 4]);
+          g.beginPath();
+          g.moveTo(cutX, top);
+          g.lineTo(cutX, top + plotH);
+          g.stroke();
+          g.setLineDash([]);
+          g.fillStyle = '#bbbbbb';
+          g.textAlign = 'center';
+          g.textBaseline = 'top';
+          g.fillText('h | u', cutX, 2);
+        }
 
         var peakX = xOf(params.peakAt);
         var peakY = yOf(params.pitchSemitones + HuhAudio.contourAt(params.peakAt, params));
