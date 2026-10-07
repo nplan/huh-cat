@@ -20,7 +20,7 @@
       -webkit-text-stroke: 8px #000;
       paint-order: stroke fill;
     }
-    video { width: min(92vw, 720px); border-radius: 12px; background: #000; display: block; margin: 0 auto; }
+    video { width: min(92vw, 720px); height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: #000; display: block; margin: 0 auto; }
     .row { display: flex; gap: 0.6rem; justify-content: center; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
     .clips { display: flex; gap: 0.45rem; }
     .clips button, #play {
@@ -96,7 +96,7 @@
 <body>
   <main>
     <h1>HUUUH?</h1>
-    <video id="huh" src="/clips/A.mp4" playsinline muted preload="auto"></video>
+    <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
     <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
     <div class="row">
       <div class="clips" role="group" aria-label="Clip">
