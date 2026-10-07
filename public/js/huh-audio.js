@@ -2,9 +2,10 @@
 
 /**
  * huh lab renderer.
- * Rubber Band realtime R3 does the time stretch and the pitch shift
- * independently. The contour is setPitchScale about every 10 ms
- * (OptionPitchHighConsistency). OptionFormantPreserved keeps the vowel.
+ * Rubber Band offline R3 does the time stretch over the whole clip. Offline
+ * mode cannot move pitch during a pass, so the contour is a key-frame map
+ * (time) plus a variable-rate resample (pitch); see vendor/rubberband.
+ * keepVowel holds the vowel with Rubber Band's formant scale.
  * Leading silence is trimmed first, so attack and accent sit on the voice.
  * Attack fades the start in. Accent ducks the ends toward the peak.
  * Then gainDb, then a peak limiter at 0.98.
