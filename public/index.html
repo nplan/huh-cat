@@ -362,6 +362,20 @@
         onPlayClick();
       });
 
+      window.addEventListener('keydown', function (e) {
+        if (e.key !== ' ' && e.code !== 'Space') return;
+        if (e.repeat) return;
+        var t = e.target;
+        if (t) {
+          var tag = (t.tagName || '').toLowerCase();
+          var typ = (t.type || '').toLowerCase();
+          if (tag === 'input' && typ !== 'range') return;
+          if (tag === 'textarea' || tag === 'select' || t.isContentEditable) return;
+        }
+        e.preventDefault();
+        onPlayClick();
+      }, true);
+
       window.addEventListener('resize', placeDot);
       placeDot();
       Promise.all([bytesReady, engineReady]).then(function (parts) {
