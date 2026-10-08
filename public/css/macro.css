@@ -151,7 +151,7 @@ a { color: inherit; }
 #plain:hover { border-color: var(--mute); }
 
 .foot { margin-top: 40px; text-align: center; font: 500 12px/1 var(--ui); letter-spacing: 0.08em; }
-.foot a { color: var(--faint); text-decoration: none; padding: 8px; }
+.foot a { color: var(--mute); text-decoration: none; padding: 8px; }
 .foot a:hover { color: var(--fg); text-decoration: underline; }
 
 /* ---- desktop ---- */

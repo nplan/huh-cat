@@ -255,7 +255,7 @@
 
   // ---- share codes
   function shareState() {
-    return { clip: player.clip(), presetId: selected, basedOn: basedOn, params: currentParams() };
+    return { clip: player.clip(), presetId: selected, basedOn: basedOn, params: HuhAudio.normalizeParams(currentParams()) };
   }
   function isDefaultState() {
     return selected === 'original' && player.clip() === 'A';
