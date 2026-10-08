@@ -123,6 +123,56 @@
     return out;
   }
 
+  // AAC encoders put priming samples (about 1024-2112) in front of the sound
+  // and the MP4 gets no edit list for them, so players start the sound that
+  // much late. Measure the delay once: encode a click, decode it, see where
+  // it lands. The video is then started that much later (see below).
+  var aacDelayPromise = null;
+  function measureAacDelay(sr) {
+    if (aacDelayPromise) return aacDelayPromise;
+    aacDelayPromise = new Promise(function (resolve) {
+      var done = false;
+      var finish = function (v) { if (!done) { done = true; resolve(v); } };
+      setTimeout(function () { finish(0); }, 3000);
+      try {
+        var n = Math.round(sr * 0.4), at = Math.round(sr * 0.1);
+        var pcm = new Float32Array(n);
+        for (var i = 0; i < 64; i++) pcm[at + i] = (i % 2 ? -0.9 : 0.9);
+        var chunks = [], config = null;
+        var enc = new AudioEncoder({
+          output: function (c, meta) { chunks.push(c); if (meta && meta.decoderConfig) config = meta.decoderConfig; },
+          error: function () { finish(0); }
+        });
+        enc.configure({ codec: 'mp4a.40.2', sampleRate: sr, numberOfChannels: 1, bitrate: 128000 });
+        enc.encode(new AudioData({ format: 'f32', sampleRate: sr, numberOfFrames: n, numberOfChannels: 1, timestamp: 0, data: pcm }));
+        enc.flush().then(function () {
+          enc.close();
+          if (!config || !chunks.length) return finish(0);
+          var out = [];
+          var dec = new AudioDecoder({
+            output: function (d) {
+              var buf = new Float32Array(d.numberOfFrames);
+              d.copyTo(buf, { planeIndex: 0, format: 'f32-planar' });
+              out.push(buf);
+              d.close();
+            },
+            error: function () { finish(0); }
+          });
+          dec.configure(config);
+          chunks.forEach(function (c) { dec.decode(c); });
+          return dec.flush().then(function () {
+            dec.close();
+            var all = [], k = 0, best = 0, bi = 0;
+            out.forEach(function (b) { for (var j = 0; j < b.length; j++, k++) { var a = Math.abs(b[j]); if (a > best) { best = a; bi = k; } } });
+            var d = (bi - at - 32) / sr;
+            finish(best > 0.1 && d > 0.002 && d < 0.2 ? d : 0);
+          });
+        }).catch(function () { finish(0); });
+      } catch (e) { finish(0); }
+    });
+    return aacDelayPromise;
+  }
+
   // ---- WebCodecs path ----------------------------------------------------
   function renderWebCodecs(opts, MB) {
     var entry = opts.entry;
@@ -133,6 +183,7 @@
     canvas.height = H;
     var ctx = canvas.getContext('2d', { alpha: false });
     var input, sink, track, output, videoSource, audioSource, isMov;
+    var lead = 0; // s the picture starts late to match AAC priming
     var paint;
     return fontsReady().then(function () {
       paint = captionPainter(ctx, entry.caption, opts.clipConfig);
@@ -159,6 +210,10 @@
       output.addVideoTrack(videoSource, { frameRate: FPS });
       output.addAudioTrack(audioSource);
       opts.info = { video: vCodec, audio: aCodec, container: isMov ? 'mov' : 'mp4' };
+      return aCodec === 'aac' ? measureAacDelay(sr) : 0;
+    }).then(function (d) {
+      lead = d || 0;
+      opts.info.audioLead = Math.round(lead * 1000);
       return input.getPrimaryVideoTrack();
     }).then(function (t) {
       track = t;
@@ -189,7 +244,10 @@
           }
           paint(t >= soundDur ? Infinity : t);
           drawWatermark(ctx);
-          return videoSource.add(t, 1 / FPS).then(function () {
+          // Frame 0 also covers the AAC lead, so picture and sound line up.
+          var at = n === 0 ? 0 : lead + t;
+          var dur = n === 0 ? lead + 1 / FPS : 1 / FPS;
+          return videoSource.add(at, dur).then(function () {
             n++;
             if (opts.onProgress) opts.onProgress(Math.min(0.95, n / frames * 0.95));
             return step();
@@ -198,7 +256,7 @@
       }
       return step().then(function () { return frames; });
     }).then(function (frames) {
-      var data = paddedSamples(entry.buffer, frames / FPS);
+      var data = paddedSamples(entry.buffer, frames / FPS + lead);
       var s = new MB.AudioSample({ data: data, format: 'f32', numberOfChannels: 1, sampleRate: sr, timestamp: 0 });
       return audioSource.add(s).then(function () { s.close(); });
     }).then(function () {
