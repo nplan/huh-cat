@@ -2,10 +2,15 @@
 
 /**
  * huh lab renderer.
- * Rubber Band offline R3 does the time stretch over the whole clip. Offline
- * mode cannot move pitch during a pass, so the contour is a key-frame map
- * (time) plus a variable-rate resample (pitch); see vendor/rubberband.
+ * Rubber Band offline R3 does the time stretch and the flat pitch shift over
+ * the whole clip. Offline mode cannot move pitch during a pass, so a
+ * rise/fall contour is applied afterwards by TD-PSOLA (pitch-synchronous
+ * grains re-spaced by the contour ratio), which keeps the formants, so
+ * the vowel does not slide with the pitch. The h passes through.
  * keepVowel holds the vowel with Rubber Band's formant scale.
+ * vowelX / vowelY / vowelStrength move the vowel on the IPA chart before
+ * Rubber Band (huh-vowel.js, clip A only). The default is the huh's own
+ * vowel, which skips that stage entirely.
  * vowelScale (u length) stretches only the input after the h|u boundary
  * (first steady voicing). Pitch follows the output timeline, so peakAt and
  * the lab diagram match what plays.
@@ -19,9 +24,14 @@
   if (typeof window !== 'undefined') window.HuhAudio = api;
 })(function () {
   var RubberBand = null;
+  var HuhVowel = null;
   if (typeof require === 'function') {
+    try { HuhVowel = require('./huh-vowel.js'); } catch (e) { HuhVowel = null; }
     RubberBand = require('../vendor/rubberband/rubberband.js');
   }
+  if (!HuhVowel && typeof window !== 'undefined' && window.HuhVowel) HuhVowel = window.HuhVowel;
+  // The huh's own vowel on the chart (HuhVowel.ORIGIN). The default vowel.
+  var VOWEL_HOME = HuhVowel ? HuhVowel.ORIGIN : { x: 0.842, y: 0.692 };
 
   var DEFAULTS = {
     pitchSemitones: 0,
@@ -33,6 +43,9 @@
     attackMs: 0,
     accent: 0,
     vowelScale: 1,
+    vowelX: VOWEL_HOME.x,
+    vowelY: VOWEL_HOME.y,
+    vowelStrength: 1,
     keepVowel: false
   };
 
@@ -45,7 +58,10 @@
     gainDb: [-12, 6],
     attackMs: [0, 400],
     accent: [0, 1],
-    vowelScale: [0.3, 1.5]
+    vowelScale: [0.3, 1.5],
+    vowelX: [0, 1],
+    vowelY: [0, 1],
+    vowelStrength: [0, 1]
   };
 
   var sharedCtx = null;
@@ -137,8 +153,76 @@
       out[key] = clamp(value, range[0], range[1]);
     }
     if (Math.abs(out.vowelScale - 1) < 1e-6) out.vowelScale = 1;
+    var vowel = mixVowel(tx, ty, pin, corners);
+    out.vowelX = vowel.x;
+    out.vowelY = vowel.y;
+    out.vowelStrength = vowel.strength;
     out.keepVowel = false;
     return out;
+  }
+
+  function cornerVowel(corners, id) {
+    var corner = corners && corners[id];
+    var x = corner ? Number(corner.vowelX) : NaN;
+    var y = corner ? Number(corner.vowelY) : NaN;
+    var s = corner ? Number(corner.vowelStrength) : NaN;
+    return {
+      x: isFinite(x) ? clamp(x, 0, 1) : VOWEL_HOME.x,
+      y: isFinite(y) ? clamp(y, 0, 1) : VOWEL_HOME.y,
+      strength: isFinite(s) ? clamp(s, 0, 1) : DEFAULTS.vowelStrength
+    };
+  }
+
+  // log(F1'/F1), log(F2'/F2) of a corner's vowel, strength included.
+  function vowelShift(v) {
+    if (!HuhVowel) return [0, 0];
+    var r = HuhVowel.ratiosAt(v.x, v.y);
+    return [v.strength * Math.log(r[0]), v.strength * Math.log(r[1])];
+  }
+
+  /**
+   * The vowel blends in log F1 / log F2 (how far each corner moves the
+   * formants, strength included), bilinear like the other knobs with the
+   * center pinned to the huh's own vowel, then goes back to a chart point
+   * at strength 1. Corners without a vowel count as the huh's own vowel.
+   */
+  function mixVowel(tx, ty, pin, corners) {
+    var home = { x: VOWEL_HOME.x, y: VOWEL_HOME.y, strength: DEFAULTS.vowelStrength };
+    if (!HuhVowel) return home;
+    var ids = ['unbotheredDry', 'annoyedDry', 'unbotheredShocked', 'annoyedShocked'];
+    var w = [(1 - tx) * (1 - ty), tx * (1 - ty), (1 - tx) * ty, tx * ty];
+    var center = [0.25, 0.25, 0.25, 0.25];
+    var d1 = 0;
+    var d2 = 0;
+    for (var i = 0; i < 4; i++) {
+      var sh = vowelShift(cornerVowel(corners, ids[i]));
+      var k = w[i] - center[i] * pin;
+      d1 += k * sh[0];
+      d2 += k * sh[1];
+    }
+    if (Math.abs(d1) < 1e-6 && Math.abs(d2) < 1e-6) return home;
+    return vowelFromShift(d1, d2);
+  }
+
+  function vowelFromShift(d1, d2) {
+    var at = HuhVowel.chartAt(VOWEL_HOME.x, VOWEL_HOME.y);
+    var pt = HuhVowel.chartPoint(at[0] * Math.exp(d1), at[1] * Math.exp(d2));
+    return { x: clamp(pt.x, 0, 1), y: clamp(pt.y, 0, 1), strength: 1 };
+  }
+
+  /**
+   * The chart point that is actually rendered: strength moves the target
+   * toward the huh's own vowel in log F1 / log F2. Null means no change.
+   */
+  function vowelPoint(params) {
+    var p = normalizeParams(params);
+    if (!HuhVowel || !(p.vowelStrength > 0)) return null;
+    if (Math.abs(p.vowelX - VOWEL_HOME.x) < 1e-6 && Math.abs(p.vowelY - VOWEL_HOME.y) < 1e-6) return null;
+    if (p.vowelStrength >= 1) return { x: p.vowelX, y: p.vowelY };
+    var sh = vowelShift({ x: p.vowelX, y: p.vowelY, strength: p.vowelStrength });
+    if (Math.abs(sh[0]) < 1e-6 && Math.abs(sh[1]) < 1e-6) return null;
+    var v = vowelFromShift(sh[0], sh[1]);
+    return { x: v.x, y: v.y };
   }
 
   function cosineInterp(a, b, u) {
@@ -343,6 +427,172 @@
     return { frames: frames, boundary: boundary, length: voiced.length, sampleRate: sampleRate };
   }
 
+  // Pitch contour: TD-PSOLA on the Rubber Band output (Rubber Band runs at
+  // the flat pitchSemitones). Each voiced pitch period is re-spaced by the
+  // local contour ratio without resampling, so the formants (the vowel)
+  // stay where they are while the pitch rises and falls. Unvoiced parts
+  // (the h) are copied through (constant-overlap Hann grains, ratio 1).
+  var PSOLA_AP = 0.6;
+  var PSOLA_FLOOR_DB = 40;
+  var PSOLA_GAP_SEC = 0.04;
+  var PSOLA_ISLAND_SEC = 0.025;
+  var PSOLA_UNVOICED_SEC = 0.005;
+
+  function periodCorr(x, p, k, hw) {
+    var s = 0;
+    var ea = 0;
+    var eb = 0;
+    for (var j = -hw; j < hw; j++) {
+      var a = x[p + j] || 0;
+      var b = x[k + j] || 0;
+      s += a * b;
+      ea += a * a;
+      eb += b * b;
+    }
+    return s / Math.sqrt(ea * eb + 1e-20);
+  }
+
+  function pitchMarks(y, sampleRate) {
+    var n = y.length;
+    var fr = analyzeVoice(y, sampleRate).frames;
+    var count = fr.length;
+    var T = new Float64Array(n);
+    if (count) {
+      var loud = -Infinity;
+      for (var i = 0; i < count; i++) if (fr[i].db > loud) loud = fr[i].db;
+      var v = [];
+      var f0 = [];
+      for (var i2 = 0; i2 < count; i2++) {
+        v.push(fr[i2].ap < PSOLA_AP && fr[i2].db > loud - PSOLA_FLOOR_DB);
+        var w = [];
+        for (var j = -2; j <= 2; j++) if (fr[i2 + j]) w.push(fr[i2 + j].f0);
+        w.sort(function (a, b) { return a - b; });
+        f0.push(w[w.length >> 1]);
+      }
+      var step = count > 1 ? (fr[1].center - fr[0].center) / sampleRate : 0.005;
+      // Fill short unvoiced gaps inside voicing, then drop short voiced islands.
+      var a0 = 0;
+      while (a0 < count) {
+        if (v[a0]) { a0++; continue; }
+        var b0 = a0;
+        while (b0 < count && !v[b0]) b0++;
+        if (a0 > 0 && b0 < count && (b0 - a0) * step <= PSOLA_GAP_SEC) for (var q0 = a0; q0 < b0; q0++) v[q0] = true;
+        a0 = b0;
+      }
+      a0 = 0;
+      while (a0 < count) {
+        if (!v[a0]) { a0++; continue; }
+        var b1 = a0;
+        while (b1 < count && v[b1]) b1++;
+        if ((b1 - a0) * step < PSOLA_ISLAND_SEC) for (var q1 = a0; q1 < b1; q1++) v[q1] = false;
+        a0 = b1;
+      }
+      for (var f = 0; f < count; f++) {
+        if (!v[f]) continue;
+        var lo = f === 0 ? 0 : Math.round((fr[f - 1].center + fr[f].center) / 2);
+        var hi = f === count - 1 ? n : Math.round((fr[f].center + fr[f + 1].center) / 2);
+        for (var s0 = Math.max(0, lo); s0 < Math.min(n, hi); s0++) T[s0] = sampleRate / f0[f];
+      }
+    }
+    // 1 ms energy (first mark of a voiced run) and a 4x decimated copy (coarse search).
+    var e = new Float64Array(n);
+    var ew = Math.max(1, Math.round(0.001 * sampleRate));
+    var run = 0;
+    for (var i3 = 0; i3 < n + ew; i3++) {
+      if (i3 < n) run += y[i3] * y[i3];
+      if (i3 - ew >= 0) run -= y[i3 - ew] * y[i3 - ew];
+      var c = i3 - (ew >> 1);
+      if (c >= 0 && c < n) e[c] = run;
+    }
+    var yd = new Float64Array(Math.ceil(n / 4));
+    for (var i4 = 0; i4 < n; i4++) yd[i4 >> 2] += y[i4] * 0.25;
+
+    var marks = [];
+    var voiced = [];
+    var tu = Math.round(PSOLA_UNVOICED_SEC * sampleRate);
+    var t = 0;
+    while (t < n) {
+      if (T[t] > 0) {
+        var end = t;
+        while (end < n && T[end] > 0) end++;
+        var p = t;
+        var best = -1;
+        var first = Math.min(end, t + Math.round(T[t]));
+        for (var k = t; k < first; k++) if (e[k] > best) { best = e[k]; p = k; }
+        var last = marks.length ? marks[marks.length - 1] : -1;
+        if (last >= 0 && p - last > 1.5 * tu) {
+          for (var u = last + tu; u < p - 0.5 * tu; u += tu) { marks.push(u); voiced.push(false); }
+        }
+        while (p < end) {
+          if (!marks.length || p > marks[marks.length - 1]) { marks.push(p); voiced.push(true); }
+          // Next mark: the shift that best matches this period's waveform.
+          var P = T[p];
+          var pred = p + P;
+          var from = Math.max(p + 1, Math.round(pred - 0.3 * P));
+          var to = Math.min(n - 1, Math.round(pred + 0.3 * P));
+          if (from >= end) break;
+          var hw = Math.round(P) >> 1;
+          var hw4 = Math.max(2, hw >> 2);
+          var p4 = Math.round(p / 4);
+          var cb = -Infinity;
+          var ck = Math.round(pred);
+          for (var k4 = Math.ceil(from / 4); k4 <= Math.floor(to / 4); k4++) {
+            var cc = periodCorr(yd, p4, k4, hw4);
+            if (cc > cb) { cb = cc; ck = k4 * 4; }
+          }
+          var bp = ck;
+          var bv = -Infinity;
+          for (var k5 = Math.max(p + 1, ck - 4); k5 <= Math.min(n - 1, ck + 4); k5++) {
+            var c5 = periodCorr(y, p, k5, hw);
+            if (c5 > bv) { bv = c5; bp = k5; }
+          }
+          if (bp >= end) break;
+          p = bp;
+        }
+        t = end;
+      } else {
+        var lastU = marks.length ? marks[marks.length - 1] : -tu;
+        var mq = Math.max(t, lastU + tu);
+        if (mq < n && T[mq] === 0) { marks.push(mq); voiced.push(false); }
+        t = mq + 1;
+        while (t < n && T[t] === 0 && t < mq + tu) t++;
+      }
+    }
+    return { marks: marks, voiced: voiced, unvoicedStep: tu };
+  }
+
+  function psolaContour(y, sampleRate, ratioAt) {
+    var n = y.length;
+    var pm = pitchMarks(y, sampleRate);
+    var marks = pm.marks;
+    var K = marks.length;
+    if (K < 3) return y;
+    var out = new Float64Array(n);
+    var ts = marks[0];
+    var k = 0;
+    while (ts < n) {
+      while (k + 1 < K && Math.abs(marks[k + 1] - ts) <= Math.abs(marks[k] - ts)) k++;
+      var a = marks[k];
+      var L = k > 0 ? a - marks[k - 1] : (k + 1 < K ? marks[k + 1] - a : pm.unvoicedStep);
+      var R = k + 1 < K ? marks[k + 1] - a : L;
+      var r = pm.voiced[k] ? ratioAt(ts / n) : 1;
+      // Grains come r times as often, so 1/sqrt(r) keeps the level.
+      var amp = 1 / Math.sqrt(r);
+      var c = Math.round(ts);
+      for (var d = -L + 1; d < R; d++) {
+        var src = a + d;
+        var dst = c + d;
+        if (src < 0 || src >= n || dst < 0 || dst >= n) continue;
+        var w = d < 0 ? 0.5 + 0.5 * Math.cos(Math.PI * d / L) : 0.5 + 0.5 * Math.cos(Math.PI * d / R);
+        out[dst] += y[src] * w * amp;
+      }
+      ts += R / r;
+    }
+    var res = new Float32Array(n);
+    for (var i = 0; i < n; i++) res[i] = i < marks[0] ? y[i] : out[i];
+    return res;
+  }
+
   var analysisCache = typeof WeakMap === 'function' ? new WeakMap() : null;
 
   // The trimmed voice is a subarray of the decoded clip, so cache on the clip.
@@ -399,10 +649,15 @@
     if (!rb.isReady()) throw new Error('Rubber Band is not loaded');
     if (!(sampleRate > 0) || !isFinite(sampleRate)) throw new Error('sampleRate must be positive');
     if (!input || input.length === 0) return new Float32Array(1);
-    var voiced = trimSilence(input, sampleRate);
+    var trimmed = trimSilence(input, sampleRate);
+    var voiced = trimmed;
+    // The vowel stage runs only off the default vowel (and only on clip A,
+    // whose formant tracks huh-vowel.js carries; other clips pass through).
+    var vp = vowelPoint(p);
+    if (vp) voiced = HuhVowel.shiftVowel(trimmed, sampleRate, vp.x, vp.y, 1);
     var options = { keepVowel: p.keepVowel };
     if (p.vowelScale !== 1) {
-      var slot = cachedAnalysis(input, voiced, sampleRate);
+      var slot = cachedAnalysis(input, trimmed, sampleRate);
       if (slot.voice.boundary !== null) {
         options.split = {
           at: slot.voice.boundary,
@@ -411,10 +666,32 @@
         };
       }
     }
-    var rendered = rb.stretchMono(voiced, sampleRate, p.durationScale, function (t) {
-      return Math.pow(2, (p.pitchSemitones + contourAt(t, p)) / 12);
-    }, options);
+    var rendered;
+    if (p.riseSemitones === 0 && p.fallSemitones === 0) {
+      rendered = rb.stretchMono(voiced, sampleRate, p.durationScale, function (t) {
+        return Math.pow(2, (p.pitchSemitones + contourAt(t, p)) / 12);
+      }, options);
+    } else {
+      // Contour: Rubber Band at the flat pitch, then PSOLA moves the pitch
+      // along the contour with the formants held (no vowel slide).
+      var flat = Math.pow(2, p.pitchSemitones / 12);
+      rendered = rb.stretchMono(voiced, sampleRate, p.durationScale, function () { return flat; }, options);
+      rendered = psolaContour(rendered, sampleRate, function (t) {
+        return Math.pow(2, contourAt(t, p) / 12);
+      });
+    }
     return applyGain(rendered, sampleRate, p);
+  }
+
+  /**
+   * Runs the vowel stage once and drops the result, so the first real
+   * vowel render is not the slow one (JIT and FFT tables). Call at load.
+   */
+  function warmVowel(audioBuffer) {
+    if (!HuhVowel || !audioBuffer) return false;
+    var voiced = trimSilence(monoChannel(audioBuffer), audioBuffer.sampleRate);
+    HuhVowel.shiftVowel(voiced, audioBuffer.sampleRate, 0.3, 0.3, 1);
+    return true;
   }
 
   function previewMono(input, sampleRate, params) {
@@ -811,6 +1088,10 @@
     prepareClip: prepareClip,
     boundaryAt: boundaryAt,
     _analyzeVoice: analyzeVoice,
+    _psolaContour: psolaContour,
+    vowelPoint: vowelPoint,
+    warmVowel: warmVowel,
+    VOWEL_HOME: VOWEL_HOME,
     renderMono: renderMono,
     previewMono: previewMono,
     renderHuh: renderHuh,

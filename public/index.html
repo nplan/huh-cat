@@ -121,7 +121,8 @@
     </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=8"></script>
-  <script src="js/huh-audio.js?v=16"></script>
+  <script src="js/huh-vowel.js?v=1"></script>
+  <script src="js/huh-audio.js?v=17"></script>
   <script>
     (function () {
       var DOT = 26;
@@ -442,7 +443,25 @@
         if (needsBoundary) {
           try { HuhAudio.prepareClip(buf); } catch (e) { console.error(e); }
         }
-        return requestRender();
+        // When a corner moves the vowel, warm the vowel engine now (once,
+        // at load) so the first blend render after a drag is not the slow one.
+        var needsVowel = false;
+        if (corners) {
+          for (var vid in corners) {
+            var vc = corners[vid];
+            if (!vc || typeof vc !== 'object') continue;
+            if (HuhAudio.vowelPoint({ vowelX: vc.vowelX, vowelY: vc.vowelY, vowelStrength: vc.vowelStrength })) needsVowel = true;
+          }
+        }
+        var rendered = requestRender();
+        if (needsVowel) {
+          rendered.then(function () {
+            setTimeout(function () {
+              try { HuhAudio.warmVowel(buf); } catch (e) { console.error(e); }
+            }, 200);
+          });
+        }
+        return rendered;
       }).catch(function (err) {
         console.error(err);
         if (!status.textContent) status.textContent = err && err.message ? err.message : String(err);
