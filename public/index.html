@@ -121,7 +121,7 @@
     </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=8"></script>
-  <script src="js/huh-audio.js?v=15"></script>
+  <script src="js/huh-audio.js?v=16"></script>
   <script>
     (function () {
       var DOT = 26;
@@ -428,21 +428,19 @@
         return HuhAudio.decodeWavOffline(parts[0]);
       }).then(function (buf) {
         rawClip = buf;
-        // Do the breath / u-length analysis now, not inside the Play tap.
+        // Find the h|u boundary now, not inside the Play tap, when a corner uses u length.
         var corners = readCorners();
-        var needsWork = false;
-        var needsBreath = false;
+        var needsBoundary = false;
         if (corners) {
           for (var id in corners) {
             var c = corners[id];
-            if (!c || typeof c !== 'object') continue;
-            var vs = c.vowelScale === undefined ? 1 : Number(c.vowelScale);
-            if (Number(c.breath) > 0) needsBreath = true;
-            if (needsBreath || (isFinite(vs) && vs !== 1)) needsWork = true;
+            if (!c || typeof c !== 'object' || c.vowelScale === undefined) continue;
+            var vs = Number(c.vowelScale);
+            if (isFinite(vs) && vs !== 1) needsBoundary = true;
           }
         }
-        if (needsWork) {
-          try { HuhAudio.prepareClip(buf, needsBreath); } catch (e) { console.error(e); }
+        if (needsBoundary) {
+          try { HuhAudio.prepareClip(buf); } catch (e) { console.error(e); }
         }
         return requestRender();
       }).catch(function (err) {
