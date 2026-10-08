@@ -3,183 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>huh lab</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: #121212;
-      color: #e6e6e6;
-      font: 15px/1.4 system-ui, sans-serif;
-    }
-    main { max-width: 680px; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
-    h1 { font-size: 1.15rem; font-weight: 650; margin: 0 0 0.9rem; letter-spacing: 0.01em; }
-    .row {
-      display: grid;
-      grid-template-columns: 9.5rem 1fr 4.2rem;
-      gap: 0.6rem;
-      align-items: center;
-      margin: 0.35rem 0;
-    }
-    .row span { font-variant-numeric: tabular-nums; }
-    input[type="range"] { width: 100%; accent-color: #8fd3ff; }
-    output { text-align: right; font-variant-numeric: tabular-nums; color: #cfe8f6; }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 220px;
-      margin: 0.9rem 0 0.8rem;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 6px;
-    }
-    .actions { display: flex; gap: 0.5rem; align-items: center; }
-    .actions button {
-      background: #1e1e1e;
-      color: #eee;
-      border: 1px solid #3a3a3a;
-      border-radius: 6px;
-      cursor: pointer;
-      padding: 0.45rem 0.9rem;
-      font: inherit;
-    }
-    #play { background: #243628; border-color: #6a9a74; }
-    #status { margin: 0.7rem 0 0; min-height: 1.2em; color: #999; font-size: 0.9rem; }
-    #voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-    .check {
-      display: flex; align-items: center; gap: 0.5rem;
-      margin: 0 0 0.7rem; cursor: pointer;
-    }
-    .hint { margin: 0.2rem 0 0.6rem; color: #9a9a9a; font-size: 0.85rem; }
-    .pick-label { margin: 0.2rem 0 0.4rem; color: #9a9a9a; font-size: 0.85rem; }
-    .picker {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(7.4rem, 1fr));
-      gap: 0.4rem;
-      margin: 0 0 1rem;
-    }
-    .tile {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 0.15rem;
-      min-height: 3.6rem;
-      background: #1e1e1e;
-      color: #eee;
-      border: 2px solid #3a3a3a;
-      border-radius: 8px;
-      cursor: pointer;
-      padding: 0.45rem 0.6rem;
-      font: inherit;
-      text-align: left;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .tile .name { font-weight: 600; line-height: 1.2; }
-    .tile .state { font-size: 0.78rem; color: #9a9a9a; }
-    .tile .state.tuned { color: #ffb15e; }
-    .tile:hover { border-color: #6a9a74; }
-    .tile.fixed { border-style: dashed; }
-    .tile .emo { font-size: 1.1rem; line-height: 1; }
-    .tile[aria-pressed="true"] {
-      background: #8fd3ff;
-      border-color: #e8f7ff;
-      color: #0d1a22;
-      box-shadow: 0 0 0 3px rgba(143, 211, 255, 0.35);
-    }
-    .tile[aria-pressed="true"] .state,
-    .tile[aria-pressed="true"] .state.tuned { color: #12384f; font-weight: 600; }
-    .editor {
-      border: 2px solid #2f4a5c;
-      border-radius: 8px;
-      padding: 0.75rem 0.8rem 0.85rem;
-      margin: 0 0 0.9rem;
-    }
-    .editor-head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.4rem 0.7rem;
-      margin: 0 0 0.35rem;
-    }
-    .editor h2 { font-size: 1.05rem; font-weight: 600; margin: 0; }
-    .editor h2 strong { color: #8fd3ff; font-weight: 700; }
-    .dirty {
-      background: #3a2a14;
-      color: #ffb15e;
-      border: 1px solid #ffb15e;
-      border-radius: 999px;
-      padding: 0.1rem 0.6rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-    .dirty[hidden] { display: none; }
-    .editor .note { margin: 0 0 0.6rem; color: #9a9a9a; font-size: 0.85rem; }
-    .edit-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin: 0.8rem 0 0;
-    }
-    .edit-actions button, .actions button, .share-actions button { min-height: 44px; }
-    .share { margin: 1.2rem 0 0; padding: 0.7rem 0 0; border-top: 1px solid #2a2a2a; }
-    .share-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .share-actions button {
-      background: #1e1e1e; color: #eee; border: 1px solid #3a3a3a; border-radius: 6px;
-      cursor: pointer; padding: 0.45rem 0.9rem; font: inherit;
-    }
-    .group {
-      border: 1px solid #34465a; border-radius: 8px; padding: 0.35rem 0.6rem 0.5rem; margin: 0 0 0.8rem;
-      background: #161c22;
-    }
-    .group-title { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin: 0.15rem 0 0.1rem; }
-    .group-title h3 { font-size: 0.9rem; font-weight: 650; margin: 0; color: #cfe8f6; letter-spacing: 0.02em; }
-    .group-title span { color: #8a8a8a; font-size: 0.78rem; }
-    .row.simple span:first-child { font-weight: 600; }
-    .row output.approx { color: #ffb15e; }
-    .detail-title { font-size: 0.9rem; font-weight: 650; margin: 0.2rem 0 0.1rem; color: #bbb; }
-    .edit-actions button {
-      background: #1e1e1e;
-      color: #eee;
-      border: 1px solid #3a3a3a;
-      border-radius: 6px;
-      cursor: pointer;
-      padding: 0.45rem 0.9rem;
-      font: inherit;
-    }
-    .edit-actions #save {
-      background: #8fd3ff;
-      border-color: #8fd3ff;
-      color: #0d1a22;
-      font-weight: 650;
-    }
-    .edit-actions button:disabled,
-    .edit-actions #save:disabled {
-      background: #1a1a1a;
-      border-color: #2c2c2c;
-      color: #666;
-      cursor: default;
-      font-weight: 400;
-    }
-    input[type="range"] { height: 2.25rem; margin: 0; }
-    .vowel-readout { margin: 0.15rem 0 0; color: #c9b3ff; font-size: 0.85rem; min-height: 1.2em; }
-    @media (max-width: 480px) {
-      main { padding: 1rem 0.75rem 2rem; }
-      .row { grid-template-columns: 7.4rem 1fr 3.3rem; gap: 0.45rem; }
-      .row span { font-size: 0.85rem; overflow-wrap: anywhere; }
-      .tile { padding: 0.4rem 0.5rem; }
-      .tile .name { font-size: 0.9rem; }
-      .editor { padding: 0.65rem 0.6rem 0.75rem; }
-    }
-  </style>
+  <title>HUUUH? lab</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="stylesheet" href="css/lab.css?v=1" />
 </head>
 <body>
-  <main>
-    <h1>huh lab</h1>
-    <p class="pick-label" id="pick-label">Pick the preset to edit (presets.json, with this browser's saved edits on top)</p>
+  <header class="lab-head">
+    <h1><span class="mark">HUUUH?</span> <span class="sub">lab</span></h1>
+    <a class="back" href="/">&larr; meme page</a>
+  </header>
+  <main class="lab">
+    <div class="lab-left">
+      <section class="card picker-card">
+    <h2 class="card-title" id="pick-label">Preset</h2>
+    <p class="pick-hint">presets.json, with this browser's saved edits on top</p>
     <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
-    <section class="editor" aria-labelledby="editing-title">
+      </section>
+    <section class="editor card" aria-labelledby="editing-title">
       <div class="editor-head">
         <h2 id="editing-title">Editing: <strong id="editing-name">Original huh (plain, fixed)</strong></h2>
         <span class="dirty" id="dirty" hidden>Unsaved changes</span>
@@ -199,21 +41,27 @@
         <button type="button" id="reset">Reset to original</button>
       </div>
     </section>
-    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the blue line is the pitch, the orange line is attack and accent.</p>
+    </div>
+    <div class="lab-right">
+      <section class="card diagram-card">
+        <h2 class="card-title">Sound</h2>
+    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the lime line is the pitch, the orange line is attack and accent, the dot is the pitch peak.</p>
     <canvas id="diagram" width="640" height="220" aria-label="waveform and pitch"></canvas>
     <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
     <div class="actions">
       <button type="button" id="play">Play</button>
     </div>
     <p id="status"></p>
-    <section class="share" aria-labelledby="share-title">
-      <h2 id="share-title" style="font-size:1rem;margin:0 0 0.3rem">Presets file</h2>
+      </section>
+    <section class="share card" aria-labelledby="share-title">
+      <h2 id="share-title" class="card-title">Presets file</h2>
       <p class="hint" id="share-note">Saved edits live in this browser only (localStorage). Export writes presets.json with them included; commit that file to share it.</p>
       <div class="share-actions">
         <button type="button" id="export">Export presets.json</button>
         <button type="button" id="clear-local">Clear local overrides</button>
       </div>
     </section>
+    </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
@@ -496,7 +344,7 @@
         var w = cssW;
         var h = cssH;
         g.clearRect(0, 0, w, h);
-        g.fillStyle = '#1a1a1a';
+        g.fillStyle = '#0b0b0b';
         g.fillRect(0, 0, w, h);
 
         var params = readParams();
@@ -528,7 +376,7 @@
 
         if (lastWave && lastWave.length) {
           var n = lastWave.length;
-          g.strokeStyle = '#3d5c73';
+          g.strokeStyle = '#3a3a3a';
           g.lineWidth = 1;
           g.beginPath();
           for (var x = 0; x < plotW; x++) {
@@ -547,21 +395,21 @@
           g.stroke();
         }
 
-        g.strokeStyle = '#333';
+        g.strokeStyle = '#2b2b2b';
         g.lineWidth = 1;
         g.beginPath();
         g.moveTo(left, yOf(0));
         g.lineTo(left + plotW, yOf(0));
         g.stroke();
 
-        g.fillStyle = '#888';
-        g.font = '11px system-ui, sans-serif';
+        g.fillStyle = '#8c8c8c';
+        g.font = '11px Inter, system-ui, sans-serif';
         g.textAlign = 'right';
         g.textBaseline = 'middle';
         g.fillText(yMax.toFixed(1), left - 4, yOf(yMax));
         g.fillText(yMin.toFixed(1), left - 4, yOf(yMin));
 
-        g.strokeStyle = '#8fd3ff';
+        g.strokeStyle = '#C8FF00';
         g.lineWidth = 2;
         g.beginPath();
         for (var k = 0; k <= steps; k++) {
@@ -572,7 +420,7 @@
         }
         g.stroke();
 
-        g.strokeStyle = '#ffb15e';
+        g.strokeStyle = '#ff9a4d';
         g.lineWidth = 2;
         g.beginPath();
         var dur = Math.max(0.05, (lastWave ? lastWave.length / 44100 : 0.39));
@@ -588,8 +436,8 @@
 
         var vowelName = vowelLabel(params);
         if (vowelName) {
-          g.fillStyle = '#c9b3ff';
-          g.font = '12px system-ui, sans-serif';
+          g.fillStyle = '#bdbdbd';
+          g.font = '12px Inter, system-ui, sans-serif';
           g.textAlign = 'left';
           g.textBaseline = 'top';
           g.fillText('vowel ' + vowelName, left + 4, 2);
@@ -597,7 +445,7 @@
 
         var peakX = xOf(params.peakAt);
         var peakY = yOf(params.pitchSemitones + HuhAudio.contourAt(params.peakAt, params));
-        g.fillStyle = '#ffe566';
+        g.fillStyle = '#ffffff';
         g.beginPath();
         g.arc(peakX, peakY, 3.5, 0, Math.PI * 2);
         g.fill();
