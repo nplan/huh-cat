@@ -8,12 +8,11 @@
  * grains re-spaced by the contour ratio), which keeps the formants, so
  * the vowel does not slide with the pitch. The h passes through.
  * keepVowel holds the vowel with Rubber Band's formant scale.
- * vowelX / vowelY / vowelStrength move the vowel on the IPA chart before
- * Rubber Band (huh-vowel.js, clip A only). The default is the huh's own
- * vowel, which skips that stage entirely.
- * vowelScale (u length) stretches only the input after the h|u boundary
- * (first steady voicing). Pitch follows the output timeline, so peakAt and
- * the lab diagram match what plays.
+ * vowel (-1 .. +1) moves the vowel before Rubber Band along a straight
+ * line in log F1 / log F2: -1 is a schwa, 0 the huh's own vowel (that stage
+ * is skipped, bit-identical), +1 toward a (huh-vowel.js, clip A only).
+ * Pitch follows the output timeline, so peakAt and the lab diagram match
+ * what plays.
  * Leading silence is trimmed first, so attack and accent sit on the voice.
  * Attack fades the start in. Accent ducks the ends toward the peak.
  * Then gainDb, then a peak limiter at 0.98.
@@ -42,10 +41,7 @@
     gainDb: 0,
     attackMs: 0,
     accent: 0,
-    vowelScale: 1,
-    vowelX: VOWEL_HOME.x,
-    vowelY: VOWEL_HOME.y,
-    vowelStrength: 1,
+    vowel: 0,
     keepVowel: false
   };
 
@@ -58,11 +54,16 @@
     gainDb: [-12, 6],
     attackMs: [0, 400],
     accent: [0, 1],
-    vowelScale: [0.3, 1.5],
-    vowelX: [0, 1],
-    vowelY: [0, 1],
-    vowelStrength: [0, 1]
+    vowel: [-1, 1]
   };
+
+  // Vowel line ends (F1, F2 targets). -1 is a full schwa. +1 goes 70% of
+  // the way (in log F1/F2) from the huh to a: past that the open vowel gets
+  // clearly breathier on this voice (1-3 kHz harmonic-to-noise falls below
+  // the original's), while 70% already measures F1 ~ 900 Hz, an open a.
+  var VOWEL_NEG = [500, 1400];
+  var VOWEL_POS = [850, 1610];
+  var VOWEL_POS_REACH = 0.7;
 
   var sharedCtx = null;
   var activeSource = null;
@@ -86,15 +87,49 @@
       if (key === 'keepVowel') continue;
       var range = RANGES[key];
       var n = Number(src[key]);
-      if (!isFinite(n)) n = DEFAULTS[key];
+      if (!isFinite(n)) n = key === 'vowel' ? legacyVowel(src) : DEFAULTS[key];
       out[key] = clamp(n, range[0], range[1]);
     }
-    // Pad blends can land a hair off the defaults; snap so the default
-    // render path (no analysis, even stretch) is taken.
-    if (Math.abs(out.vowelScale - 1) < 1e-6) out.vowelScale = 1;
+    if (Math.abs(out.vowel) < 1e-6) out.vowel = 0;
     if (src.keepVowel === undefined || src.keepVowel === null) out.keepVowel = DEFAULTS.keepVowel;
     else out.keepVowel = !!src.keepVowel;
     return out;
+  }
+
+  // log(F1'/F1), log(F2'/F2) from the huh's own vowel to a target.
+  function homeFormants() {
+    return HuhVowel.chartAt(VOWEL_HOME.x, VOWEL_HOME.y);
+  }
+  function lineEnd(sign) {
+    var h = homeFormants();
+    if (sign < 0) return [Math.log(VOWEL_NEG[0] / h[0]), Math.log(VOWEL_NEG[1] / h[1])];
+    return [VOWEL_POS_REACH * Math.log(VOWEL_POS[0] / h[0]), VOWEL_POS_REACH * Math.log(VOWEL_POS[1] / h[1])];
+  }
+
+  /**
+   * Older configs saved a 2D chart point (vowelX, vowelY, vowelStrength).
+   * Map it to the nearest point on the vowel line (in log F1/F2); no
+   * point, or no vowel engine, is the huh's own vowel (0).
+   */
+  function legacyVowel(src) {
+    var x = Number(src.vowelX);
+    var y = Number(src.vowelY);
+    if (!HuhVowel || !isFinite(x) || !isFinite(y)) return 0;
+    var s = Number(src.vowelStrength);
+    if (!isFinite(s)) s = 1;
+    s = clamp(s, 0, 1);
+    var r = HuhVowel.ratiosAt(clamp(x, 0, 1), clamp(y, 0, 1));
+    var d = [s * Math.log(r[0]), s * Math.log(r[1])];
+    if (Math.abs(d[0]) < 1e-6 && Math.abs(d[1]) < 1e-6) return 0;
+    var best = 0;
+    var bestErr = d[0] * d[0] + d[1] * d[1];
+    for (var sign = -1; sign <= 1; sign += 2) {
+      var e = lineEnd(sign);
+      var t = clamp((d[0] * e[0] + d[1] * e[1]) / (e[0] * e[0] + e[1] * e[1]), 0, 1);
+      var err = Math.pow(d[0] - t * e[0], 2) + Math.pow(d[1] - t * e[1], 2);
+      if (err < bestErr) { bestErr = err; best = sign * t; }
+    }
+    return Math.round(best * 100) / 100;
   }
 
   var MIX_KEYS = [
@@ -106,14 +141,14 @@
     'gainDb',
     'attackMs',
     'accent',
-    'vowelScale'
+    'vowel'
   ];
 
   function cornerParam(corners, id, key) {
     var corner = corners && corners[id];
     if (!corner) return DEFAULTS[key];
     var n = Number(corner[key]);
-    if (!isFinite(n)) return DEFAULTS[key];
+    if (!isFinite(n)) return key === 'vowel' ? legacyVowel(corner) : DEFAULTS[key];
     return n;
   }
 
@@ -152,77 +187,23 @@
       var range = RANGES[key];
       out[key] = clamp(value, range[0], range[1]);
     }
-    if (Math.abs(out.vowelScale - 1) < 1e-6) out.vowelScale = 1;
-    var vowel = mixVowel(tx, ty, pin, corners);
-    out.vowelX = vowel.x;
-    out.vowelY = vowel.y;
-    out.vowelStrength = vowel.strength;
+    if (Math.abs(out.vowel) < 1e-6) out.vowel = 0;
     out.keepVowel = false;
     return out;
   }
 
-  function cornerVowel(corners, id) {
-    var corner = corners && corners[id];
-    var x = corner ? Number(corner.vowelX) : NaN;
-    var y = corner ? Number(corner.vowelY) : NaN;
-    var s = corner ? Number(corner.vowelStrength) : NaN;
-    return {
-      x: isFinite(x) ? clamp(x, 0, 1) : VOWEL_HOME.x,
-      y: isFinite(y) ? clamp(y, 0, 1) : VOWEL_HOME.y,
-      strength: isFinite(s) ? clamp(s, 0, 1) : DEFAULTS.vowelStrength
-    };
-  }
-
-  // log(F1'/F1), log(F2'/F2) of a corner's vowel, strength included.
-  function vowelShift(v) {
-    if (!HuhVowel) return [0, 0];
-    var r = HuhVowel.ratiosAt(v.x, v.y);
-    return [v.strength * Math.log(r[0]), v.strength * Math.log(r[1])];
-  }
-
   /**
-   * The vowel blends in log F1 / log F2 (how far each corner moves the
-   * formants, strength included), bilinear like the other knobs with the
-   * center pinned to the huh's own vowel, then goes back to a chart point
-   * at strength 1. Corners without a vowel count as the huh's own vowel.
-   */
-  function mixVowel(tx, ty, pin, corners) {
-    var home = { x: VOWEL_HOME.x, y: VOWEL_HOME.y, strength: DEFAULTS.vowelStrength };
-    if (!HuhVowel) return home;
-    var ids = ['unbotheredDry', 'annoyedDry', 'unbotheredShocked', 'annoyedShocked'];
-    var w = [(1 - tx) * (1 - ty), tx * (1 - ty), (1 - tx) * ty, tx * ty];
-    var center = [0.25, 0.25, 0.25, 0.25];
-    var d1 = 0;
-    var d2 = 0;
-    for (var i = 0; i < 4; i++) {
-      var sh = vowelShift(cornerVowel(corners, ids[i]));
-      var k = w[i] - center[i] * pin;
-      d1 += k * sh[0];
-      d2 += k * sh[1];
-    }
-    if (Math.abs(d1) < 1e-6 && Math.abs(d2) < 1e-6) return home;
-    return vowelFromShift(d1, d2);
-  }
-
-  function vowelFromShift(d1, d2) {
-    var at = HuhVowel.chartAt(VOWEL_HOME.x, VOWEL_HOME.y);
-    var pt = HuhVowel.chartPoint(at[0] * Math.exp(d1), at[1] * Math.exp(d2));
-    return { x: clamp(pt.x, 0, 1), y: clamp(pt.y, 0, 1), strength: 1 };
-  }
-
-  /**
-   * The chart point that is actually rendered: strength moves the target
-   * toward the huh's own vowel in log F1 / log F2. Null means no change.
+   * Chart point rendered for params.vowel, or null for the huh's own vowel.
+   * The path is straight in log F1 / log F2 from the huh to each end.
    */
   function vowelPoint(params) {
     var p = normalizeParams(params);
-    if (!HuhVowel || !(p.vowelStrength > 0)) return null;
-    if (Math.abs(p.vowelX - VOWEL_HOME.x) < 1e-6 && Math.abs(p.vowelY - VOWEL_HOME.y) < 1e-6) return null;
-    if (p.vowelStrength >= 1) return { x: p.vowelX, y: p.vowelY };
-    var sh = vowelShift({ x: p.vowelX, y: p.vowelY, strength: p.vowelStrength });
-    if (Math.abs(sh[0]) < 1e-6 && Math.abs(sh[1]) < 1e-6) return null;
-    var v = vowelFromShift(sh[0], sh[1]);
-    return { x: v.x, y: v.y };
+    if (!HuhVowel || p.vowel === 0) return null;
+    var e = lineEnd(p.vowel < 0 ? -1 : 1);
+    var t = Math.abs(p.vowel);
+    var h = homeFormants();
+    var pt = HuhVowel.chartPoint(h[0] * Math.exp(t * e[0]), h[1] * Math.exp(t * e[1]));
+    return { x: clamp(pt.x, 0, 1), y: clamp(pt.y, 0, 1) };
   }
 
   function cosineInterp(a, b, u) {
@@ -321,9 +302,8 @@
     return attack * accent;
   }
 
-  // ---- voice analysis: f0, periodicity, and the h|u boundary ----
+  // ---- voice analysis: f0 and periodicity per 5 ms frame (for PSOLA) ----
 
-  // Lowpass then keep every factor-th sample (for the f0 search only).
   function decimate(x, factor) {
     if (factor <= 1) return x;
     var taps = 8 * factor + 1;
@@ -350,21 +330,11 @@
     return out;
   }
 
-  var VOICED_AP = 0.3;
-  var VOICED_FLOOR_DB = 30;
-  var VOICED_RUN = 4;
-
   /**
-   * YIN f0 and aperiodicity every 5 ms on a ~11 kHz copy of the voice.
-   * boundary is the first sample of the "u": the start of the first run of
-   * VOICED_RUN voiced frames (aperiodicity under VOICED_AP and within
-   * VOICED_FLOOR_DB of the loudest frame), moved back a quarter window.
-   * boundary is null when no voiced run is found.
+   * YIN-style f0 and aperiodicity (ap, 0 = periodic) per 5 ms frame of a
+   * 30 ms window, on a ~11 kHz copy. db is the frame level.
    */
-  function analyzeVoice(voiced, sampleRate, tuning) {
-    var apLimit = tuning && tuning.ap ? tuning.ap : VOICED_AP;
-    var floorDb = tuning && tuning.floorDb ? tuning.floorDb : VOICED_FLOOR_DB;
-    var needRun = tuning && tuning.run ? tuning.run : VOICED_RUN;
+  function analyzeVoice(voiced, sampleRate) {
     var factor = Math.max(1, Math.round(sampleRate / 11025));
     var rate = sampleRate / factor;
     var y = decimate(voiced, factor);
@@ -410,21 +380,7 @@
         db: 10 * Math.log10(e / win + 1e-12)
       });
     }
-    var loud = -Infinity;
-    for (var f = 0; f < frames.length; f++) if (frames[f].db > loud) loud = frames[f].db;
-    for (var g = 0; g < frames.length; g++) {
-      frames[g].voiced = frames[g].ap < apLimit && frames[g].db > loud - floorDb;
-    }
-    var boundary = null;
-    for (var k = 0; k + needRun <= frames.length; k++) {
-      var all = true;
-      for (var r = 0; r < needRun; r++) if (!frames[k + r].voiced) { all = false; break; }
-      if (all) {
-        boundary = Math.max(0, Math.round(frames[k].center - 0.25 * win * factor));
-        break;
-      }
-    }
-    return { frames: frames, boundary: boundary, length: voiced.length, sampleRate: sampleRate };
+    return { frames: frames, length: voiced.length, sampleRate: sampleRate };
   }
 
   // Pitch contour: TD-PSOLA on the Rubber Band output (Rubber Band runs at
@@ -593,56 +549,6 @@
     return res;
   }
 
-  var analysisCache = typeof WeakMap === 'function' ? new WeakMap() : null;
-
-  // The trimmed voice is a subarray of the decoded clip, so cache on the clip.
-  function cachedAnalysis(input, voiced, sampleRate) {
-    var key = voiced.byteOffset + ':' + voiced.length + ':' + sampleRate;
-    var slot = analysisCache ? analysisCache.get(input) : null;
-    if (slot && slot.key === key) return slot;
-    slot = { key: key, voice: analyzeVoice(voiced, sampleRate) };
-    if (analysisCache) analysisCache.set(input, slot);
-    return slot;
-  }
-
-  var U_RAMP_SEC = 0.015;
-
-  /** Output fraction where the u starts, or null. info is HuhAudio.analyzeClip. */
-  function boundaryAt(params, info) {
-    if (!info || info.boundary === null || !(info.length > 0)) return null;
-    var p = normalizeParams(params);
-    var b = info.boundary;
-    var n = info.length;
-    var ramp = Math.round(U_RAMP_SEC * info.sampleRate);
-    var r = Math.min(ramp, n - b);
-    var outLen = b + r * (1 + p.vowelScale) / 2 + Math.max(0, n - b - r) * p.vowelScale;
-    return outLen > 0 ? b / outLen : null;
-  }
-
-  /**
-   * Runs the clip analysis (the h|u boundary) ahead of time so a later
-   * render with a u length (for example inside a Play tap) skips it.
-   */
-  function prepareClip(audioBuffer) {
-    var input = monoChannel(audioBuffer);
-    var rate = audioBuffer.sampleRate;
-    cachedAnalysis(input, trimSilence(input, rate), rate);
-  }
-
-  /** Analysis of the trimmed clip: boundary (samples into it) and length. */
-  function analyzeClip(audioBuffer) {
-    var input = monoChannel(audioBuffer);
-    var rate = audioBuffer.sampleRate;
-    var voiced = trimSilence(input, rate);
-    var slot = cachedAnalysis(input, voiced, rate);
-    return {
-      boundary: slot.voice.boundary,
-      boundarySec: slot.voice.boundary === null ? null : slot.voice.boundary / rate,
-      length: voiced.length,
-      sampleRate: rate
-    };
-  }
-
   function renderMono(input, sampleRate, params) {
     var p = normalizeParams(params);
     var rb = rubberband();
@@ -656,16 +562,6 @@
     var vp = vowelPoint(p);
     if (vp) voiced = HuhVowel.shiftVowel(trimmed, sampleRate, vp.x, vp.y, 1);
     var options = { keepVowel: p.keepVowel };
-    if (p.vowelScale !== 1) {
-      var slot = cachedAnalysis(input, trimmed, sampleRate);
-      if (slot.voice.boundary !== null) {
-        options.split = {
-          at: slot.voice.boundary,
-          after: p.vowelScale,
-          ramp: Math.round(U_RAMP_SEC * sampleRate)
-        };
-      }
-    }
     var rendered;
     if (p.riseSemitones === 0 && p.fallSemitones === 0) {
       rendered = rb.stretchMono(voiced, sampleRate, p.durationScale, function (t) {
@@ -1084,12 +980,10 @@
     contourAt: contourAt,
     accentShape: accentShape,
     envelopeAt: envelopeAt,
-    analyzeClip: analyzeClip,
-    prepareClip: prepareClip,
-    boundaryAt: boundaryAt,
     _analyzeVoice: analyzeVoice,
     _psolaContour: psolaContour,
     vowelPoint: vowelPoint,
+    legacyVowel: legacyVowel,
     warmVowel: warmVowel,
     VOWEL_HOME: VOWEL_HOME,
     renderMono: renderMono,

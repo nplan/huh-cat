@@ -120,9 +120,9 @@
       <div class="edge-s">Dry</div>
     </div>
   </main>
-  <script src="vendor/rubberband/rubberband.js?v=8"></script>
+  <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
-  <script src="js/huh-audio.js?v=17"></script>
+  <script src="js/huh-audio.js?v=18"></script>
   <script>
     (function () {
       var DOT = 26;
@@ -429,20 +429,7 @@
         return HuhAudio.decodeWavOffline(parts[0]);
       }).then(function (buf) {
         rawClip = buf;
-        // Find the h|u boundary now, not inside the Play tap, when a corner uses u length.
         var corners = readCorners();
-        var needsBoundary = false;
-        if (corners) {
-          for (var id in corners) {
-            var c = corners[id];
-            if (!c || typeof c !== 'object' || c.vowelScale === undefined) continue;
-            var vs = Number(c.vowelScale);
-            if (isFinite(vs) && vs !== 1) needsBoundary = true;
-          }
-        }
-        if (needsBoundary) {
-          try { HuhAudio.prepareClip(buf); } catch (e) { console.error(e); }
-        }
         // When a corner moves the vowel, warm the vowel engine now (once,
         // at load) so the first blend render after a drag is not the slow one.
         var needsVowel = false;
@@ -450,7 +437,7 @@
           for (var vid in corners) {
             var vc = corners[vid];
             if (!vc || typeof vc !== 'object') continue;
-            if (HuhAudio.vowelPoint({ vowelX: vc.vowelX, vowelY: vc.vowelY, vowelStrength: vc.vowelStrength })) needsVowel = true;
+            if (HuhAudio.vowelPoint(vc)) needsVowel = true;
           }
         }
         var rendered = requestRender();
