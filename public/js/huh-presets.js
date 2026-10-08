@@ -1,15 +1,16 @@
 'use strict';
 
 /**
- * Meme-page presets and the five sliders.
+ * Meme-page presets and the four sliders (Pitch, Length, Question, Vowel).
  *
  * presets.json (committed) is the shared source. The lab can override any
  * preset in this browser (localStorage 'huh-presets', { id: params }).
- * A preset holds full renderer params, so lab tuning is exact. The five
- * sliders are a simple map onto those params (fromSliders); every slider at
- * 0 is exactly the plain huh (HuhAudio.DEFAULTS). A preset shows on the
- * sliders as the nearest slider setting (toSliders). The first-pass presets
- * were authored as slider settings, so for them that is exact.
+ * A preset holds full renderer params (including gain, attack and accent,
+ * which no slider controls), so lab tuning is exact. Each slider is a
+ * simple map onto its own params (fromSliders / applySlider); every slider
+ * at 0 is exactly the plain huh (HuhAudio.DEFAULTS). A preset shows on the
+ * sliders as the nearest slider setting (nearest / toSliders), with an
+ * exact flag per slider.
  */
 (function (factory) {
   var api = factory();
@@ -17,9 +18,7 @@
   if (typeof window !== 'undefined') window.HuhPresets = api;
 })(function () {
   var LOCAL_KEY = 'huh-presets';
-  var SLIDERS = ['pitch', 'length', 'question', 'intensity', 'vowel'];
-  // Semitones of pitch per unit of Intensity.
-  var INTENSITY_PITCH = 1.5;
+  var SLIDERS = ['pitch', 'length', 'question', 'vowel'];
   // Decimal places of the lab knob steps.
   var DIGITS = {
     pitchSemitones: 1,
@@ -48,27 +47,23 @@
 
   /**
    * Slider values (each -1 .. 1, 0 = plain huh) to renderer params.
-   *  pitch      pitchSemitones -6 .. +7 (plus a little from intensity)
+   *  pitch      pitchSemitones -6 .. +7
    *  length     durationScale 0.55 .. 1.8 (geometric)
    *  question   - : flat to falling statement (peak early, fall up to
    *                 9 st; the huh itself rises ~5 st, so -1 nets a fall)
    *             + : questioning rise (up to 8 st, peak late, small fall)
-   *  intensity  - : mumbled (quieter by up to 10 dB, soft 90 ms onset,
-   *                 1.5 st lower)
-   *             + : shouted (accent toward the peak, +4 dB into the
-   *                 limiter, 1.5 st higher)
    *  vowel      HuhAudio vowel: -1 schwa .. +1 toward a
+   * gain, attack and accent stay at their defaults (lab-only knobs).
    */
   function fromSliders(s) {
     s = s || {};
     var P = num(s.pitch);
     var L = num(s.length);
     var Q = num(s.question);
-    var I = num(s.intensity);
     var V = num(s.vowel);
     var p = {
-      pitchSemitones: 0,
-      durationScale: 1,
+      pitchSemitones: P >= 0 ? 7 * P : 6 * P,
+      durationScale: L >= 0 ? Math.pow(1.8, L) : Math.pow(0.55, -L),
       peakAt: 0.7,
       riseSemitones: 0,
       fallSemitones: 0,
@@ -77,8 +72,6 @@
       accent: 0,
       vowel: V
     };
-    p.pitchSemitones = (P >= 0 ? 7 * P : 6 * P) + INTENSITY_PITCH * I;
-    p.durationScale = L >= 0 ? Math.pow(1.8, L) : Math.pow(0.55, -L);
     if (Q > 0) {
       p.riseSemitones = 8 * Q;
       p.fallSemitones = 1.5 * Q;
@@ -88,13 +81,6 @@
       p.fallSemitones = 9 * -Q;
       p.peakAt = 0.7 - 0.45 * -Q;
     }
-    if (I > 0) {
-      p.accent = 0.6 * I;
-      p.gainDb = 4 * I;
-    } else if (I < 0) {
-      p.gainDb = -10 * -I;
-      p.attackMs = 90 * -I;
-    }
     // Round to the lab knob steps, so a slider setting is exactly
     // what the lab shows and saves (and all 0 is exactly the defaults).
     for (var k in p) {
@@ -103,48 +89,99 @@
     return p;
   }
 
+  // The params each slider controls.
+  var CONTROLS = {
+    pitch: ['pitchSemitones'],
+    length: ['durationScale'],
+    question: ['riseSemitones', 'fallSemitones', 'peakAt'],
+    vowel: ['vowel']
+  };
+
+  function copyParams(params) {
+    var out = {};
+    for (var k in params || {}) {
+      if (Object.prototype.hasOwnProperty.call(params, k)) out[k] = params[k];
+    }
+    return out;
+  }
+
+  /**
+   * params with one slider moved: only that slider's params change, so
+   * everything else (including gain, attack, accent) is kept.
+   */
+  function applySlider(params, key, value) {
+    var out = copyParams(params);
+    var keys = CONTROLS[key];
+    if (!keys) return out;
+    var one = {};
+    one[key] = value;
+    var f = fromSliders(one);
+    for (var i = 0; i < keys.length; i++) out[keys[i]] = f[keys[i]];
+    return out;
+  }
+
   function sq(x) { return x * x; }
   function pval(params, key, def) {
     var n = Number(params && params[key]);
     return isFinite(n) ? n : def;
   }
+  function matches(params, key, value) {
+    var f = applySlider({}, key, value);
+    var keys = CONTROLS[key];
+    for (var i = 0; i < keys.length; i++) {
+      var def = keys[i] === 'peakAt' ? 0.7 : keys[i] === 'durationScale' ? 1 : 0;
+      if (Math.abs(f[keys[i]] - pval(params, keys[i], def)) > 1e-6) return false;
+    }
+    return true;
+  }
+  // Rounded guess, or a neighbour on the 0.01 grid that maps back exactly.
+  function settle(params, key, guess) {
+    var g = round(clamp(guess, -1, 1), 2);
+    var tries = [g, round(g - 0.01, 2), round(g + 0.01, 2)];
+    for (var i = 0; i < tries.length; i++) {
+      if (tries[i] >= -1 && tries[i] <= 1 && matches(params, key, tries[i])) return tries[i];
+    }
+    return g;
+  }
 
   /**
-   * Nearest slider setting for full params. Each slider is fitted on its
-   * own knobs (intensity before pitch, which it nudges), on a 0.01 grid.
+   * Nearest slider setting for full params, with exact[key] true when
+   * that slider maps back to the params exactly. Pitch is the total pitch.
    */
-  function toSliders(params) {
-    var out = { pitch: 0, length: 0, question: 0, intensity: 0, vowel: 0 };
+  function nearest(params) {
+    var out = { pitch: 0, length: 0, question: 0, vowel: 0, exact: {} };
     var vowel = Number(params && params.vowel);
     if (!isFinite(vowel) && typeof HuhAudio !== 'undefined' && HuhAudio.legacyVowel) vowel = HuhAudio.legacyVowel(params || {});
+    if (!isFinite(vowel)) vowel = 0;
     out.vowel = round(num(vowel), 2);
+    var pitch = pval(params, 'pitchSemitones', 0);
+    out.pitch = settle(params, 'pitch', pitch >= 0 ? pitch / 7 : pitch / 6);
     var dur = pval(params, 'durationScale', 1);
     var lenS = dur >= 1 ? Math.log(dur) / Math.log(1.8) : -Math.log(dur) / Math.log(0.55);
-    out.length = round(clamp(lenS, -1, 1), 2);
+    out.length = settle(params, 'length', isFinite(lenS) ? lenS : 0);
     var rise = pval(params, 'riseSemitones', 0);
     var fall = pval(params, 'fallSemitones', 0);
     var peak = pval(params, 'peakAt', 0.7);
-    var gain = pval(params, 'gainDb', 0);
-    var attack = pval(params, 'attackMs', 0);
-    var accent = pval(params, 'accent', 0);
     var bestQ = 0;
-    var bestI = 0;
     var eQ = Infinity;
-    var eI = Infinity;
     for (var i = -100; i <= 100; i++) {
       var v = i / 100;
-      var f = fromSliders({ question: v, intensity: v });
-      // semitones, peak position x 10 (0.1 ~ 1 st), dB, ms / 10, accent x 10
+      var f = fromSliders({ question: v });
+      // semitones, peak position x 10 (0.1 ~ 1 st)
       var dq = sq(f.riseSemitones - rise) + sq(f.fallSemitones - fall) + sq(10 * (f.peakAt - peak));
-      var di = sq(f.gainDb - gain) + sq((f.attackMs - attack) / 10) + sq(10 * (f.accent - accent));
       if (dq < eQ - 1e-12) { eQ = dq; bestQ = v; }
-      if (di < eI - 1e-12) { eI = di; bestI = v; }
     }
     out.question = round(bestQ, 2);
-    out.intensity = round(bestI, 2);
-    var pitch = pval(params, 'pitchSemitones', 0) - INTENSITY_PITCH * out.intensity;
-    out.pitch = round(clamp(pitch >= 0 ? pitch / 7 : pitch / 6, -1, 1), 2);
+    out.exact.pitch = matches(params, 'pitch', out.pitch);
+    out.exact.length = matches(params, 'length', out.length);
+    out.exact.question = matches(params, 'question', out.question);
+    out.exact.vowel = Math.abs(out.vowel - vowel) < 1e-6;
     return out;
+  }
+
+  function toSliders(params) {
+    var n = nearest(params);
+    return { pitch: n.pitch, length: n.length, question: n.question, vowel: n.vowel };
   }
 
   function isPlain(sliders) {
@@ -208,8 +245,10 @@
   return {
     LOCAL_KEY: LOCAL_KEY,
     SLIDERS: SLIDERS,
-    INTENSITY_PITCH: INTENSITY_PITCH,
+    CONTROLS: CONTROLS,
     fromSliders: fromSliders,
+    applySlider: applySlider,
+    nearest: nearest,
     toSliders: toSliders,
     isPlain: isPlain,
     readOverrides: readOverrides,

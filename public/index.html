@@ -159,14 +159,13 @@
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
   <script src="js/huh-audio.js?v=20"></script>
-  <script src="js/huh-presets.js?v=2"></script>
+  <script src="js/huh-presets.js?v=3"></script>
   <script>
     (function () {
       var SLIDER_UI = [
         ['pitch', 'Pitch', 'low', 'high'],
         ['length', 'Length', 'short', 'long'],
         ['question', 'Question', 'statement', 'question?'],
-        ['intensity', 'Intensity', 'mumbled', 'shouted'],
         ['vowel', 'Vowel', '\u0259 (uh)', 'a (ah)']
       ];
       var video = document.getElementById('huh');
@@ -185,7 +184,13 @@
       var captionTimes = [];
       var captionShown = false;
       var selected = null;
-      var sliders = { pitch: 0, length: 0, question: 0, intensity: 0, vowel: 0 };
+      var sliders = { pitch: 0, length: 0, question: 0, vowel: 0 };
+      var sliderExact = { pitch: true, length: true, question: true, vowel: true };
+      // Custom sound: full params. A slider move changes only its own
+      // params, so a preset's other settings (gain, attack, accent, ...)
+      // carry over and the sound does not jump.
+      var custom = HuhPresets.fromSliders({});
+      var basedOn = null;
       var active = false;
       var waitingForSound = false;
       var rafId = 0;
@@ -223,7 +228,7 @@
 
       function currentParams() {
         var p = selected ? presetById(selected) : null;
-        return p ? p.params : HuhPresets.fromSliders(sliders);
+        return p ? p.params : custom;
       }
 
       // ---- renders: each distinct sound is rendered once and kept as a
@@ -493,8 +498,7 @@
         var p = presetById(id);
         if (!p) return;
         selected = id;
-        sliders = HuhPresets.toSliders(p.params);
-        syncSliders();
+        showNearest(p.params);
         updateUi();
         play();
       }
@@ -542,31 +546,55 @@
         return (n > 0 ? '+' : '\u2212') + Math.abs(n).toFixed(2);
       }
 
+      function showOut(k) {
+        inputs[k].out.textContent = (sliderExact[k] ? '' : '\u2248 ') + fmt(sliders[k] || 0);
+        inputs[k].out.title = sliderExact[k] ? '' : 'Nearest setting; this sound is tuned beyond the slider.';
+      }
+
       function syncSliders() {
         for (var k in inputs) {
           inputs[k].input.value = String(sliders[k] || 0);
-          inputs[k].out.textContent = fmt(sliders[k] || 0);
+          showOut(k);
         }
+      }
+
+      // Sliders show the nearest setting for full params (\u2248 if not exact).
+      function showNearest(params) {
+        var n = HuhPresets.nearest(params);
+        for (var k in inputs) {
+          sliders[k] = n[k];
+          sliderExact[k] = !!n.exact[k];
+        }
+        syncSliders();
       }
 
       function sliderMoved(name, value, final) {
         // Snap to 0 (plain) near the middle.
         if (Math.abs(value) < 0.03) value = 0;
+        var from = currentParams();
         if (selected) {
-          // Leaving a preset: start from what the sliders show for it.
+          // Leaving a preset: keep its params, change only this slider's.
+          basedOn = selected;
           selected = null;
         }
+        custom = HuhPresets.applySlider(from, name, value);
         sliders[name] = value;
-        inputs[name].out.textContent = fmt(value);
+        sliderExact[name] = true;
+        showOut(name);
         if (final) inputs[name].input.value = String(value);
         updateUi();
         scheduleRender(final ? 0 : 120);
       }
 
+      function isPlainParams(params) {
+        return JSON.stringify(HuhAudio.normalizeParams(params)) === JSON.stringify(HuhAudio.normalizeParams({}));
+      }
+
       document.getElementById('plain').addEventListener('click', function () {
         selected = null;
-        sliders = { pitch: 0, length: 0, question: 0, intensity: 0, vowel: 0 };
-        syncSliders();
+        basedOn = null;
+        custom = HuhPresets.fromSliders({});
+        showNearest(custom);
         updateUi();
         play();
       });
@@ -576,7 +604,10 @@
           b.setAttribute('aria-pressed', b.getAttribute('data-preset') === selected ? 'true' : 'false');
         });
         var p = selected ? presetById(selected) : null;
-        modeLabel.textContent = p ? 'Preset: ' + p.label : HuhPresets.isPlain(sliders) ? 'Plain huh' : 'Custom';
+        var from = basedOn ? presetById(basedOn) : null;
+        if (p) modeLabel.textContent = 'Preset: ' + p.label;
+        else if (isPlainParams(custom)) modeLabel.textContent = 'Plain huh';
+        else modeLabel.textContent = from ? 'Custom (from ' + from.label + ')' : 'Custom';
       }
 
       // ---- tabs
