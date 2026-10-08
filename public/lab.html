@@ -181,7 +181,7 @@
     <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
     <section class="editor" aria-labelledby="editing-title">
       <div class="editor-head">
-        <h2 id="editing-title">Editing: <strong id="editing-name">Default (plain huh, fixed)</strong></h2>
+        <h2 id="editing-title">Editing: <strong id="editing-name">Original huh (plain, fixed)</strong></h2>
         <span class="dirty" id="dirty" hidden>Unsaved changes</span>
       </div>
       <p class="note" id="editing-note"></p>
@@ -196,7 +196,7 @@
       <div class="edit-actions">
         <button type="button" id="save" disabled>Save</button>
         <button type="button" id="revert" disabled>Revert</button>
-        <button type="button" id="reset">Reset to default</button>
+        <button type="button" id="reset">Reset to original</button>
       </div>
     </section>
     <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the blue line is the pitch, the orange line is attack and accent.</p>
@@ -719,14 +719,14 @@
       var picker = document.getElementById('picker');
 
       function labelOf(id) {
-        if (id === DEFAULT_ID) return 'Default (plain huh, fixed)';
+        if (id === DEFAULT_ID) return 'Original huh (plain, fixed)';
         var p = presetMeta(id);
         return p ? p.label : id;
       }
 
       function buildPicker() {
         picker.innerHTML = '';
-        var list = [{ id: DEFAULT_ID, label: 'Default', emoji: '' }].concat(presetList);
+        var list = [{ id: DEFAULT_ID, label: 'Original huh', emoji: '🐱' }].concat(presetList);
         list.forEach(function (p) {
           var b = document.createElement('button');
           b.type = 'button';
@@ -814,9 +814,9 @@
         dirtyMark.hidden = !dirty;
         dirtyMark.textContent = fixed ? 'Experiment, not saved' : 'Unsaved changes';
         editingNote.textContent = fixed
-          ? 'Default is always the plain huh. You can move the knobs to experiment, but it cannot be saved.'
+          ? 'Original huh is always the plain, unmodified huh (the meme page\'s Original preset). You can move the knobs to experiment, but it cannot be saved.'
           : 'Knob changes are not saved until you press Save. Save keeps them in this browser; Export to share.';
-        saveButton.textContent = fixed ? 'Save (default is fixed)' : 'Save ' + labelOf(selected);
+        saveButton.textContent = fixed ? 'Save (Original is fixed)' : 'Save ' + labelOf(selected);
         saveButton.disabled = fixed || !dirty;
         revertButton.disabled = !dirty;
         syncSimple();

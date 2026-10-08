@@ -94,7 +94,8 @@
     }
     .tabs button[aria-selected="true"] { background: #fff; color: #111; }
     .presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-    @media (min-width: 560px) { .presets { grid-template-columns: repeat(5, 1fr); } }
+    @media (min-width: 480px) { .presets { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 640px) { .presets { grid-template-columns: repeat(4, 1fr); } }
     .preset {
       display: flex; align-items: center; justify-content: center; gap: 0.45rem;
       min-height: 3.3rem; padding: 0.4rem 0.5rem; border-radius: 12px; cursor: pointer;
@@ -151,7 +152,7 @@
     <section id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden>
       <div id="slider-list"></div>
       <div class="slider-foot">
-        <span id="mode">Plain huh</span>
+        <span id="mode">Preset: Original huh</span>
         <button type="button" id="plain">Reset to plain huh</button>
       </div>
     </section>
@@ -207,10 +208,21 @@
       engineReady.then(function () { engineLoaded = true; }, function () {});
       var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
       var presetsReady = HuhPresets.load('presets.json').then(function (r) {
-        presets = (r.data && r.data.presets) || [];
+        // Original = plain unmodified huh (same as the lab's fixed Default).
+        // Not in presets.json, so Export round-trips stay byte-identical.
+        presets = [{
+          id: 'original',
+          label: 'Original huh',
+          emoji: '🐱',
+          params: HuhAudio.normalizeParams({}),
+          fixed: true
+        }].concat((r.data && r.data.presets) || []);
         clipText = (r.data && r.data.clips) || {};
         placeCaption();
         buildPresets();
+        selected = 'original';
+        showNearest(presets[0].params);
+        updateUi();
         return r.data;
       }, function (err) {
         console.error(err);
@@ -591,12 +603,9 @@
       }
 
       document.getElementById('plain').addEventListener('click', function () {
-        selected = null;
         basedOn = null;
         custom = HuhPresets.fromSliders({});
-        showNearest(custom);
-        updateUi();
-        play();
+        choosePreset('original');
       });
 
       function updateUi() {
@@ -606,7 +615,7 @@
         var p = selected ? presetById(selected) : null;
         var from = basedOn ? presetById(basedOn) : null;
         if (p) modeLabel.textContent = 'Preset: ' + p.label;
-        else if (isPlainParams(custom)) modeLabel.textContent = 'Plain huh';
+        else if (isPlainParams(custom)) modeLabel.textContent = 'Original huh';
         else modeLabel.textContent = from ? 'Custom (from ' + from.label + ')' : 'Custom';
       }
 
