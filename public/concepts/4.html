@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0B0B0F" />
+  <title>HUUUH? — HUH-808 Sampler</title>
+  <link rel="preload" href="../fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <style>
+    @font-face { font-family: "Anton"; src: url("../fonts/anton/anton-latin.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "Archivo Black"; src: url("../fonts/archivo-black/archivo-black-latin.woff2") format("woff2"); font-display: swap; }
+    @font-face { font-family: "VT323"; src: url("../fonts/vt323/vt323-latin.woff2") format("woff2"); font-display: swap; }
+
+    .caption {
+      position: absolute; margin: 0; pointer-events: none; white-space: nowrap; z-index: 3;
+      font-family: "Anton", Impact, sans-serif; font-weight: 400; line-height: 1;
+      letter-spacing: 0.02em; text-transform: uppercase; color: #fff; font-size: 48px;
+      text-shadow:
+        0.065em 0 0 #000, -0.065em 0 0 #000, 0 0.065em 0 #000, 0 -0.065em 0 #000,
+        0.046em 0.046em 0 #000, -0.046em 0.046em 0 #000, 0.046em -0.046em 0 #000, -0.046em -0.046em 0 #000,
+        0.06em 0.025em 0 #000, -0.06em 0.025em 0 #000, 0.06em -0.025em 0 #000, -0.06em -0.025em 0 #000,
+        0.025em 0.06em 0 #000, -0.025em 0.06em 0 #000, 0.025em -0.06em 0 #000, -0.025em -0.06em 0 #000;
+    }
+    .caption.top { top: 5%; } .caption.bottom { bottom: 6%; }
+    .caption.left { left: 4%; text-align: left; } .caption.right { right: 4%; text-align: right; }
+    .caption.center { left: 0; right: 0; text-align: center; }
+    .caption span { opacity: 0; } .caption span.on { opacity: 1; }
+    .stage { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #000; }
+    .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    #voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    [hidden] { display: none !important; }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; font: inherit; color: inherit; }
+    body { margin: 0; }
+    .preset { touch-action: manipulation; }
+    .back { position: fixed; z-index: 50; font: 700 11px system-ui, sans-serif; text-decoration: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    :root { --lime: #C8FF00; --pink: #FF2D95; --body: #1A1A1F; --deck: #232329; --key: #2E2E36; --ink: #EDEDF2; }
+    body {
+      min-height: 100vh; background: #0B0B0F; color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background-image: radial-gradient(circle at 50% -20%, #22202c 0%, #0B0B0F 60%);
+    }
+    .rig {
+      position: relative; margin: 10px; padding: 14px 14px 16px; border-radius: 26px;
+      background: linear-gradient(180deg, #24242b 0%, #1a1a1f 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -2px 0 rgba(0,0,0,0.5), 0 18px 40px rgba(0,0,0,0.6);
+      display: grid; gap: 12px;
+      grid-template-areas: "brand" "screen" "transport" "tabs" "pads" "faders";
+    }
+    .rig::before, .rig::after {
+      content: ""; position: absolute; top: 12px; width: 8px; height: 8px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #555 0%, #222 70%); box-shadow: inset 0 0 0 1px #111;
+    }
+    .rig::before { left: 12px; } .rig::after { right: 12px; }
+    .brand { grid-area: brand; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; }
+    .logo { margin: 0; font-family: "Anton", Impact, sans-serif; font-weight: 400; font-size: 40px; line-height: 1; color: var(--lime);
+            letter-spacing: 0.02em; text-shadow: 0 0 10px rgba(200,255,0,0.45); }
+    .model { text-align: right; font-family: "Archivo Black", sans-serif; line-height: 1.05; }
+    .model b { display: block; font-size: 15px; letter-spacing: 0.06em; color: var(--ink); }
+    .model span { font-size: 9px; letter-spacing: 0.2em; color: #8a8a96; }
+    .model i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; background: #3a1021; vertical-align: middle; }
+    .is-playing .model i { background: var(--pink); box-shadow: 0 0 8px var(--pink); }
+    .screen { grid-area: screen; padding: 8px; border-radius: 14px; background: #0c0c10; box-shadow: inset 0 2px 6px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.06); }
+    .stage { border-radius: 6px; }
+    .stage::after { /* LCD scanlines + vignette, very light */
+      content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 4;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 3px);
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.55);
+    }
+    .lcd {
+      display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 4px 10px; border-radius: 6px;
+      background: #0f1a02; color: var(--lime); font: 19px/1.15 "VT323", ui-monospace, monospace; letter-spacing: 0.04em;
+      text-shadow: 0 0 6px rgba(200,255,0,0.55); box-shadow: inset 0 0 0 1px #24360a; white-space: nowrap; overflow: hidden;
+    }
+    .lcd .vals { opacity: 0.9; }
+    .transport { grid-area: transport; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 2px; }
+    .clips { display: flex; align-items: flex-end; gap: 7px; }
+    .clips .lbl { font: 10px "Archivo Black", sans-serif; letter-spacing: 0.16em; color: #8a8a96; margin-right: 2px; align-self: center; }
+    .clips button {
+      position: relative; width: 50px; height: 40px; border: 0; border-radius: 8px; cursor: pointer;
+      background: linear-gradient(180deg, #3a3a44, #2a2a31); color: var(--ink);
+      font: 18px "Archivo Black", sans-serif; box-shadow: 0 3px 0 #121216, inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .clips button i { position: absolute; top: -9px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #333; }
+    .clips button[aria-pressed="true"] { transform: translateY(2px); box-shadow: 0 1px 0 #121216, inset 0 1px 0 rgba(255,255,255,0.12); color: var(--lime); }
+    .clips button[aria-pressed="true"] i { background: var(--lime); box-shadow: 0 0 8px var(--lime); }
+    #play {
+      flex: 0 0 auto; width: 76px; height: 76px; border-radius: 50%; border: 0; cursor: pointer; position: relative;
+      background: radial-gradient(circle at 40% 30%, #ff5cb0 0%, var(--pink) 55%, #b5005e 100%); color: #12000a;
+      box-shadow: 0 5px 0 #6d0039, 0 0 0 5px #121216, 0 0 0 7px #3a3a44, 0 0 24px rgba(255,45,149,0.45);
+      display: grid; place-items: center;
+    }
+    #play svg { width: 30px; height: 30px; margin-left: 4px; }
+    #play span { position: absolute; bottom: -24px; left: 0; right: 0; font: 9px "Archivo Black", sans-serif; letter-spacing: 0.2em; color: #8a8a96; }
+    #play:active, .is-playing #play { transform: translateY(3px); box-shadow: 0 2px 0 #6d0039, 0 0 0 5px #121216, 0 0 0 7px #3a3a44, 0 0 34px rgba(255,45,149,0.8); }
+    #status { grid-area: transport; align-self: end; margin: 0; min-height: 0; font-size: 12px; color: #ff7aa8; }
+    .tabs { grid-area: tabs; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .tabs button {
+      height: 34px; border: 0; border-radius: 8px; cursor: pointer; background: #2a2a31; color: #9a9aa6;
+      font: 11px "Archivo Black", sans-serif; letter-spacing: 0.18em; box-shadow: 0 3px 0 #121216;
+    }
+    .tabs button[aria-selected="true"] { color: #0B0B0F; background: var(--lime); box-shadow: 0 1px 0 #4d6200, 0 0 14px rgba(200,255,0,0.35); transform: translateY(2px); }
+    #panel-presets { grid-area: pads; }
+    #panel-sliders { grid-area: faders; }
+    .presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; counter-reset: pad; padding: 10px; border-radius: 16px; background: #141418; box-shadow: inset 0 2px 5px rgba(0,0,0,0.8); }
+    .preset {
+      position: relative; aspect-ratio: 1 / 1; border: 0; border-radius: 12px; cursor: pointer; padding: 6px 4px 7px;
+      background: linear-gradient(180deg, #34343d 0%, #2a2a32 100%); color: #cfcfd8;
+      box-shadow: 0 3px 0 #0e0e12, inset 0 1px 0 rgba(255,255,255,0.09);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      font: 700 10.5px/1.05 system-ui, sans-serif; text-align: center; counter-increment: pad;
+      transition: background-color 0.08s, box-shadow 0.08s, transform 0.06s;
+    }
+    .preset::before { content: counter(pad, decimal-leading-zero); position: absolute; top: 4px; left: 7px; font: 14px "VT323", monospace; color: #6e6e7a; }
+    .preset .emo { font-size: 27px; line-height: 1; filter: saturate(0.9); }
+    .preset:active { transform: translateY(2px); box-shadow: 0 1px 0 #0e0e12; }
+    .preset[aria-pressed="true"] {
+      background: radial-gradient(circle at 50% 40%, #ff6fbd 0%, var(--pink) 60%, #c6006a 100%); color: #fff;
+      box-shadow: 0 1px 0 #6d0039, 0 0 18px rgba(255,45,149,0.7), inset 0 0 0 2px rgba(255,255,255,0.25); transform: translateY(2px);
+    }
+    .preset[aria-pressed="true"]::before { color: #ffd1e8; }
+    .preset[data-preset="original"] { grid-column: span 2; aspect-ratio: auto; background: linear-gradient(180deg, #3a4210 0%, #2b3108 100%); color: var(--lime); }
+    .preset[data-preset="original"] .emo { font-size: 30px; }
+    .preset[data-preset="original"][aria-pressed="true"] { background: radial-gradient(circle at 50% 40%, #e2ff5c 0%, var(--lime) 60%, #8fb800 100%); color: #0B0B0F; box-shadow: 0 1px 0 #4d6200, 0 0 18px rgba(200,255,0,0.6); }
+    .is-playing .preset[aria-pressed="true"] { animation: padflash 0.5s ease-out; }
+    @keyframes padflash { from { filter: brightness(1.6); } to { filter: none; } }
+    /* Faders */
+    #slider-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 12px 8px 8px; border-radius: 16px; background: #141418; box-shadow: inset 0 2px 5px rgba(0,0,0,0.8); }
+    .slider {
+      display: grid; justify-items: center; gap: 4px; cursor: pointer;
+      grid-template-areas: "out" "hi" "trk" "lo" "nm"; grid-template-rows: auto auto 168px auto auto;
+    }
+    .slider .top, .slider .ends { display: contents; }
+    .slider output {
+      grid-area: out; min-width: 62px; padding: 2px 6px; border-radius: 5px; text-align: center;
+      background: #0f1a02; color: var(--lime); font: 20px/1.1 "VT323", monospace; text-shadow: 0 0 6px rgba(200,255,0,0.6); box-shadow: inset 0 0 0 1px #24360a;
+    }
+    .slider .top span { grid-area: nm; font: 11px "Archivo Black", sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
+    .slider .ends span { font: 600 10px system-ui, sans-serif; color: #8a8a96; white-space: nowrap; }
+    .slider .ends span:nth-child(1) { grid-area: lo; }
+    .slider .ends span:nth-child(2) { display: none; }
+    .slider .ends span:nth-child(3) { grid-area: hi; }
+    .slider input {
+      grid-area: trk; justify-self: center; align-self: center;
+      width: 168px; height: 44px; margin: 0 -62px; transform: rotate(-90deg); touch-action: none;
+      -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer;
+    }
+    .slider input::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: linear-gradient(90deg, #0a0a0d, #0a0a0d) center / 100% 8px no-repeat, #0a0a0d; box-shadow: inset 0 1px 2px #000, 0 1px 0 rgba(255,255,255,0.06); }
+    .slider input::-moz-range-track { height: 8px; border-radius: 4px; background: #0a0a0d; }
+    .slider input::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 40px; margin-top: -16px; border-radius: 5px;
+      background: linear-gradient(90deg, #4a4a55 0%, #6a6a76 45%, var(--lime) 46%, var(--lime) 54%, #6a6a76 55%, #4a4a55 100%);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.7);
+    }
+    .slider input::-moz-range-thumb { width: 22px; height: 40px; border: 0; border-radius: 5px; background: linear-gradient(90deg, #4a4a55 0%, #6a6a76 45%, var(--lime) 46%, var(--lime) 54%, #6a6a76 55%, #4a4a55 100%); }
+    #slider-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grille { display: none; }
+    .slider-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; padding: 0 4px; }
+    #mode { font: 17px "VT323", monospace; color: var(--lime); }
+    #plain { height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: #2e2e36; color: var(--ink); font: 10px "Archivo Black", sans-serif; letter-spacing: 0.12em; text-transform: uppercase; box-shadow: 0 3px 0 #121216; cursor: pointer; }
+    .back { right: 14px; bottom: 10px; color: #55555f; }
+    @media (min-width: 960px) {
+      body { display: grid; place-items: center; padding: 16px 24px; min-height: 100vh; }
+      .rig {
+        width: min(1340px, 100%); margin: 0; padding: 20px 30px 22px; border-radius: 34px; gap: 14px 30px;
+        grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+        grid-template-rows: auto auto 1fr;
+        grid-template-areas: "brand brand" "screen pads" "transport faders" "grille faders";
+        grid-template-rows: auto auto auto 1fr;
+      }
+      .grille { display: block; grid-area: grille; min-height: 90px; border-radius: 16px;
+        background: radial-gradient(circle, #0a0a0d 0 2.6px, transparent 3px) 0 0 / 14px 14px, #1d1d22;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.7); position: relative; }
+      .grille::after { content: "HUH-808 · 4 CATS · 11 PADS · 4 FADERS"; position: absolute; right: 14px; bottom: 10px;
+        font: 10px "Archivo Black", sans-serif; letter-spacing: 0.18em; color: #55555f; background: #1d1d22; padding: 3px 6px; border-radius: 4px; }
+      .logo { font-size: 58px; }
+      .model b { font-size: 20px; } .model span { font-size: 11px; }
+      .tabs { display: none; }
+      #panel-presets[hidden], #panel-sliders[hidden] { display: block !important; }
+      .preset { font-size: 13px; }
+      .preset .emo { font-size: 42px; }
+      .presets { gap: 10px; padding: 12px; }
+      .transport { align-self: start; }
+      .slider { grid-template-rows: auto auto 128px auto auto; }
+      .slider input { width: 128px; margin: 0 -42px; }
+      #slider-list { padding: 10px 8px 8px; }
+      .slider-foot { margin-top: 8px; }
+      .lcd { font-size: 22px; }
+    }
+
+  </style>
+</head>
+<body class="c4">
+  <main class="rig">
+    <header class="brand">
+      <h1 class="logo meme">HUUUH?</h1>
+      <div class="model"><b>HUH-808<i aria-hidden="true"></i></b><span>REACTION SAMPLER</span></div>
+    </header>
+    <section class="screen">
+      <div class="stage" id="stage">
+        <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
+        <p class="caption meme top right" id="caption" aria-hidden="true"></p>
+      </div>
+      <div class="lcd" aria-hidden="true"><span id="lcd-pad">PAD 01 ORIGINAL</span><span class="vals" id="lcd-vals">CAT A</span></div>
+    </section>
+    <audio id="voice" playsinline webkit-playsinline preload="auto" src="../audio/A.wav"></audio>
+    <section class="transport">
+      <div class="clips" role="group" aria-label="Cat clip">
+        <span class="lbl">CAT</span>
+        <button type="button" data-clip="A" aria-pressed="true" aria-label="Cat A"><i aria-hidden="true"></i>A</button>
+<button type="button" data-clip="B" aria-pressed="false" aria-label="Cat B"><i aria-hidden="true"></i>B</button>
+<button type="button" data-clip="C" aria-pressed="false" aria-label="Cat C"><i aria-hidden="true"></i>C</button>
+<button type="button" data-clip="D" aria-pressed="false" aria-label="Cat D"><i aria-hidden="true"></i>D</button>
+      </div>
+      <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg><span aria-hidden="true">PLAY</span></button>
+    </section>
+    <p id="status"></p>
+    <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tab-presets" aria-controls="panel-presets" aria-selected="true">PADS</button>
+        <button type="button" role="tab" id="tab-sliders" aria-controls="panel-sliders" aria-selected="false">FADERS</button>
+      </div>
+    <section id="panel-presets" role="tabpanel" aria-labelledby="tab-presets">
+        <div class="presets" id="presets"></div>
+      </section>
+    <section id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden>
+        <div id="slider-list"></div>
+        <div class="slider-foot"><span id="mode">Preset: Original huh</span><button type="button" id="plain">Reset to plain huh</button></div>
+      </section>
+    <div class="grille" aria-hidden="true"></div>
+  </main>
+  <script src="../vendor/rubberband/rubberband.js?v=9"></script>
+  <script src="../js/huh-vowel.js?v=1"></script>
+  <script src="../js/huh-audio.js?v=20"></script>
+  <script src="../js/huh-presets.js?v=3"></script>
+  <script>
+    (function () {
+      var SLIDER_UI = [
+        ['pitch', 'Pitch', 'low', 'high'],
+        ['length', 'Length', 'short', 'long'],
+        ['question', 'Question', 'statement', 'question?'],
+        ['vowel', 'Vowel', '\u0259 (uh)', 'a (ah)']
+      ];
+      var video = document.getElementById('huh');
+      var audio = document.getElementById('voice');
+      var status = document.getElementById('status');
+      var picks = [].slice.call(document.querySelectorAll('.clips button'));
+      var presetBox = document.getElementById('presets');
+      var sliderList = document.getElementById('slider-list');
+      var modeLabel = document.getElementById('mode');
+      var clip = 'A';
+      var presets = [];
+      var clipText = {};
+      var stage = document.getElementById('stage');
+      var caption = document.getElementById('caption');
+      var captionSpans = [];
+      var captionTimes = [];
+      var captionShown = false;
+      var selected = null;
+      var sliders = { pitch: 0, length: 0, question: 0, vowel: 0 };
+      var sliderExact = { pitch: true, length: true, question: true, vowel: true };
+      // Custom sound: full params. A slider move changes only its own
+      // params, so a preset's other settings (gain, attack, accent, ...)
+      // carry over and the sound does not jump.
+      var custom = HuhPresets.fromSliders({});
+      var basedOn = null;
+      var active = false;
+      var waitingForSound = false;
+      var rafId = 0;
+      var playStamp = 0;
+      var current = null;
+      var queued = null;
+      var baseRate = 1;
+      var debounceTimer = 0;
+      var engineLoaded = false;
+      var rawClip = null;
+      var cache = {};
+      var cacheOrder = [];
+      var engineReady = HuhAudio.loadEngine('../vendor/rubberband/rubberband.wasm');
+      engineReady.then(function () { engineLoaded = true; }, function () {});
+      var bytesReady = HuhAudio.fetchWavBytes('../audio/A.wav');
+      var presetsReady = HuhPresets.load('../presets.json').then(function (r) {
+        // Original = plain unmodified huh (same as the lab's fixed Default).
+        // Not in presets.json, so Export round-trips stay byte-identical.
+        presets = [{
+          id: 'original',
+          label: 'Original huh',
+          emoji: '🐱',
+          params: HuhAudio.normalizeParams({}),
+          fixed: true
+        }].concat((r.data && r.data.presets) || []);
+        clipText = (r.data && r.data.clips) || {};
+        placeCaption();
+        buildPresets();
+        selected = 'original';
+        showNearest(presets[0].params);
+        updateUi();
+        return r.data;
+      }, function (err) {
+        console.error(err);
+        status.textContent = 'Presets did not load';
+        return null;
+      });
+      if (!audio.getAttribute('src')) audio.src = '../audio/A.wav';
+      video.muted = true;
+      video.controls = false;
+
+      function presetById(id) {
+        for (var i = 0; i < presets.length; i++) if (presets[i].id === id) return presets[i];
+        return null;
+      }
+
+      function currentParams() {
+        var p = selected ? presetById(selected) : null;
+        return p ? p.params : custom;
+      }
+
+      // ---- renders: each distinct sound is rendered once and kept as a
+      // blob URL (presets are pre-rendered in idle time after load).
+      function keyOf(params) {
+        return JSON.stringify(HuhAudio.normalizeParams ? HuhAudio.normalizeParams(params) : params);
+      }
+
+      function renderEntry(params) {
+        var key = keyOf(params);
+        var hit = cache[key];
+        if (hit) return hit;
+        var buf = HuhAudio.renderHuh(rawClip, params);
+        var entry = { key: key, url: URL.createObjectURL(HuhAudio.encodeWav(buf)), duration: buf.duration, buffer: buf };
+        // Caption letter times come from this render, once, not on Play.
+        try {
+          entry.caption = HuhAudio.captionTiming(buf.getChannelData(0), buf.sampleRate, params);
+        } catch (e) {
+          entry.caption = null;
+        }
+        cache[key] = entry;
+        cacheOrder.push(key);
+        while (cacheOrder.length > 40) {
+          var old = cacheOrder[0];
+          if ((current && current.key === old) || (queued && queued.key === old)) break;
+          cacheOrder.shift();
+          URL.revokeObjectURL(cache[old].url);
+          delete cache[old];
+        }
+        return entry;
+      }
+
+      function setSound(entry) {
+        if (current === entry) return;
+        current = entry;
+        audio.src = entry.url;
+        // Not playing: show the new caption whole (after the first play).
+        if (!active) setCaption(entry, captionShown);
+      }
+
+      // ---- caption: one span per letter, revealed by audio.currentTime.
+      function setCaption(entry, allOn) {
+        var cap = entry && entry.caption;
+        caption.textContent = '';
+        captionSpans = [];
+        captionTimes = cap ? cap.times.slice() : [];
+        if (!cap) return;
+        for (var i = 0; i < cap.text.length; i++) {
+          var sp = document.createElement('span');
+          sp.textContent = cap.text.charAt(i);
+          if (allOn) sp.className = 'on';
+          caption.appendChild(sp);
+          captionSpans.push(sp);
+        }
+        fitCaption();
+      }
+
+      function showCaptionAt(t) {
+        for (var i = 0; i < captionSpans.length; i++) {
+          // Small lead for the frame time.
+          var on = t + 0.012 >= captionTimes[i];
+          var cls = on ? 'on' : '';
+          if (captionSpans[i].className !== cls) captionSpans[i].className = cls;
+        }
+      }
+
+      function clipConfig() {
+        var c = clipText[clip] && clipText[clip].text;
+        return {
+          y: c && c.y === 'bottom' ? 'bottom' : 'top',
+          align: c && (c.align === 'left' || c.align === 'center') ? c.align : 'right',
+          width: c && c.width > 0 ? Math.min(0.92, c.width) : 0.44
+        };
+      }
+
+      function placeCaption() {
+        var c = clipConfig();
+        caption.className = 'caption meme ' + c.y + ' ' + c.align;
+        fitCaption();
+      }
+
+      // Largest size that fits the clip's text box (share of the width)
+      // and 22% of the video height.
+      function fitCaption() {
+        var w = stage.clientWidth;
+        var h = stage.clientHeight;
+        if (!w || !h || !captionSpans.length) return;
+        caption.style.fontSize = '100px';
+        var natural = caption.scrollWidth || 1;
+        var size = Math.min(h * 0.22, 100 * (w * clipConfig().width) / natural);
+        caption.style.fontSize = Math.max(10, Math.floor(size)) + 'px';
+      }
+      window.addEventListener('resize', fitCaption);
+      if (document.fonts && document.fonts.load) {
+        document.fonts.load('48px "Anton"').then(fitCaption, function () {});
+      }
+
+      // Load the sound for the current state. With swapNow it replaces the
+      // playing sound (Play is about to restart); otherwise it waits for
+      // the end of the current playback.
+      function renderNow(swapNow) {
+        if (!rawClip || !engineLoaded) return false;
+        var entry;
+        try {
+          entry = renderEntry(currentParams());
+        } catch (e) {
+          console.error(e);
+          return false;
+        }
+        if (!swapNow && active && !audio.paused && !audio.ended) {
+          queued = entry;
+          return false;
+        }
+        queued = null;
+        var changed = current !== entry;
+        setSound(entry);
+        return changed;
+      }
+
+      function flushQueued() {
+        if (!queued) return;
+        var q = queued;
+        queued = null;
+        setSound(q);
+      }
+
+      function scheduleRender(ms) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+          debounceTimer = 0;
+          engineReady.then(function () { renderNow(false); });
+        }, ms);
+      }
+
+      function currentSoundDuration() {
+        if (current && current.duration > 0) return current.duration;
+        var d = audio.duration;
+        return isFinite(d) && d > 0 ? d : 0;
+      }
+
+      function applyRate() {
+        var picture = video.duration;
+        var sound = currentSoundDuration();
+        if (!(isFinite(picture) && picture > 0 && sound > 0)) return;
+        var rate = picture / sound;
+        if (isFinite(rate) && rate > 0) {
+          baseRate = rate;
+          video.playbackRate = rate;
+        }
+      }
+
+      function play() {
+        var now = Date.now();
+        if (now - playStamp < 250) return;
+        playStamp = now;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = 0;
+        // The sound must match the current state; a missing render is done
+        // right here inside the tap.
+        clearTimeout(debounceTimer);
+        debounceTimer = 0;
+        renderNow(true);
+        active = true;
+        waitingForSound = true;
+        captionShown = true;
+        setCaption(current, false);
+        audio.pause();
+        audio.currentTime = 0;
+        video.pause();
+        try { video.currentTime = 0; } catch (e0) {}
+        video.muted = true;
+        applyRate();
+        var p;
+        try {
+          p = audio.play();
+        } catch (err) {
+          status.textContent = err && err.message ? err.message : String(err);
+          active = false;
+          waitingForSound = false;
+          return;
+        }
+        status.textContent = '';
+        if (p && typeof p.catch === 'function') {
+          p.catch(function (err) {
+            status.textContent = err && err.message ? err.message : String(err);
+            active = false;
+            video.pause();
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = 0;
+          });
+        }
+        function frame() {
+          if (!active) return;
+          video.muted = true;
+          if (audio.ended) {
+            active = false;
+            showCaptionAt(Infinity);
+            video.pause();
+            rafId = 0;
+            flushQueued();
+            return;
+          }
+          if (!waitingForSound && isFinite(audio.currentTime)) showCaptionAt(audio.currentTime);
+          if (!waitingForSound && isFinite(audio.currentTime) && !video.seeking) {
+            var expected = audio.currentTime * baseRate;
+            var drift = video.currentTime - expected;
+            if (Math.abs(drift) > 0.03) {
+              var remainSound = currentSoundDuration() - audio.currentTime;
+              var remainPicture = video.duration - video.currentTime;
+              if (remainSound > 0.04 && remainPicture > 0) {
+                var catchRate = remainPicture / remainSound;
+                if (isFinite(catchRate) && catchRate > 0) {
+                  video.playbackRate = Math.min(4, Math.max(0.25, catchRate));
+                }
+              }
+            } else if (Math.abs(video.playbackRate - baseRate) > 0.001) {
+              video.playbackRate = baseRate;
+            }
+          }
+          rafId = requestAnimationFrame(frame);
+        }
+        frame();
+      }
+
+      audio.addEventListener('ended', function () {
+        active = false;
+        showCaptionAt(Infinity);
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = 0;
+        video.pause();
+        flushQueued();
+      });
+      audio.addEventListener('playing', function () {
+        if (!active || !waitingForSound) return;
+        waitingForSound = false;
+        applyRate();
+        var started = video.play();
+        if (started && started.catch) started.catch(function (err) { console.error(err); });
+      });
+      audio.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
+      video.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
+
+      // ---- presets
+      function buildPresets() {
+        presetBox.innerHTML = '';
+        presets.forEach(function (p) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'preset';
+          b.setAttribute('data-preset', p.id);
+          b.setAttribute('aria-pressed', 'false');
+          var emo = document.createElement('span');
+          emo.className = 'emo';
+          emo.setAttribute('aria-hidden', 'true');
+          emo.textContent = p.emoji || '';
+          var name = document.createElement('span');
+          name.textContent = p.label || p.id;
+          b.appendChild(emo);
+          b.appendChild(name);
+          b.addEventListener('click', function () { choosePreset(p.id); });
+          presetBox.appendChild(b);
+        });
+        updateUi();
+      }
+
+      function choosePreset(id) {
+        var p = presetById(id);
+        if (!p) return;
+        selected = id;
+        showNearest(p.params);
+        updateUi();
+        play();
+      }
+
+      // ---- sliders
+      var inputs = {};
+      SLIDER_UI.forEach(function (s) {
+        var wrap = document.createElement('label');
+        wrap.className = 'slider';
+        var top = document.createElement('div');
+        top.className = 'top';
+        var name = document.createElement('span');
+        name.textContent = s[1];
+        var out = document.createElement('output');
+        top.appendChild(name);
+        top.appendChild(out);
+        var input = document.createElement('input');
+        input.type = 'range';
+        input.min = '-1';
+        input.max = '1';
+        input.step = '0.01';
+        input.value = '0';
+        input.id = 'sl-' + s[0];
+        var ends = document.createElement('div');
+        ends.className = 'ends';
+        ends.innerHTML = '<span></span><span>0 = plain</span><span></span>';
+        ends.children[0].textContent = s[2];
+        ends.children[2].textContent = s[3];
+        wrap.appendChild(top);
+        wrap.appendChild(input);
+        wrap.appendChild(ends);
+        sliderList.appendChild(wrap);
+        inputs[s[0]] = { input: input, out: out };
+        input.addEventListener('input', function () {
+          sliderMoved(s[0], Number(input.value), false);
+        });
+        input.addEventListener('change', function () {
+          sliderMoved(s[0], Number(input.value), true);
+        });
+      });
+
+      function fmt(v) {
+        var n = Math.round(v * 100) / 100;
+        if (n === 0) return '0';
+        return (n > 0 ? '+' : '\u2212') + Math.abs(n).toFixed(2);
+      }
+
+      function showOut(k) {
+        inputs[k].out.textContent = (sliderExact[k] ? '' : '\u2248 ') + fmt(sliders[k] || 0);
+        inputs[k].out.title = sliderExact[k] ? '' : 'Nearest setting; this sound is tuned beyond the slider.';
+      }
+
+      function syncSliders() {
+        for (var k in inputs) {
+          inputs[k].input.value = String(sliders[k] || 0);
+          showOut(k);
+        }
+      }
+
+      // Sliders show the nearest setting for full params (\u2248 if not exact).
+      function showNearest(params) {
+        var n = HuhPresets.nearest(params);
+        for (var k in inputs) {
+          sliders[k] = n[k];
+          sliderExact[k] = !!n.exact[k];
+        }
+        syncSliders();
+      }
+
+      function sliderMoved(name, value, final) {
+        // Snap to 0 (plain) near the middle.
+        if (Math.abs(value) < 0.03) value = 0;
+        var from = currentParams();
+        if (selected) {
+          // Leaving a preset: keep its params, change only this slider's.
+          basedOn = selected;
+          selected = null;
+        }
+        custom = HuhPresets.applySlider(from, name, value);
+        sliders[name] = value;
+        sliderExact[name] = true;
+        showOut(name);
+        if (final) inputs[name].input.value = String(value);
+        updateUi();
+        scheduleRender(final ? 0 : 120);
+      }
+
+      function isPlainParams(params) {
+        return JSON.stringify(HuhAudio.normalizeParams(params)) === JSON.stringify(HuhAudio.normalizeParams({}));
+      }
+
+      document.getElementById('plain').addEventListener('click', function () {
+        basedOn = null;
+        custom = HuhPresets.fromSliders({});
+        choosePreset('original');
+      });
+
+      function updateUi() {
+        [].forEach.call(presetBox.querySelectorAll('.preset'), function (b) {
+          b.setAttribute('aria-pressed', b.getAttribute('data-preset') === selected ? 'true' : 'false');
+        });
+        var p = selected ? presetById(selected) : null;
+        var from = basedOn ? presetById(basedOn) : null;
+        if (p) modeLabel.textContent = 'Preset: ' + p.label;
+        else if (isPlainParams(custom)) modeLabel.textContent = 'Original huh';
+        else modeLabel.textContent = from ? 'Custom (from ' + from.label + ')' : 'Custom';
+      }
+
+      // ---- tabs
+      var tabs = [document.getElementById('tab-presets'), document.getElementById('tab-sliders')];
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          tabs.forEach(function (o) {
+            var on = o === t;
+            o.setAttribute('aria-selected', on ? 'true' : 'false');
+            document.getElementById(o.getAttribute('aria-controls')).hidden = !on;
+          });
+        });
+      });
+
+      // ---- clip picker (the voice is the same for every clip)
+      picks.forEach(function (b) {
+        b.addEventListener('click', function () {
+          var next = b.getAttribute('data-clip');
+          var restart = active;
+          if (next !== clip) {
+            clip = next;
+            picks.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+            video.pause();
+            video.src = '/clips/' + clip + '.mp4';
+            video.load();
+            video.muted = true;
+            placeCaption();
+          }
+          if (restart) play();
+        });
+      });
+
+      var playButton = document.getElementById('play');
+      playButton.addEventListener('click', play);
+      playButton.addEventListener('touchend', function (e) {
+        if (e.cancelable) e.preventDefault();
+        play();
+      });
+
+      window.addEventListener('keydown', function (e) {
+        if (e.key !== ' ' && e.code !== 'Space') return;
+        if (e.repeat) return;
+        var t = e.target;
+        if (t) {
+          var tag = (t.tagName || '').toLowerCase();
+          var typ = (t.type || '').toLowerCase();
+          if (tag === 'input' && typ !== 'range') return;
+          if (tag === 'textarea' || tag === 'select' || t.isContentEditable) return;
+        }
+        e.preventDefault();
+        play();
+      }, true);
+
+      // Pre-render each preset once, one per idle slot, so a preset tap
+      // plays at once.
+      function prerender(list) {
+        var i = 0;
+        var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 60); };
+        function next() {
+          if (i >= list.length) return;
+          var p = list[i++];
+          try { renderEntry(p.params); } catch (e) { console.error(e); }
+          idle(next, { timeout: 400 });
+        }
+        idle(next, { timeout: 400 });
+      }
+
+      Promise.all([bytesReady, engineReady]).then(function (parts) {
+        return HuhAudio.decodeWavOffline(parts[0]);
+      }).then(function (buf) {
+        rawClip = buf;
+        renderNow(false);
+        return presetsReady;
+      }).then(function () {
+        prerender(presets.slice());
+      }).catch(function (err) {
+        console.error(err);
+        if (!status.textContent) status.textContent = err && err.message ? err.message : String(err);
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var audio = document.getElementById('voice');
+      function setPlaying(on) { document.body.classList.toggle('is-playing', on); }
+      audio.addEventListener('playing', function () { setPlaying(true); });
+      ['pause', 'ended'].forEach(function (ev) { audio.addEventListener(ev, function () { setPlaying(false); }); });
+      window.HuhSkin = {
+        selected: function () {
+          var b = document.querySelector('#presets .preset[aria-pressed="true"]');
+          if (!b) return null;
+          var all = [].slice.call(document.querySelectorAll('#presets .preset'));
+          return { el: b, index: all.indexOf(b), id: b.getAttribute('data-preset'),
+                   label: (b.lastChild && b.lastChild.textContent) || '', emoji: (b.firstChild && b.firstChild.textContent) || '' };
+        },
+        values: function () {
+          return [].map.call(document.querySelectorAll('#slider-list .slider output'), function (o) { return o.textContent || '0'; });
+        },
+        clip: function () {
+          var b = document.querySelector('.clips button[aria-pressed="true"]');
+          return b ? b.getAttribute('data-clip') : 'A';
+        },
+        mode: function () { var m = document.getElementById('mode'); return m ? m.textContent : ''; },
+        onChange: function (fn) {
+          var mo = new MutationObserver(function () { fn(); });
+          mo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-selected', 'hidden'], childList: true, characterData: true });
+          document.addEventListener('input', fn);
+          fn();
+        }
+      };
+    })();
+  </script>
+  <script>
+    (function () {
+      var pad = document.getElementById('lcd-pad'), vals = document.getElementById('lcd-vals');
+      function set(el, t) { if (el.textContent !== t) el.textContent = t; }
+      HuhSkin.onChange(function () {
+        var s = HuhSkin.selected();
+        var v = HuhSkin.values();
+        set(pad, s ? 'PAD ' + String(s.index + 1).padStart(2, '0') + ' ' + s.label.replace(' huh', '').toUpperCase()
+                   : HuhSkin.mode().toUpperCase().replace('CUSTOM (FROM ', 'EDIT ').replace(')', ''));
+        set(vals, 'CAT ' + HuhSkin.clip() + (v.length ? '  P' + v[0] + ' Q' + v[2] : ''));
+      });
+    })();
+  </script>
+</body>
+</html>
