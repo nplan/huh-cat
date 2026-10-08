@@ -1,6 +1,40 @@
 {
   "version": 1,
   "note": "Shared huh presets. Edit in /lab (saved locally), then Export and commit this file.",
+  "clips": {
+    "A": {
+      "note": "cat left of center, head top-left; door/wall free on the right",
+      "text": {
+        "y": "top",
+        "align": "right",
+        "width": 0.42
+      }
+    },
+    "B": {
+      "note": "same framing as A",
+      "text": {
+        "y": "top",
+        "align": "right",
+        "width": 0.42
+      }
+    },
+    "C": {
+      "note": "cat on the left, ears at the top; blanket free bottom-right",
+      "text": {
+        "y": "bottom",
+        "align": "right",
+        "width": 0.42
+      }
+    },
+    "D": {
+      "note": "cat left of center, reaches ~58% across; blanket bottom-right",
+      "text": {
+        "y": "bottom",
+        "align": "right",
+        "width": 0.36
+      }
+    }
+  },
   "presets": [
     {
       "id": "confused",

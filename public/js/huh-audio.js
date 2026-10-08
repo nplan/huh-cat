@@ -549,6 +549,66 @@
     return res;
   }
 
+  /**
+   * Letter timing for the "huuuh?" caption, from the rendered sound's
+   * envelope (10 ms RMS frames; cheap, done once per render, not on Play).
+   * h at the onset (first frame within 30 dB of the peak), the u's spread
+   * over the loud vowel (within 20 dB), one u per ~85 ms (2..8), the last
+   * h where the vowel fades, and ? at the pitch peak of a rise or else
+   * at the end. Times are seconds on the rendered sound.
+   */
+  var CAPTION_U_SEC = 0.085;
+  function captionTiming(samples, sampleRate, params) {
+    var p = normalizeParams(params);
+    var n = samples ? samples.length : 0;
+    var dur = n / sampleRate;
+    var hop = Math.max(1, Math.round(sampleRate * 0.01));
+    var frames = [];
+    var peak = 0;
+    for (var i = 0; i + hop <= n; i += hop) {
+      var e = 0;
+      for (var j = i; j < i + hop; j++) e += samples[j] * samples[j];
+      var r = Math.sqrt(e / hop);
+      frames.push(r);
+      if (r > peak) peak = r;
+    }
+    var onset = 0;
+    var end = dur;
+    var vStart = -1;
+    var vEnd = -1;
+    if (peak > 0) {
+      var quiet = peak * Math.pow(10, -30 / 20);
+      var loud = peak * Math.pow(10, -20 / 20);
+      var first = -1;
+      var last = -1;
+      for (var f = 0; f < frames.length; f++) {
+        if (frames[f] >= quiet) { if (first < 0) first = f; last = f; }
+        if (frames[f] >= loud) { if (vStart < 0) vStart = f; vEnd = f; }
+      }
+      if (first >= 0) { onset = first * 0.01; end = Math.min(dur, (last + 1) * 0.01); }
+    }
+    var a = vStart >= 0 ? vStart * 0.01 : onset + (end - onset) * 0.2;
+    var b = vEnd >= 0 ? (vEnd + 1) * 0.01 : onset + (end - onset) * 0.85;
+    if (a < onset) a = onset;
+    if (b <= a) b = Math.min(end, a + 0.05);
+    var count = Math.max(2, Math.min(8, Math.round((b - a) / CAPTION_U_SEC)));
+    var times = [onset];
+    for (var k = 0; k < count; k++) times.push(a + (b - a) * k / count);
+    var lastH = Math.max(a, b - 0.02);
+    times.push(lastH);
+    var q = end - 0.01;
+    if (p.riseSemitones > p.fallSemitones * 0.5 && p.riseSemitones > 0 && p.peakAt >= 0.5) {
+      q = Math.max(lastH, p.peakAt * dur);
+    }
+    q = Math.max(lastH, Math.min(q, dur - 0.005));
+    times.push(q);
+    var text = 'h';
+    for (var u = 0; u < count; u++) text += 'u';
+    text += 'h?';
+    for (var t = 0; t < times.length; t++) times[t] = Math.round(times[t] * 1000) / 1000;
+    return { text: text, times: times, onset: onset, vowelStart: a, vowelEnd: b, end: end, duration: dur };
+  }
+
   function renderMono(input, sampleRate, params) {
     var p = normalizeParams(params);
     var rb = rubberband();
@@ -983,6 +1043,7 @@
     _analyzeVoice: analyzeVoice,
     _psolaContour: psolaContour,
     normalizeParams: normalizeParams,
+    captionTiming: captionTiming,
     vowelPoint: vowelPoint,
     legacyVowel: legacyVowel,
     warmVowel: warmVowel,

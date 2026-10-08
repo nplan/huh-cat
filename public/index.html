@@ -4,7 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Huuuh?</title>
+  <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
   <style>
+    /* Anton (SIL Open Font License 1.1, fonts/anton/OFL.txt), Basic Latin subset. */
+    @font-face {
+      font-family: "Anton";
+      src: url("fonts/anton/anton-latin.woff2") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
     body {
@@ -19,18 +28,41 @@
       padding: max(0.9rem, env(safe-area-inset-top)) 0.9rem calc(1.5rem + env(safe-area-inset-bottom));
       text-align: center;
     }
-    .meme { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }
+    .meme { font-family: "Anton", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; font-weight: 400; }
     h1 {
       margin: 0 0 0.7rem;
-      font-size: clamp(2.6rem, 12vw, 5.5rem); line-height: 0.9;
-      letter-spacing: -0.02em; font-weight: 900;
-      color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill;
+      font-size: clamp(2.6rem, 12vw, 5.5rem); line-height: 1;
+      letter-spacing: 0.01em;
+      color: #fff;
+      text-shadow: 0 0 0.07em #000, 0.04em 0.04em 0 #000, -0.04em 0.04em 0 #000, 0.04em -0.04em 0 #000, -0.04em -0.04em 0 #000,
+        0.055em 0 0 #000, -0.055em 0 0 #000, 0 0.055em 0 #000, 0 -0.055em 0 #000;
     }
     .stage {
       position: relative; width: 100%; aspect-ratio: 16 / 9;
       border-radius: 12px; overflow: hidden; background: #000;
     }
     .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* Meme caption over the video: drawn as text, not burned in. Thick
+       black outline from layered shadows (works the same in Safari). */
+    .caption {
+      position: absolute; margin: 0; pointer-events: none; white-space: nowrap;
+      font-family: "Anton", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      font-weight: 400; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase;
+      color: #fff; font-size: 48px;
+      text-shadow:
+        0.065em 0 0 #000, -0.065em 0 0 #000, 0 0.065em 0 #000, 0 -0.065em 0 #000,
+        0.046em 0.046em 0 #000, -0.046em 0.046em 0 #000, 0.046em -0.046em 0 #000, -0.046em -0.046em 0 #000,
+        0.06em 0.025em 0 #000, -0.06em 0.025em 0 #000, 0.06em -0.025em 0 #000, -0.06em -0.025em 0 #000,
+        0.025em 0.06em 0 #000, -0.025em 0.06em 0 #000, 0.025em -0.06em 0 #000, -0.025em -0.06em 0 #000,
+        0 0 0.04em #000;
+    }
+    .caption.top { top: 5%; }
+    .caption.bottom { bottom: 6%; }
+    .caption.left { left: 4%; text-align: left; }
+    .caption.right { right: 4%; text-align: right; }
+    .caption.center { left: 0; right: 0; text-align: center; }
+    .caption span { opacity: 0; }
+    .caption span.on { opacity: 1; }
     #voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     .bar { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin: 0.75rem 0 0; }
     .clips { display: flex; align-items: center; gap: 0.3rem; }
@@ -93,6 +125,7 @@
     <h1 class="meme">HUUUH?</h1>
     <div class="stage" id="stage">
       <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
+      <p class="caption meme top right" id="caption" aria-hidden="true"></p>
     </div>
     <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
     <div class="bar">
@@ -125,7 +158,7 @@
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
-  <script src="js/huh-audio.js?v=19"></script>
+  <script src="js/huh-audio.js?v=20"></script>
   <script src="js/huh-presets.js?v=1"></script>
   <script>
     (function () {
@@ -145,6 +178,12 @@
       var modeLabel = document.getElementById('mode');
       var clip = 'A';
       var presets = [];
+      var clipText = {};
+      var stage = document.getElementById('stage');
+      var caption = document.getElementById('caption');
+      var captionSpans = [];
+      var captionTimes = [];
+      var captionShown = false;
       var selected = null;
       var sliders = { pitch: 0, length: 0, question: 0, intensity: 0, vowel: 0 };
       var active = false;
@@ -164,6 +203,8 @@
       var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
       var presetsReady = HuhPresets.load('presets.json').then(function (r) {
         presets = (r.data && r.data.presets) || [];
+        clipText = (r.data && r.data.clips) || {};
+        placeCaption();
         buildPresets();
         return r.data;
       }, function (err) {
@@ -197,6 +238,12 @@
         if (hit) return hit;
         var buf = HuhAudio.renderHuh(rawClip, params);
         var entry = { key: key, url: URL.createObjectURL(HuhAudio.encodeWav(buf)), duration: buf.duration, buffer: buf };
+        // Caption letter times come from this render, once, not on Play.
+        try {
+          entry.caption = HuhAudio.captionTiming(buf.getChannelData(0), buf.sampleRate, params);
+        } catch (e) {
+          entry.caption = null;
+        }
         cache[key] = entry;
         cacheOrder.push(key);
         while (cacheOrder.length > 40) {
@@ -213,6 +260,65 @@
         if (current === entry) return;
         current = entry;
         audio.src = entry.url;
+        // Not playing: show the new caption whole (after the first play).
+        if (!active) setCaption(entry, captionShown);
+      }
+
+      // ---- caption: one span per letter, revealed by audio.currentTime.
+      function setCaption(entry, allOn) {
+        var cap = entry && entry.caption;
+        caption.textContent = '';
+        captionSpans = [];
+        captionTimes = cap ? cap.times.slice() : [];
+        if (!cap) return;
+        for (var i = 0; i < cap.text.length; i++) {
+          var sp = document.createElement('span');
+          sp.textContent = cap.text.charAt(i);
+          if (allOn) sp.className = 'on';
+          caption.appendChild(sp);
+          captionSpans.push(sp);
+        }
+        fitCaption();
+      }
+
+      function showCaptionAt(t) {
+        for (var i = 0; i < captionSpans.length; i++) {
+          // Small lead for the frame time.
+          var on = t + 0.012 >= captionTimes[i];
+          var cls = on ? 'on' : '';
+          if (captionSpans[i].className !== cls) captionSpans[i].className = cls;
+        }
+      }
+
+      function clipConfig() {
+        var c = clipText[clip] && clipText[clip].text;
+        return {
+          y: c && c.y === 'bottom' ? 'bottom' : 'top',
+          align: c && (c.align === 'left' || c.align === 'center') ? c.align : 'right',
+          width: c && c.width > 0 ? Math.min(0.92, c.width) : 0.44
+        };
+      }
+
+      function placeCaption() {
+        var c = clipConfig();
+        caption.className = 'caption meme ' + c.y + ' ' + c.align;
+        fitCaption();
+      }
+
+      // Largest size that fits the clip's text box (share of the width)
+      // and 22% of the video height.
+      function fitCaption() {
+        var w = stage.clientWidth;
+        var h = stage.clientHeight;
+        if (!w || !h || !captionSpans.length) return;
+        caption.style.fontSize = '100px';
+        var natural = caption.scrollWidth || 1;
+        var size = Math.min(h * 0.22, 100 * (w * clipConfig().width) / natural);
+        caption.style.fontSize = Math.max(10, Math.floor(size)) + 'px';
+      }
+      window.addEventListener('resize', fitCaption);
+      if (document.fonts && document.fonts.load) {
+        document.fonts.load('48px "Anton"').then(fitCaption, function () {});
       }
 
       // Load the sound for the current state. With swapNow it replaces the
@@ -282,6 +388,8 @@
         renderNow(true);
         active = true;
         waitingForSound = true;
+        captionShown = true;
+        setCaption(current, false);
         audio.pause();
         audio.currentTime = 0;
         video.pause();
@@ -312,11 +420,13 @@
           video.muted = true;
           if (audio.ended) {
             active = false;
+            showCaptionAt(Infinity);
             video.pause();
             rafId = 0;
             flushQueued();
             return;
           }
+          if (!waitingForSound && isFinite(audio.currentTime)) showCaptionAt(audio.currentTime);
           if (!waitingForSound && isFinite(audio.currentTime) && !video.seeking) {
             var expected = audio.currentTime * baseRate;
             var drift = video.currentTime - expected;
@@ -340,6 +450,7 @@
 
       audio.addEventListener('ended', function () {
         active = false;
+        showCaptionAt(Infinity);
         if (rafId) cancelAnimationFrame(rafId);
         rafId = 0;
         video.pause();
@@ -492,6 +603,7 @@
             video.src = '/clips/' + clip + '.mp4';
             video.load();
             video.muted = true;
+            placeCaption();
           }
           if (restart) play();
         });
