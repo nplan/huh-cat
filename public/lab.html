@@ -56,22 +56,10 @@
     .pick-label { margin: 0.2rem 0 0.4rem; color: #9a9a9a; font-size: 0.85rem; }
     .picker {
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      grid-template-rows: auto auto auto;
+      grid-template-columns: repeat(auto-fill, minmax(7.4rem, 1fr));
       gap: 0.4rem;
-      align-items: stretch;
       margin: 0 0 1rem;
     }
-    .axis {
-      align-self: center;
-      justify-self: center;
-      color: #7d7d7d;
-      font-size: 0.78rem;
-      text-align: center;
-      white-space: nowrap;
-    }
-    .axis-left { justify-self: start; }
-    .axis-right { justify-self: end; }
     .tile {
       display: flex;
       flex-direction: column;
@@ -92,15 +80,8 @@
     .tile .state { font-size: 0.78rem; color: #9a9a9a; }
     .tile .state.tuned { color: #ffb15e; }
     .tile:hover { border-color: #6a9a74; }
-    .tile.center {
-      min-height: 2.75rem;
-      align-self: center;
-      align-items: center;
-      text-align: center;
-      padding: 0.35rem 0.55rem;
-      font-size: 0.85rem;
-    }
-    .tile.center .name { font-weight: 600; }
+    .tile.fixed { border-style: dashed; }
+    .tile .emo { font-size: 1.1rem; line-height: 1; }
     .tile[aria-pressed="true"] {
       background: #8fd3ff;
       border-color: #e8f7ff;
@@ -141,7 +122,14 @@
       gap: 0.5rem;
       margin: 0.8rem 0 0;
     }
-    .edit-actions button, .actions button { min-height: 44px; }
+    .edit-actions button, .actions button, .share-actions button { min-height: 44px; }
+    .share { margin: 1.2rem 0 0; padding: 0.7rem 0 0; border-top: 1px solid #2a2a2a; }
+    .share-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .share-actions button {
+      background: #1e1e1e; color: #eee; border: 1px solid #3a3a3a; border-radius: 6px;
+      cursor: pointer; padding: 0.45rem 0.9rem; font: inherit;
+    }
+    #slider-equiv { color: #9a9a9a; font-size: 0.82rem; margin: 0.35rem 0 0; font-variant-numeric: tabular-nums; }
     .edit-actions button {
       background: #1e1e1e;
       color: #eee;
@@ -173,7 +161,6 @@
       .row span { font-size: 0.85rem; overflow-wrap: anywhere; }
       .tile { padding: 0.4rem 0.5rem; }
       .tile .name { font-size: 0.9rem; }
-      .tile.center { font-size: 0.8rem; padding: 0.3rem 0.4rem; }
       .editor { padding: 0.65rem 0.6rem 0.75rem; }
     }
   </style>
@@ -181,27 +168,18 @@
 <body>
   <main>
     <h1>huh lab</h1>
-    <p class="pick-label" id="pick-label">Pick the pad corner to edit</p>
-    <div class="picker" role="group" aria-labelledby="pick-label">
-      <button type="button" class="tile" data-corner="unbotheredShocked" aria-pressed="false" style="grid-area: 1 / 1"><span class="name">Unbothered + Shocked</span><span class="state"></span></button>
-      <span class="axis" style="grid-area: 1 / 2">&uarr; Shocked</span>
-      <button type="button" class="tile" data-corner="annoyedShocked" aria-pressed="false" style="grid-area: 1 / 3"><span class="name">Annoyed + Shocked</span><span class="state"></span></button>
-      <span class="axis axis-left" style="grid-area: 2 / 1">&larr; Unbothered</span>
-      <button type="button" class="tile center" data-corner="center" aria-pressed="false" style="grid-area: 2 / 2"><span class="name">Center</span><span class="state"></span></button>
-      <span class="axis axis-right" style="grid-area: 2 / 3">Annoyed &rarr;</span>
-      <button type="button" class="tile" data-corner="unbotheredDry" aria-pressed="false" style="grid-area: 3 / 1"><span class="name">Unbothered + Dry</span><span class="state"></span></button>
-      <span class="axis" style="grid-area: 3 / 2">&darr; Dry</span>
-      <button type="button" class="tile" data-corner="annoyedDry" aria-pressed="false" style="grid-area: 3 / 3"><span class="name">Annoyed + Dry</span><span class="state"></span></button>
-    </div>
+    <p class="pick-label" id="pick-label">Pick the preset to edit (presets.json, with this browser's saved edits on top)</p>
+    <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
     <section class="editor" aria-labelledby="editing-title">
       <div class="editor-head">
-        <h2 id="editing-title">Editing: <strong id="editing-name">Center (default, fixed)</strong></h2>
+        <h2 id="editing-title">Editing: <strong id="editing-name">Default (plain huh, fixed)</strong></h2>
         <span class="dirty" id="dirty" hidden>Unsaved changes</span>
       </div>
       <p class="note" id="editing-note"></p>
       <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel under the pitch knob (preview only, not saved)</label>
       <div id="params"></div>
       <p class="vowel-readout" id="vowel-readout"></p>
+      <p id="slider-equiv"></p>
       <div class="edit-actions">
         <button type="button" id="save" disabled>Save</button>
         <button type="button" id="revert" disabled>Revert</button>
@@ -215,10 +193,19 @@
       <button type="button" id="play">Play</button>
     </div>
     <p id="status"></p>
+    <section class="share" aria-labelledby="share-title">
+      <h2 id="share-title" style="font-size:1rem;margin:0 0 0.3rem">Presets file</h2>
+      <p class="hint" id="share-note">Saved edits live in this browser only (localStorage). Export writes presets.json with them included; commit that file to share it.</p>
+      <div class="share-actions">
+        <button type="button" id="export">Export presets.json</button>
+        <button type="button" id="clear-local">Clear local overrides</button>
+      </div>
+    </section>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
-  <script src="js/huh-audio.js?v=18"></script>
+  <script src="js/huh-audio.js?v=19"></script>
+  <script src="js/huh-presets.js?v=1"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -235,14 +222,12 @@
       var rawClip = null;
       var decoding = null;
       var engineReadyFlag = false;
-      var CORNER_IDS = ['unbotheredDry', 'annoyedDry', 'unbotheredShocked', 'annoyedShocked'];
-      var CORNER_LABELS = {
-        unbotheredDry: 'Unbothered + Dry',
-        annoyedDry: 'Annoyed + Dry',
-        unbotheredShocked: 'Unbothered + Shocked',
-        annoyedShocked: 'Annoyed + Shocked'
-      };
-      var corners = loadCorners();
+      // Presets: presets.json (base) with this browser's saved edits
+      // (localStorage 'huh-presets') on top. 'default' is the plain huh.
+      var DEFAULT_ID = 'default';
+      var basePresets = null;
+      var presetList = [];
+      var overrides = HuhPresets.readOverrides();
 
       function blankCorner() {
         var params = {};
@@ -265,27 +250,16 @@
         return params;
       }
 
-      function loadCorners() {
-        var stored = {};
-        try {
-          stored = JSON.parse(localStorage.getItem('huh-corners') || 'null') || {};
-        } catch (e) {
-          stored = {};
-        }
-        var out = {};
-        CORNER_IDS.forEach(function (id) {
-          out[id] = copyCorner(stored[id]);
-        });
-        return out;
+      function presetMeta(id) {
+        for (var i = 0; i < presetList.length; i++) if (presetList[i].id === id) return presetList[i];
+        return null;
       }
 
-      function cornerPayload() {
-        var out = {};
-        CORNER_IDS.forEach(function (id) {
-          out[id] = copyCorner(corners[id]);
-        });
-        return out;
+      function baseParams(id) {
+        var p = presetMeta(id);
+        return p ? copyCorner(p.params) : blankCorner();
       }
+
       var box = document.getElementById('params');
       var status = document.getElementById('status');
       var audio = document.getElementById('voice');
@@ -641,20 +615,37 @@
         onPlayClick();
       }, true);
 
-      var CENTER = 'center';
-      var CENTER_LABEL = 'Center (default, fixed)';
-      var SELECT_KEY = 'huh-lab-corner';
-      var selected = CENTER;
+      var SELECT_KEY = 'huh-lab-preset';
+      var selected = DEFAULT_ID;
       var baseline = blankCorner();
       var saveButton = document.getElementById('save');
       var revertButton = document.getElementById('revert');
       var dirtyMark = document.getElementById('dirty');
       var editingName = document.getElementById('editing-name');
       var editingNote = document.getElementById('editing-note');
-      var tiles = document.querySelectorAll('.picker .tile');
+      var picker = document.getElementById('picker');
+      var sliderEquiv = document.getElementById('slider-equiv');
 
       function labelOf(id) {
-        return id === CENTER ? CENTER_LABEL : CORNER_LABELS[id];
+        if (id === DEFAULT_ID) return 'Default (plain huh, fixed)';
+        var p = presetMeta(id);
+        return p ? p.label : id;
+      }
+
+      function buildPicker() {
+        picker.innerHTML = '';
+        var list = [{ id: DEFAULT_ID, label: 'Default', emoji: '' }].concat(presetList);
+        list.forEach(function (p) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'tile' + (p.id === DEFAULT_ID ? ' fixed' : '');
+          b.setAttribute('data-preset', p.id);
+          b.setAttribute('aria-pressed', 'false');
+          b.innerHTML = '<span class="name"></span><span class="state"></span>';
+          b.querySelector('.name').textContent = (p.emoji ? p.emoji + ' ' : '') + p.label;
+          b.addEventListener('click', function () { select(p.id); });
+          picker.appendChild(b);
+        });
       }
 
       function sameValues(a, b) {
@@ -675,7 +666,9 @@
       }
 
       function storedValues(id) {
-        return id === CENTER ? blankCorner() : copyCorner(corners[id]);
+        if (id === DEFAULT_ID) return blankCorner();
+        if (overrides[id]) return copyCorner(overrides[id]);
+        return baseParams(id);
       }
 
       function isDirty() {
@@ -699,44 +692,52 @@
         updateUi();
       }
 
+      function fmtSlider(v) {
+        return (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(2);
+      }
+
       function updateUi() {
         var dirty = isDirty();
-        var center = selected === CENTER;
-        var defaults = blankCorner();
-        tiles.forEach(function (tile) {
-          var id = tile.getAttribute('data-corner');
+        var fixed = selected === DEFAULT_ID;
+        [].forEach.call(picker.querySelectorAll('.tile'), function (tile) {
+          var id = tile.getAttribute('data-preset');
           var on = id === selected;
           tile.setAttribute('aria-pressed', on ? 'true' : 'false');
           var state = tile.querySelector('.state');
           var text;
-          if (id === CENTER) {
-            text = 'default, fixed';
+          if (id === DEFAULT_ID) {
+            text = 'plain huh, fixed';
             state.className = 'state';
+          } else if (overrides[id]) {
+            text = 'local edit';
+            state.className = 'state tuned';
           } else {
-            var tuned = !sameValues(corners[id], defaults);
-            text = tuned ? 'tuned' : 'default';
-            state.className = tuned ? 'state tuned' : 'state';
+            text = 'presets.json';
+            state.className = 'state';
           }
           if (on && dirty) text += ' \u00b7 unsaved';
           state.textContent = text;
         });
         editingName.textContent = labelOf(selected);
         dirtyMark.hidden = !dirty;
-        dirtyMark.textContent = center ? 'Experiment, not saved' : 'Unsaved changes';
-        editingNote.textContent = center
-          ? 'The center is always the default huh. You can move the knobs to experiment, but the center cannot be saved.'
-          : 'Knob changes are not saved until you press Save.';
-        saveButton.textContent = center ? 'Save (center is fixed)' : 'Save to ' + CORNER_LABELS[selected];
-        saveButton.disabled = center || !dirty;
+        dirtyMark.textContent = fixed ? 'Experiment, not saved' : 'Unsaved changes';
+        editingNote.textContent = fixed
+          ? 'Default is always the plain huh. You can move the knobs to experiment, but it cannot be saved.'
+          : 'Knob changes are not saved until you press Save. Save keeps them in this browser; Export to share.';
+        saveButton.textContent = fixed ? 'Save (default is fixed)' : 'Save ' + labelOf(selected);
+        saveButton.disabled = fixed || !dirty;
         revertButton.disabled = !dirty;
+        var sl = HuhPresets.toSliders(knobValues());
+        sliderEquiv.textContent = 'Meme-page sliders \u2248 pitch ' + fmtSlider(sl.pitch) + ' \u00b7 length ' + fmtSlider(sl.length)
+          + ' \u00b7 question ' + fmtSlider(sl.question) + ' \u00b7 intensity ' + fmtSlider(sl.intensity) + ' \u00b7 vowel ' + fmtSlider(sl.vowel);
       }
 
       function select(id) {
-        if (id !== CENTER && CORNER_IDS.indexOf(id) < 0) id = CENTER;
+        if (id !== DEFAULT_ID && !presetMeta(id)) id = DEFAULT_ID;
         if (id === selected) return;
         if (isDirty()) {
-          var question = selected === CENTER
-            ? 'Discard your center experiment and switch to ' + labelOf(id) + '?'
+          var question = selected === DEFAULT_ID
+            ? 'Discard your default experiment and switch to ' + labelOf(id) + '?'
             : 'Discard unsaved changes to ' + labelOf(selected) + ' and switch to ' + labelOf(id) + '?';
           if (!window.confirm(question)) return;
         }
@@ -744,28 +745,23 @@
         try {
           localStorage.setItem(SELECT_KEY, id);
         } catch (e) {}
-        corners = loadCorners();
+        overrides = HuhPresets.readOverrides();
         loadStored();
       }
 
-      tiles.forEach(function (tile) {
-        tile.addEventListener('click', function () {
-          select(tile.getAttribute('data-corner'));
-        });
-      });
-
       saveButton.addEventListener('click', function () {
-        if (selected === CENTER || !isDirty()) return;
+        if (selected === DEFAULT_ID || !isDirty()) return;
         var id = selected;
         var values = knobValues();
-        corners = loadCorners();
-        corners[id] = values;
+        var next = HuhPresets.readOverrides();
+        next[id] = values;
         try {
-          localStorage.setItem('huh-corners', JSON.stringify(cornerPayload()));
-          status.textContent = 'Saved ' + CORNER_LABELS[id];
+          HuhPresets.writeOverrides(next);
+          overrides = next;
+          status.textContent = 'Saved ' + labelOf(id) + ' in this browser';
         } catch (err) {
-          corners = loadCorners();
-          status.textContent = 'Could not save ' + CORNER_LABELS[id];
+          overrides = HuhPresets.readOverrides();
+          status.textContent = 'Could not save ' + labelOf(id);
           updateUi();
           return;
         }
@@ -774,7 +770,7 @@
       });
 
       revertButton.addEventListener('click', function () {
-        corners = loadCorners();
+        overrides = HuhPresets.readOverrides();
         loadStored();
         status.textContent = 'Reverted to saved ' + labelOf(selected);
       });
@@ -782,17 +778,59 @@
       document.getElementById('reset').addEventListener('click', function () {
         setKnobs(blankCorner());
         updateUi();
-        if (selected !== CENTER && isDirty()) status.textContent = 'Default values loaded. Press Save to apply them to ' + CORNER_LABELS[selected] + '.';
+        if (selected !== DEFAULT_ID && isDirty()) status.textContent = 'Plain huh values loaded. Press Save to apply them to ' + labelOf(selected) + '.';
       });
 
-      (function restoreSelection() {
+      document.getElementById('export').addEventListener('click', function () {
+        if (!basePresets) { status.textContent = 'presets.json has not loaded'; return; }
+        var text = HuhPresets.exportJson(basePresets, HuhPresets.readOverrides());
+        var a = document.createElement('a');
+        var url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+        a.href = url;
+        a.download = 'presets.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        window.__exported = text;
+        status.textContent = 'Exported presets.json (downloaded)';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            status.textContent = 'Exported presets.json (downloaded and copied to the clipboard)';
+          }, function () {});
+        }
+      });
+
+      document.getElementById('clear-local').addEventListener('click', function () {
+        var n = Object.keys(HuhPresets.readOverrides()).length;
+        if (!window.confirm(n ? 'Clear the ' + n + ' local preset edit(s) in this browser and use presets.json?' : 'There are no local edits. Reload presets.json?')) return;
+        HuhPresets.clearOverrides();
+        overrides = {};
+        loadStored();
+        status.textContent = 'Local overrides cleared; using presets.json';
+      });
+
+      buildPicker();
+      loadStored();
+      HuhPresets.load('presets.json').then(function (r) {
+        basePresets = r.base;
+        presetList = (r.base && r.base.presets) || [];
+        overrides = HuhPresets.readOverrides();
+        buildPicker();
         var saved = null;
         try {
           saved = localStorage.getItem(SELECT_KEY);
         } catch (e) {}
-        selected = saved === CENTER || CORNER_IDS.indexOf(saved) >= 0 ? saved : CENTER;
-        loadStored();
-      })();
+        var want = saved && (saved === DEFAULT_ID || presetMeta(saved)) ? saved : DEFAULT_ID;
+        if (want !== selected && !isDirty()) {
+          selected = want;
+          loadStored();
+        } else {
+          updateUi();
+        }
+      }, function (err) {
+        status.textContent = 'presets.json did not load: ' + (err && err.message ? err.message : err);
+      });
 
       window.addEventListener('resize', draw);
       draw();

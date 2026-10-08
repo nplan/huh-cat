@@ -2,104 +2,102 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Huuuh?</title>
   <style>
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      margin: 0; min-height: 100vh;
       background: linear-gradient(160deg, #1a0533 0%, #0b1b3a 45%, #062018 100%);
+      background-attachment: fixed;
       color: #fff;
-      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     }
-    main { text-align: center; padding: 1.5rem; }
+    main {
+      width: 100%; max-width: 720px; margin: 0 auto;
+      padding: max(0.9rem, env(safe-area-inset-top)) 0.9rem calc(1.5rem + env(safe-area-inset-bottom));
+      text-align: center;
+    }
+    .meme { font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }
     h1 {
-      margin: 0 0 1rem;
-      font-size: clamp(3.2rem, 13vw, 7.5rem); line-height: 0.9;
-      letter-spacing: -0.03em; font-weight: 900;
-      color: #fff;
-      -webkit-text-stroke: 8px #000;
-      paint-order: stroke fill;
+      margin: 0 0 0.7rem;
+      font-size: clamp(2.6rem, 12vw, 5.5rem); line-height: 0.9;
+      letter-spacing: -0.02em; font-weight: 900;
+      color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill;
     }
-    video { width: min(92vw, 720px); height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: #000; display: block; margin: 0 auto; }
-    .row { display: flex; gap: 0.6rem; justify-content: center; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
-    .clips { display: flex; gap: 0.45rem; }
-    .clips button, #play {
-      color: #111; background: #fff; border: 3px solid #000; cursor: pointer;
+    .stage {
+      position: relative; width: 100%; aspect-ratio: 16 / 9;
+      border-radius: 12px; overflow: hidden; background: #000;
     }
-    .clips button {
-      width: 3.1rem; height: 3.1rem; border-radius: 10px;
-      font: 900 1.35rem Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-    }
-    .clips button[aria-pressed="true"], .clips button:hover, #play:hover { background: #ffe566; }
-    #play {
-      width: 4.2rem; height: 4.2rem; border-radius: 50%;
-      display: inline-grid; place-items: center;
-    }
-    #play svg { width: 1.7rem; height: 1.7rem; margin-left: 0.15rem; }
-    .pad-stage {
-      width: min(92vw, 520px);
-      margin: 1.15rem auto 0;
-      display: grid;
-      grid-template-columns: minmax(4.8rem, auto) minmax(168px, 260px) minmax(3.8rem, auto);
-      grid-template-rows: auto auto auto;
-      align-items: center;
-      justify-content: center;
-      column-gap: 0.5rem;
-      row-gap: 0.35rem;
-      font-family: system-ui, sans-serif;
-      font-weight: 700;
-      font-size: 0.72rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .edge-n { grid-column: 2; grid-row: 1; }
-    .edge-w { grid-column: 1; grid-row: 2; }
-    .edge-e { grid-column: 3; grid-row: 2; }
-    .edge-s { grid-column: 2; grid-row: 3; }
-    #pad {
-      grid-column: 2;
-      grid-row: 2;
-      width: 100%;
-      aspect-ratio: 1;
-      position: relative;
-      border: 3px solid #000;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.08);
-      touch-action: none;
-      user-select: none;
-      cursor: grab;
-    }
-    #dot {
-      position: absolute;
-      width: 26px;
-      height: 26px;
-      box-sizing: border-box;
-      border-radius: 50%;
-      background: #ffe566;
-      border: 3px solid #000;
-      transform: translate(-50%, -50%);
-      left: 50%;
-      top: 50%;
-      pointer-events: none;
-    }
+    .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
     #voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-    #status {
-      min-height: 1.2em;
-      margin: 0.45rem 0 0;
-      font-family: system-ui, sans-serif;
-      font-size: 0.85rem;
-      font-weight: 650;
-      color: #ffb4b4;
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin: 0.75rem 0 0; }
+    .clips { display: flex; align-items: center; gap: 0.3rem; }
+    .clips .lbl { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.7; margin-right: 0.2rem; }
+    .clips button {
+      width: 2.5rem; height: 2.5rem; border-radius: 9px; padding: 0;
+      color: #111; background: #fff; border: 2px solid #000; cursor: pointer;
+      font: 900 1.05rem Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
+    .clips button[aria-pressed="true"] { background: #ffe566; box-shadow: 0 0 0 2px #ffe566; }
+    #play {
+      flex: 0 0 auto; width: 4rem; height: 4rem; border-radius: 50%;
+      display: inline-grid; place-items: center; cursor: pointer;
+      color: #111; background: #fff; border: 3px solid #000;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #play:active { background: #ffe566; }
+    #play svg { width: 1.6rem; height: 1.6rem; margin-left: 0.15rem; }
+    #status { min-height: 1.1em; margin: 0.3rem 0 0; font-size: 0.85rem; font-weight: 650; color: #ffb4b4; }
+    .tabs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem;
+      margin: 0.35rem 0 0.7rem; padding: 0.25rem; border-radius: 12px; background: rgba(0,0,0,0.35);
+    }
+    .tabs button {
+      min-height: 2.6rem; border: 0; border-radius: 9px; cursor: pointer;
+      background: transparent; color: #ddd; font: 700 0.95rem system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tabs button[aria-selected="true"] { background: #fff; color: #111; }
+    .presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+    @media (min-width: 560px) { .presets { grid-template-columns: repeat(5, 1fr); } }
+    .preset {
+      display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+      min-height: 3.3rem; padding: 0.4rem 0.5rem; border-radius: 12px; cursor: pointer;
+      background: rgba(255,255,255,0.1); color: #fff; border: 2px solid rgba(255,255,255,0.18);
+      font: 700 1rem system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    @media (min-width: 560px) { .preset { flex-direction: column; gap: 0.15rem; min-height: 4.6rem; font-size: 0.9rem; } }
+    .preset .emo { font-size: 1.45rem; line-height: 1; }
+    .preset[aria-pressed="true"] { background: #ffe566; color: #111; border-color: #000; box-shadow: 0 0 0 2px #ffe566; }
+    .sliders { text-align: left; }
+    .slider { display: block; margin: 0 0 0.95rem; }
+    .slider .top { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 0.95rem; }
+    .slider output { font-variant-numeric: tabular-nums; font-weight: 600; opacity: 0.8; font-size: 0.85rem; }
+    .slider input { width: 100%; height: 2.4rem; margin: 0; accent-color: #ffe566; touch-action: pan-y; }
+    .slider .ends { display: flex; justify-content: space-between; font-size: 0.75rem; opacity: 0.65; margin-top: -0.25rem; }
+    .slider-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.3rem; font-size: 0.85rem; }
+    .slider-foot button {
+      min-height: 2.5rem; padding: 0 0.9rem; border-radius: 9px; cursor: pointer;
+      background: rgba(255,255,255,0.1); color: #fff; border: 2px solid rgba(255,255,255,0.25); font: 700 0.85rem system-ui, sans-serif;
+    }
+    #mode { opacity: 0.8; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main>
-    <h1>HUUUH?</h1>
-    <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
+    <h1 class="meme">HUUUH?</h1>
+    <div class="stage" id="stage">
+      <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
+    </div>
     <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
-    <div class="row">
-      <div class="clips" role="group" aria-label="Clip">
+    <div class="bar">
+      <div class="clips" role="group" aria-label="Cat clip">
+        <span class="lbl">Cat</span>
         <button type="button" data-clip="A" aria-pressed="true">A</button>
         <button type="button" data-clip="B" aria-pressed="false">B</button>
         <button type="button" data-clip="C" aria-pressed="false">C</button>
@@ -110,162 +108,152 @@
       </button>
     </div>
     <p id="status"></p>
-    <div class="pad-stage">
-      <div class="edge-n">Shocked</div>
-      <div class="edge-w">Unbothered</div>
-      <div id="pad" aria-label="Mood. Left unbothered, right annoyed, down dry, up shocked.">
-        <div id="dot"></div>
-      </div>
-      <div class="edge-e">Annoyed</div>
-      <div class="edge-s">Dry</div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-presets" aria-controls="panel-presets" aria-selected="true">Presets</button>
+      <button type="button" role="tab" id="tab-sliders" aria-controls="panel-sliders" aria-selected="false">Sliders</button>
     </div>
+    <section id="panel-presets" role="tabpanel" aria-labelledby="tab-presets">
+      <div class="presets" id="presets"></div>
+    </section>
+    <section id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden>
+      <div id="slider-list"></div>
+      <div class="slider-foot">
+        <span id="mode">Plain huh</span>
+        <button type="button" id="plain">Reset to plain huh</button>
+      </div>
+    </section>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
-  <script src="js/huh-audio.js?v=18"></script>
+  <script src="js/huh-audio.js?v=19"></script>
+  <script src="js/huh-presets.js?v=1"></script>
   <script>
     (function () {
-      var DOT = 26;
+      var SLIDER_UI = [
+        ['pitch', 'Pitch', 'low', 'high'],
+        ['length', 'Length', 'short', 'long'],
+        ['question', 'Question', 'statement', 'question?'],
+        ['intensity', 'Intensity', 'mumbled', 'shouted'],
+        ['vowel', 'Vowel', '\u0259 (uh)', 'a (ah)']
+      ];
       var video = document.getElementById('huh');
-      var pad = document.getElementById('pad');
-      var dot = document.getElementById('dot');
-      var picks = [].slice.call(document.querySelectorAll('.clips button'));
-      var clip = 'A';
-      var padX = 0;
-      var padY = 0;
-      var dragging = false;
       var audio = document.getElementById('voice');
       var status = document.getElementById('status');
+      var picks = [].slice.call(document.querySelectorAll('.clips button'));
+      var presetBox = document.getElementById('presets');
+      var sliderList = document.getElementById('slider-list');
+      var modeLabel = document.getElementById('mode');
+      var clip = 'A';
+      var presets = [];
+      var selected = null;
+      var sliders = { pitch: 0, length: 0, question: 0, intensity: 0, vowel: 0 };
       var active = false;
       var waitingForSound = false;
       var rafId = 0;
       var playStamp = 0;
-      var latestBuffer = null;
-      var latestKey = '';
-      var renderSerial = Promise.resolve();
-      var debounceTimer = 0;
-      var blobUrl = '';
-      var queuedUrl = '';
-      var queuedDuration = 0;
-      var soundDuration = 0;
+      var current = null;
+      var queued = null;
       var baseRate = 1;
+      var debounceTimer = 0;
       var engineLoaded = false;
+      var rawClip = null;
+      var cache = {};
+      var cacheOrder = [];
       var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
       engineReady.then(function () { engineLoaded = true; }, function () {});
-      var rawClip = null;
       var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
+      var presetsReady = HuhPresets.load('presets.json').then(function (r) {
+        presets = (r.data && r.data.presets) || [];
+        buildPresets();
+        return r.data;
+      }, function (err) {
+        console.error(err);
+        status.textContent = 'Presets did not load';
+        return null;
+      });
       if (!audio.getAttribute('src')) audio.src = 'audio/A.wav';
-
       video.muted = true;
       video.controls = false;
 
-      function readCorners() {
-        try {
-          var raw = JSON.parse(localStorage.getItem('huh-corners') || 'null');
-          if (raw && typeof raw === 'object') return raw;
-        } catch (e) {}
+      function presetById(id) {
+        for (var i = 0; i < presets.length; i++) if (presets[i].id === id) return presets[i];
         return null;
       }
 
-      function clamp(v, lo, hi) {
-        return v < lo ? lo : v > hi ? hi : v;
+      function currentParams() {
+        var p = selected ? presetById(selected) : null;
+        return p ? p.params : HuhPresets.fromSliders(sliders);
       }
 
-      function placeDot() {
-        var innerW = Math.max(1, pad.clientWidth - DOT);
-        var innerH = Math.max(1, pad.clientHeight - DOT);
-        var inset = DOT / 2;
-        dot.style.left = (inset + ((padX + 1) / 2) * innerW) + 'px';
-        dot.style.top = (inset + ((1 - padY) / 2) * innerH) + 'px';
+      // ---- renders: each distinct sound is rendered once and kept as a
+      // blob URL (presets are pre-rendered in idle time after load).
+      function keyOf(params) {
+        return JSON.stringify(HuhAudio.normalizeParams ? HuhAudio.normalizeParams(params) : params);
       }
 
-      function pointFromEvent(e) {
-        var rect = pad.getBoundingClientRect();
-        var style = window.getComputedStyle(pad);
-        var borderL = parseFloat(style.borderLeftWidth) || 0;
-        var borderT = parseFloat(style.borderTopWidth) || 0;
-        var innerW = Math.max(1, pad.clientWidth - DOT);
-        var innerH = Math.max(1, pad.clientHeight - DOT);
-        var inset = DOT / 2;
-        var localX = clamp(e.clientX - rect.left - borderL, inset, inset + innerW);
-        var localY = clamp(e.clientY - rect.top - borderT, inset, inset + innerH);
-        padX = clamp(((localX - inset) / innerW) * 2 - 1, -1, 1);
-        padY = clamp(1 - ((localY - inset) / innerH) * 2, -1, 1);
-        placeDot();
+      function renderEntry(params) {
+        var key = keyOf(params);
+        var hit = cache[key];
+        if (hit) return hit;
+        var buf = HuhAudio.renderHuh(rawClip, params);
+        var entry = { key: key, url: URL.createObjectURL(HuhAudio.encodeWav(buf)), duration: buf.duration, buffer: buf };
+        cache[key] = entry;
+        cacheOrder.push(key);
+        while (cacheOrder.length > 40) {
+          var old = cacheOrder[0];
+          if ((current && current.key === old) || (queued && queued.key === old)) break;
+          cacheOrder.shift();
+          URL.revokeObjectURL(cache[old].url);
+          delete cache[old];
+        }
+        return entry;
       }
 
-      // Renders the sound for the current dot synchronously. Returns true when
-      // a new sound was made. With swapNow the audio src changes even if the
-      // old sound is still playing (Play is about to restart anyway).
+      function setSound(entry) {
+        if (current === entry) return;
+        current = entry;
+        audio.src = entry.url;
+      }
+
+      // Load the sound for the current state. With swapNow it replaces the
+      // playing sound (Play is about to restart); otherwise it waits for
+      // the end of the current playback.
       function renderNow(swapNow) {
         if (!rawClip || !engineLoaded) return false;
-        var params = HuhAudio.mixParams(padX, padY, readCorners());
-        var key = JSON.stringify(params);
-        if (latestBuffer && latestKey === key) return false;
+        var entry;
         try {
-          latestBuffer = HuhAudio.renderHuh(rawClip, params);
-          latestKey = key;
-          useBlob(latestBuffer, swapNow);
-          return true;
+          entry = renderEntry(currentParams());
         } catch (e) {
           console.error(e);
           return false;
         }
-      }
-
-      function requestRender() {
-        if (!rawClip) return Promise.resolve(null);
-        var job = renderSerial.then(function () {
-          return engineReady.then(function () {
-            renderNow(false);
-            return latestBuffer;
-          });
-        });
-        renderSerial = job.then(function () {}, function () {});
-        return job;
-      }
-
-      function scheduleRender() {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(requestRender, 70);
-      }
-
-      function swapSrc(url, duration) {
-        var previous = blobUrl;
-        audio.src = url;
-        blobUrl = url;
-        soundDuration = duration || 0;
-        if (previous) URL.revokeObjectURL(previous);
+        if (!swapNow && active && !audio.paused && !audio.ended) {
+          queued = entry;
+          return false;
+        }
+        queued = null;
+        var changed = current !== entry;
+        setSound(entry);
+        return changed;
       }
 
       function flushQueued() {
-        if (!queuedUrl) return;
-        var url = queuedUrl;
-        var duration = queuedDuration;
-        queuedUrl = '';
-        queuedDuration = 0;
-        swapSrc(url, duration);
+        if (!queued) return;
+        var q = queued;
+        queued = null;
+        setSound(q);
       }
 
-      function useBlob(rendered, swapNow) {
-        if (!rendered) return;
-        var url = URL.createObjectURL(HuhAudio.encodeWav(rendered));
-        if (!swapNow && !audio.paused && !audio.ended) {
-          if (queuedUrl) URL.revokeObjectURL(queuedUrl);
-          queuedUrl = url;
-          queuedDuration = rendered.duration;
-          return;
-        }
-        if (queuedUrl) URL.revokeObjectURL(queuedUrl);
-        queuedUrl = '';
-        queuedDuration = 0;
-        swapSrc(url, rendered.duration);
+      function scheduleRender(ms) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+          debounceTimer = 0;
+          engineReady.then(function () { renderNow(false); });
+        }, ms);
       }
 
-      // Length of the sound that is loaded right now. Known from the render,
-      // so it is correct before the new file's metadata has loaded.
       function currentSoundDuration() {
-        if (soundDuration > 0) return soundDuration;
+        if (current && current.duration > 0) return current.duration;
         var d = audio.duration;
         return isFinite(d) && d > 0 ? d : 0;
       }
@@ -281,16 +269,17 @@
         }
       }
 
-      function onPlayClick() {
+      function play() {
         var now = Date.now();
-        if (now - playStamp < 350) return;
+        if (now - playStamp < 250) return;
         playStamp = now;
         if (rafId) cancelAnimationFrame(rafId);
         rafId = 0;
-        // Make sure the sound matches the dot before playing. A pending
-        // render is done right here, inside the tap, instead of waiting.
+        // The sound must match the current state; a missing render is done
+        // right here inside the tap.
         clearTimeout(debounceTimer);
-        if (!renderNow(true)) flushQueued();
+        debounceTimer = 0;
+        renderNow(true);
         active = true;
         waitingForSound = true;
         audio.pause();
@@ -366,47 +355,153 @@
       audio.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
       video.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
 
-      pad.addEventListener('pointerdown', function (e) {
-        dragging = true;
-        if (pad.setPointerCapture) pad.setPointerCapture(e.pointerId);
-        pointFromEvent(e);
-      });
-      pad.addEventListener('pointermove', function (e) {
-        if (!dragging) return;
-        pointFromEvent(e);
-      });
-      function endDrag(e) {
-        if (!dragging) return;
-        dragging = false;
-        if (e) pointFromEvent(e);
-        requestRender();
+      // ---- presets
+      function buildPresets() {
+        presetBox.innerHTML = '';
+        presets.forEach(function (p) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'preset';
+          b.setAttribute('data-preset', p.id);
+          b.setAttribute('aria-pressed', 'false');
+          var emo = document.createElement('span');
+          emo.className = 'emo';
+          emo.setAttribute('aria-hidden', 'true');
+          emo.textContent = p.emoji || '';
+          var name = document.createElement('span');
+          name.textContent = p.label || p.id;
+          b.appendChild(emo);
+          b.appendChild(name);
+          b.addEventListener('click', function () { choosePreset(p.id); });
+          presetBox.appendChild(b);
+        });
+        updateUi();
       }
-      pad.addEventListener('pointerup', endDrag);
-      pad.addEventListener('pointercancel', endDrag);
 
+      function choosePreset(id) {
+        var p = presetById(id);
+        if (!p) return;
+        selected = id;
+        sliders = HuhPresets.toSliders(p.params);
+        syncSliders();
+        updateUi();
+        play();
+      }
+
+      // ---- sliders
+      var inputs = {};
+      SLIDER_UI.forEach(function (s) {
+        var wrap = document.createElement('label');
+        wrap.className = 'slider';
+        var top = document.createElement('div');
+        top.className = 'top';
+        var name = document.createElement('span');
+        name.textContent = s[1];
+        var out = document.createElement('output');
+        top.appendChild(name);
+        top.appendChild(out);
+        var input = document.createElement('input');
+        input.type = 'range';
+        input.min = '-1';
+        input.max = '1';
+        input.step = '0.01';
+        input.value = '0';
+        input.id = 'sl-' + s[0];
+        var ends = document.createElement('div');
+        ends.className = 'ends';
+        ends.innerHTML = '<span></span><span>0 = plain</span><span></span>';
+        ends.children[0].textContent = s[2];
+        ends.children[2].textContent = s[3];
+        wrap.appendChild(top);
+        wrap.appendChild(input);
+        wrap.appendChild(ends);
+        sliderList.appendChild(wrap);
+        inputs[s[0]] = { input: input, out: out };
+        input.addEventListener('input', function () {
+          sliderMoved(s[0], Number(input.value), false);
+        });
+        input.addEventListener('change', function () {
+          sliderMoved(s[0], Number(input.value), true);
+        });
+      });
+
+      function fmt(v) {
+        var n = Math.round(v * 100) / 100;
+        if (n === 0) return '0';
+        return (n > 0 ? '+' : '\u2212') + Math.abs(n).toFixed(2);
+      }
+
+      function syncSliders() {
+        for (var k in inputs) {
+          inputs[k].input.value = String(sliders[k] || 0);
+          inputs[k].out.textContent = fmt(sliders[k] || 0);
+        }
+      }
+
+      function sliderMoved(name, value, final) {
+        // Snap to 0 (plain) near the middle.
+        if (Math.abs(value) < 0.03) value = 0;
+        if (selected) {
+          // Leaving a preset: start from what the sliders show for it.
+          selected = null;
+        }
+        sliders[name] = value;
+        inputs[name].out.textContent = fmt(value);
+        if (final) inputs[name].input.value = String(value);
+        updateUi();
+        scheduleRender(final ? 0 : 120);
+      }
+
+      document.getElementById('plain').addEventListener('click', function () {
+        selected = null;
+        sliders = { pitch: 0, length: 0, question: 0, intensity: 0, vowel: 0 };
+        syncSliders();
+        updateUi();
+        play();
+      });
+
+      function updateUi() {
+        [].forEach.call(presetBox.querySelectorAll('.preset'), function (b) {
+          b.setAttribute('aria-pressed', b.getAttribute('data-preset') === selected ? 'true' : 'false');
+        });
+        var p = selected ? presetById(selected) : null;
+        modeLabel.textContent = p ? 'Preset: ' + p.label : HuhPresets.isPlain(sliders) ? 'Plain huh' : 'Custom';
+      }
+
+      // ---- tabs
+      var tabs = [document.getElementById('tab-presets'), document.getElementById('tab-sliders')];
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          tabs.forEach(function (o) {
+            var on = o === t;
+            o.setAttribute('aria-selected', on ? 'true' : 'false');
+            document.getElementById(o.getAttribute('aria-controls')).hidden = !on;
+          });
+        });
+      });
+
+      // ---- clip picker (the voice is the same for every clip)
       picks.forEach(function (b) {
         b.addEventListener('click', function () {
-          var next = b.dataset.clip;
+          var next = b.getAttribute('data-clip');
           var restart = active;
           if (next !== clip) {
             clip = next;
-            picks.forEach(function (x) {
-              x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
-            });
+            picks.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
             video.pause();
             video.src = '/clips/' + clip + '.mp4';
             video.load();
             video.muted = true;
           }
-          if (restart) onPlayClick();
+          if (restart) play();
         });
       });
 
       var playButton = document.getElementById('play');
-      playButton.addEventListener('click', onPlayClick);
+      playButton.addEventListener('click', play);
       playButton.addEventListener('touchend', function (e) {
         if (e.cancelable) e.preventDefault();
-        onPlayClick();
+        play();
       });
 
       window.addEventListener('keydown', function (e) {
@@ -420,35 +515,31 @@
           if (tag === 'textarea' || tag === 'select' || t.isContentEditable) return;
         }
         e.preventDefault();
-        onPlayClick();
+        play();
       }, true);
 
-      window.addEventListener('resize', placeDot);
-      placeDot();
+      // Pre-render each preset once, one per idle slot, so a preset tap
+      // plays at once.
+      function prerender(list) {
+        var i = 0;
+        var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 60); };
+        function next() {
+          if (i >= list.length) return;
+          var p = list[i++];
+          try { renderEntry(p.params); } catch (e) { console.error(e); }
+          idle(next, { timeout: 400 });
+        }
+        idle(next, { timeout: 400 });
+      }
+
       Promise.all([bytesReady, engineReady]).then(function (parts) {
         return HuhAudio.decodeWavOffline(parts[0]);
       }).then(function (buf) {
         rawClip = buf;
-        var corners = readCorners();
-        // When a corner moves the vowel, warm the vowel engine now (once,
-        // at load) so the first blend render after a drag is not the slow one.
-        var needsVowel = false;
-        if (corners) {
-          for (var vid in corners) {
-            var vc = corners[vid];
-            if (!vc || typeof vc !== 'object') continue;
-            if (HuhAudio.vowelPoint(vc)) needsVowel = true;
-          }
-        }
-        var rendered = requestRender();
-        if (needsVowel) {
-          rendered.then(function () {
-            setTimeout(function () {
-              try { HuhAudio.warmVowel(buf); } catch (e) { console.error(e); }
-            }, 200);
-          });
-        }
-        return rendered;
+        renderNow(false);
+        return presetsReady;
+      }).then(function () {
+        prerender(presets.slice());
       }).catch(function (err) {
         console.error(err);
         if (!status.textContent) status.textContent = err && err.message ? err.message : String(err);

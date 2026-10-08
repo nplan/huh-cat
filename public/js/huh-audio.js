@@ -982,6 +982,7 @@
     envelopeAt: envelopeAt,
     _analyzeVoice: analyzeVoice,
     _psolaContour: psolaContour,
+    normalizeParams: normalizeParams,
     vowelPoint: vowelPoint,
     legacyVowel: legacyVowel,
     warmVowel: warmVowel,
