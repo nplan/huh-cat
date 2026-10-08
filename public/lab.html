@@ -129,6 +129,16 @@
       background: #1e1e1e; color: #eee; border: 1px solid #3a3a3a; border-radius: 6px;
       cursor: pointer; padding: 0.45rem 0.9rem; font: inherit;
     }
+    .group {
+      border: 1px solid #34465a; border-radius: 8px; padding: 0.35rem 0.6rem 0.5rem; margin: 0 0 0.8rem;
+      background: #161c22;
+    }
+    .group-title { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin: 0.15rem 0 0.1rem; }
+    .group-title h3 { font-size: 0.9rem; font-weight: 650; margin: 0; color: #cfe8f6; letter-spacing: 0.02em; }
+    .group-title span { color: #8a8a8a; font-size: 0.78rem; }
+    .row.simple span:first-child { font-weight: 600; }
+    .row output.approx { color: #ffb15e; }
+    .detail-title { font-size: 0.9rem; font-weight: 650; margin: 0.2rem 0 0.1rem; color: #bbb; }
     #slider-equiv { color: #9a9a9a; font-size: 0.82rem; margin: 0.35rem 0 0; font-variant-numeric: tabular-nums; }
     .edit-actions button {
       background: #1e1e1e;
@@ -177,8 +187,13 @@
       </div>
       <p class="note" id="editing-note"></p>
       <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel under the pitch knob (preview only, not saved)</label>
+      <div class="group" id="simple-group">
+        <div class="group-title"><h3>Simple</h3><span>same as the meme-page sliders; &asymp; = nearest, knobs differ</span></div>
+        <div id="simple"></div>
+        <p class="vowel-readout" id="vowel-readout"></p>
+      </div>
+      <h3 class="detail-title">Detailed</h3>
       <div id="params"></div>
-      <p class="vowel-readout" id="vowel-readout"></p>
       <p id="slider-equiv"></p>
       <div class="edit-actions">
         <button type="button" id="save" disabled>Save</button>
@@ -205,7 +220,7 @@
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
   <script src="js/huh-audio.js?v=20"></script>
-  <script src="js/huh-presets.js?v=1"></script>
+  <script src="js/huh-presets.js?v=2"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -261,6 +276,7 @@
       }
 
       var box = document.getElementById('params');
+      var simpleBox = document.getElementById('simple');
       var status = document.getElementById('status');
       var audio = document.getElementById('voice');
       var blobUrl = '';
@@ -304,14 +320,129 @@
         row.appendChild(title);
         row.appendChild(slider);
         row.appendChild(out);
-        box.appendChild(row);
+        // Vowel is already a simple control: it lives in the Simple group.
+        if (name === 'vowel') {
+          row.className = 'row simple';
+          title.textContent = 'Vowel (\u0259 \u2194 a)';
+          simpleBox.appendChild(row);
+        } else {
+          box.appendChild(row);
+        }
         slider.addEventListener('input', function () {
           out.textContent = format(name, Number(slider.value));
+          pitchAnchor = null;
           draw();
           scheduleRender();
           updateUi();
         });
       });
+
+      // ---- Simple Question / Intensity (the meme-page mappings in
+      // HuhPresets.fromSliders). Dragging one writes its detailed knobs;
+      // moving a detailed knob only moves these to the nearest value
+      // (never back into the knob), with \u2248 when it is not exact.
+      // Intensity's pitch share: pitchSemitones stays the total pitch that
+      // is saved and rendered; an Intensity drag shifts it by 1.5 st per
+      // unit of change from where the drag started.
+      var SIMPLE = [
+        ['question', 'Question', 'statement', 'question?'],
+        ['intensity', 'Intensity', 'mumbled', 'shouted']
+      ];
+      var simpleInputs = {};
+      var activeSimple = null;
+      var pitchAnchor = null;
+      SIMPLE.forEach(function (sdef) {
+        var key = sdef[0];
+        var row = document.createElement('label');
+        row.className = 'row simple';
+        var title = document.createElement('span');
+        title.textContent = sdef[1];
+        title.title = sdef[2] + ' \u2194 ' + sdef[3];
+        var slider = document.createElement('input');
+        slider.type = 'range';
+        slider.id = 'simple-' + key;
+        slider.min = '-1';
+        slider.max = '1';
+        slider.step = '0.01';
+        slider.value = '0';
+        slider.setAttribute('aria-label', sdef[1] + ': ' + sdef[2] + ' to ' + sdef[3]);
+        var out = document.createElement('output');
+        out.id = 'simple-' + key + '-out';
+        out.textContent = '0.00';
+        row.appendChild(title);
+        row.appendChild(slider);
+        row.appendChild(out);
+        simpleBox.insertBefore(row, simpleBox.children[SIMPLE.indexOf(sdef)] || null);
+        simpleInputs[key] = { input: slider, out: out };
+        slider.addEventListener('input', function () {
+          simpleMoved(key, Number(slider.value));
+        });
+        slider.addEventListener('change', function () {
+          pitchAnchor = null;
+        });
+      });
+
+      function setKnob(name, value) {
+        var el = document.getElementById(name);
+        el.value = String(value);
+        document.getElementById(name + '-out').textContent = format(name, Number(el.value));
+      }
+
+      function simpleMoved(key, value) {
+        var f = HuhPresets.fromSliders(key === 'question' ? { question: value } : { intensity: value });
+        if (key === 'question') {
+          setKnob('riseSemitones', f.riseSemitones);
+          setKnob('fallSemitones', f.fallSemitones);
+          setKnob('peakAt', f.peakAt);
+        } else {
+          if (!pitchAnchor) {
+            pitchAnchor = {
+              pitch: Number(document.getElementById('pitchSemitones').value),
+              from: lastIntensity
+            };
+          }
+          setKnob('gainDb', f.gainDb);
+          setKnob('attackMs', f.attackMs);
+          setKnob('accent', f.accent);
+          var r = HuhAudio.RANGES.pitchSemitones;
+          var pitch = pitchAnchor.pitch + HuhPresets.INTENSITY_PITCH * (value - pitchAnchor.from);
+          pitch = Math.min(r[1], Math.max(r[0], Math.round(pitch * 10) / 10));
+          setKnob('pitchSemitones', pitch === 0 ? 0 : pitch);
+          lastIntensity = value;
+        }
+        activeSimple = key;
+        draw();
+        scheduleRender();
+        updateUi();
+        activeSimple = null;
+      }
+
+      var lastIntensity = 0;
+
+      // Nearest Question / Intensity for the knobs, and whether exact.
+      function syncSimple() {
+        var k = knobValues();
+        var sl = HuhPresets.toSliders(k);
+        var fq = HuhPresets.fromSliders({ question: sl.question });
+        var fi = HuhPresets.fromSliders({ intensity: sl.intensity });
+        var exactQ = Math.abs(fq.riseSemitones - k.riseSemitones) < 1e-6 && Math.abs(fq.fallSemitones - k.fallSemitones) < 1e-6 && Math.abs(fq.peakAt - k.peakAt) < 1e-6;
+        var exactI = Math.abs(fi.gainDb - k.gainDb) < 1e-6 && Math.abs(fi.attackMs - k.attackMs) < 1e-6 && Math.abs(fi.accent - k.accent) < 1e-6;
+        var vals = { question: [sl.question, exactQ], intensity: [sl.intensity, exactI] };
+        for (var key in vals) {
+          var v = vals[key][0];
+          var exact = vals[key][1];
+          var ui = simpleInputs[key];
+          if (key !== activeSimple) {
+            ui.input.value = String(v);
+            if (key === 'intensity') lastIntensity = v;
+          }
+          var shown = key === activeSimple ? Number(ui.input.value) : v;
+          ui.out.textContent = (exact ? '' : '\u2248 ') + fmtSlider(shown);
+          ui.out.className = exact ? '' : 'approx';
+          ui.out.title = exact ? '' : 'The detailed knobs are custom; this is the nearest ' + key + '.';
+        }
+        return sl;
+      }
 
       function format(name, value) {
         var digits = 1;
@@ -676,6 +807,7 @@
       }
 
       function setKnobs(values) {
+        pitchAnchor = null;
         FIELDS.forEach(function (field) {
           var name = field[0];
           document.getElementById(name).value = String(values[name]);
@@ -727,9 +859,10 @@
         saveButton.textContent = fixed ? 'Save (default is fixed)' : 'Save ' + labelOf(selected);
         saveButton.disabled = fixed || !dirty;
         revertButton.disabled = !dirty;
-        var sl = HuhPresets.toSliders(knobValues());
-        sliderEquiv.textContent = 'Meme-page sliders \u2248 pitch ' + fmtSlider(sl.pitch) + ' \u00b7 length ' + fmtSlider(sl.length)
-          + ' \u00b7 question ' + fmtSlider(sl.question) + ' \u00b7 intensity ' + fmtSlider(sl.intensity) + ' \u00b7 vowel ' + fmtSlider(sl.vowel);
+        var sl = syncSimple();
+        // The meme page's other two sliders, for reference (its Pitch
+        // excludes Intensity's 1.5 st share).
+        sliderEquiv.textContent = 'Meme-page Pitch \u2248 ' + fmtSlider(sl.pitch) + ' \u00b7 Length \u2248 ' + fmtSlider(sl.length);
       }
 
       function select(id) {

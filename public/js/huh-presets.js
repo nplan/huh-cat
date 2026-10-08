@@ -18,6 +18,8 @@
 })(function () {
   var LOCAL_KEY = 'huh-presets';
   var SLIDERS = ['pitch', 'length', 'question', 'intensity', 'vowel'];
+  // Semitones of pitch per unit of Intensity.
+  var INTENSITY_PITCH = 1.5;
   // Decimal places of the lab knob steps.
   var DIGITS = {
     pitchSemitones: 1,
@@ -75,7 +77,7 @@
       accent: 0,
       vowel: V
     };
-    p.pitchSemitones = (P >= 0 ? 7 * P : 6 * P) + 1.5 * I;
+    p.pitchSemitones = (P >= 0 ? 7 * P : 6 * P) + INTENSITY_PITCH * I;
     p.durationScale = L >= 0 ? Math.pow(1.8, L) : Math.pow(0.55, -L);
     if (Q > 0) {
       p.riseSemitones = 8 * Q;
@@ -140,7 +142,7 @@
     }
     out.question = round(bestQ, 2);
     out.intensity = round(bestI, 2);
-    var pitch = pval(params, 'pitchSemitones', 0) - 1.5 * out.intensity;
+    var pitch = pval(params, 'pitchSemitones', 0) - INTENSITY_PITCH * out.intensity;
     out.pitch = round(clamp(pitch >= 0 ? pitch / 7 : pitch / 6, -1, 1), 2);
     return out;
   }
@@ -206,6 +208,7 @@
   return {
     LOCAL_KEY: LOCAL_KEY,
     SLIDERS: SLIDERS,
+    INTENSITY_PITCH: INTENSITY_PITCH,
     fromSliders: fromSliders,
     toSliders: toSliders,
     isPlain: isPlain,
