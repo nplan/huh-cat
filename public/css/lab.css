@@ -3,8 +3,8 @@
 @font-face { font-family: "Anton"; src: url("../fonts/anton/anton-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Inter"; src: url("../fonts/inter/inter-latin.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
 :root {
-  --bg: #000; --card: #0b0b0b; --fg: #f2f2f2; --mute: #8c8c8c; --faint: #5c5c5c; --line: #222; --chip: #333;
-  --accent: #C8FF00; --on-accent: #000; --warn: #ff9a4d;
+  --bg: #0A1433; --card: #0d1839; --fg: #f2f2f2; --mute: #8e9ac2; --faint: #7682ac; --line: #1c2852; --chip: #2b3a6b;
+  --accent: #FFD400; --on-accent: #0A1433; --warn: #ff9a4d; --plot: #07102a; --env: #7fb2ff;
   --display: "Anton", Impact, sans-serif; --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
@@ -54,7 +54,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .editor .note { margin: 2px 0 8px; color: var(--mute); font-size: 12px; }
 .check { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--mute); font-size: 12px; cursor: pointer; }
 .check input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
-.group { border: 1px solid var(--line); border-radius: 5px; padding: 6px 10px 6px; margin: 0 0 10px; background: #000; }
+.group { border: 1px solid var(--line); border-radius: 5px; padding: 6px 10px 6px; margin: 0 0 10px; background: var(--bg); }
 .group-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 2px 0 2px; }
 .group-title h3, .detail-title { margin: 0; font: 600 11px/1 var(--ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg); }
 .group-title span { color: var(--faint); font-size: 11px; text-align: right; }
@@ -85,11 +85,11 @@ input[type=range]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--
 .edit-actions button:hover, .actions button:hover, .share-actions button:hover { border-color: var(--faint); }
 .edit-actions #save { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .edit-actions button:disabled, .edit-actions #save:disabled { background: none; border-color: var(--line); color: var(--faint); cursor: default; }
-#play { background: var(--fg); border-color: var(--fg); color: #000; min-width: 96px; min-height: 40px; font: 400 17px/1 var(--display); letter-spacing: 0.08em; }
+#play { background: var(--fg); border-color: var(--fg); color: var(--on-accent); min-width: 96px; min-height: 40px; font: 400 17px/1 var(--display); letter-spacing: 0.08em; }
 #play:hover { background: var(--accent); border-color: var(--accent); }
 #status { margin: 8px 0 0; min-height: 1.2em; color: var(--mute); font-size: 12px; }
 .hint { margin: 0 0 8px; color: var(--faint); font-size: 12px; }
-canvas { display: block; width: 100%; height: 200px; margin: 0 0 10px; background: #0b0b0b; border: 1px solid var(--line); border-radius: 4px; }
+canvas { display: block; width: 100%; height: 200px; margin: 0 0 10px; background: var(--plot); border: 1px solid var(--line); border-radius: 4px; }
 #voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .share .hint { margin-bottom: 10px; }
 
