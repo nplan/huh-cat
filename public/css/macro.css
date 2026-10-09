@@ -178,3 +178,18 @@ a { color: inherit; }
 @media (min-width: 960px) {
   .player-page .page { max-width: 860px; }
 }
+
+/* ---- Background trials (?bg=1..5, dev only). Flat navy stays the default. Painted on a fixed layer
+   (iOS ignores background-attachment: fixed), with a faint SVG grain on top against banding. */
+html[data-bg] { --mute: #b4bdd9; --faint: #a3add0; } /* lighter greys keep >= 5:1 on the brightest gradient spots */
+html[data-bg] body { background: transparent; }
+html[data-bg]::before, html[data-bg]::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+html[data-bg]::after {
+  opacity: .07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+html[data-bg="1"]::before { background: linear-gradient(180deg, #0F1C45 0%, #0A1433 45%, #04081A 100%); }
+html[data-bg="2"]::before { background: radial-gradient(ellipse 85% 55% at 50% 20%, #1D3270 0%, #0F1D4A 45%, #060C22 100%); }
+html[data-bg="3"]::before { background: linear-gradient(150deg, #0A1433 0%, #171650 50%, #2C1259 100%); }
+html[data-bg="4"]::before { background: radial-gradient(60% 45% at 12% 8%, rgba(88,60,200,.50), transparent 70%), radial-gradient(50% 40% at 92% 38%, rgba(190,40,140,.30), transparent 70%), radial-gradient(70% 50% at 40% 100%, rgba(30,80,200,.35), transparent 70%), #0A1433; }
+html[data-bg="5"]::before { background: radial-gradient(ellipse 90% 35% at 50% 108%, rgba(255,190,0,.20), transparent 70%), linear-gradient(180deg, #0A1433 0%, #1C1240 55%, #2B0E38 100%); }

@@ -260,7 +260,9 @@
   // The address bar follows the state, so a reload keeps it.
   function syncUrl() {
     if (!presets.length || !history.replaceState) return;
+    var bg = /[?&](bg=[1-5])\b/.exec(location.search); // dev background trials survive state changes
     var want = isDefaultState() ? location.pathname : location.pathname + '?h=' + HuhMeme.encode(shareState());
+    if (bg) want += (want.indexOf('?') < 0 ? '?' : '&') + bg[1];
     if (location.pathname + location.search === want) return;
     try { history.replaceState(null, '', want); } catch (e) {}
   }
