@@ -62,3 +62,4 @@ body { background: var(--bg); color: var(--fg); font-family: "Space Grotesk", sy
   .spacebar { max-width: 760px; margin: 24px auto 0; padding-left: 0; padding-right: 0; position: static; background: none; }
 }
 @media (prefers-reduced-motion: reduce) { .caption span.on { animation: none; } }
+.tabs button { height: 44px; padding: 0 18px; }

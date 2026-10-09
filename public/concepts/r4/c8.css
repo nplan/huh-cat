@@ -29,10 +29,10 @@ body { background: var(--bg); color: var(--fg); font-family: "Bricolage Grotesqu
 .nav svg { width: 20px; height: 20px; }
 .nav:active { transform: scale(.92); }
 /* the stack */
-.presets { position: relative; height: 176px; touch-action: pan-y; }
+.presets { position: relative; height: 176px; margin-top: 40px; touch-action: pan-y; }
 .preset { --pos: 0; --dx: 0px; position: absolute; inset: 0; border: 0; border-radius: 28px; padding: 20px 24px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
   text-align: left; background: var(--card3); color: var(--fg); user-select: none; -webkit-user-select: none;
-  transform: translateX(calc(var(--dx) + var(--pos) * 14px)) translateY(calc(var(--pos) * -10px)) scale(calc(1 - var(--pos) * .06)) rotate(calc(var(--dx) / 24));
+  transform: translateX(var(--dx)) translateY(calc(var(--pos) * -16px)) scale(calc(1 - var(--pos) * .06)) rotate(var(--rot, 0deg)); transform-origin: 50% 0;
   z-index: calc(10 - var(--pos)); opacity: calc(1 - var(--pos) * .22);
   transition: transform .32s cubic-bezier(.23,1,.32,1), opacity .2s, background-color .2s, color .2s; }
 .preset.drag { transition: none; }
@@ -70,3 +70,5 @@ body { background: var(--bg); color: var(--fg); font-family: "Bricolage Grotesqu
   .preset .emo { font-size: 56px; }
   .foot { grid-column: 1 / -1; }
 }
+.preset[data-pos="1"] { background: #26397a; } .preset[data-pos="2"] { background: #1c2c63; } .preset[data-pos="3"] { background: #15224f; }
+.preset { opacity: 1; }

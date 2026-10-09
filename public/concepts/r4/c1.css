@@ -81,3 +81,19 @@ body { background: var(--bg); color: var(--fg); font-family: "Space Grotesk", sy
   .sliders { max-width: 720px; margin: 0 auto; text-align: left; }
   #slider-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
 }
+/* pass 2: media anchored to the top, controls anchored above the dock (thumb zone); the strip shows 2 rows */
+@media (max-width: 959px) {
+  .wrap { min-height: 100dvh; display: flex; flex-direction: column; }
+  .panel { margin-top: auto; padding-top: 32px; }
+  .presets { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, 48px); grid-auto-columns: max-content; }
+  .foot { margin-top: 24px; }
+}
+/* pass 3: the controls read as one bottom sheet that the dock belongs to */
+@media (max-width: 959px) {
+  .wrap { padding-bottom: 0; }
+  .panel { background: var(--sheet); border-radius: 28px 28px 0 0; padding: 20px 16px 0; margin-top: auto; }
+  .foot { background: var(--sheet); margin: 0; padding: 16px 0 calc(104px + env(safe-area-inset-bottom)); }
+  .dock { background: rgba(17, 29, 69, .94); border-top: 1px solid var(--line); }
+  .tabs { background: var(--bg); }
+  .presets { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+}

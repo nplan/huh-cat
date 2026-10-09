@@ -10,8 +10,8 @@
   <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
   <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/bricolage/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="concepts/r4/base.css?v=1" />
-  <link rel="stylesheet" href="concepts/r4/c8.css?v=1" />
+  <link rel="stylesheet" href="concepts/r4/base.css?v=2" />
+  <link rel="stylesheet" href="concepts/r4/c8.css?v=2" />
 </head>
 <body class="r4 c8">
 <h1 class="sr-only">HUUUH? Ben the Huh? Cat, on demand</h1>
@@ -34,7 +34,7 @@
 <script src="js/huh-presets.js?v=3"></script>
 <script src="js/huh-meme.js?v=1"></script>
 <script src="js/huh-main.js?v=3"></script>
-<script src="concepts/r4/r4.js?v=1"></script>
+<script src="concepts/r4/r4.js?v=2"></script>
 <script>(function(){
   // The presets are one stack of cards. The top card is the selected mood; prev/next and swipe move through it.
   var box = document.getElementById('presets'); var idx = 0;
@@ -62,9 +62,9 @@
   // Swipe: drag the top card; past 56 px it flies off and the next mood plays.
   var x0 = null, dx = 0, top = null;
   box.addEventListener('pointerdown', function (e) { top = box.querySelector('[data-pos="0"]'); if (!top) return; x0 = e.clientX; dx = 0; top.classList.add('drag'); });
-  window.addEventListener('pointermove', function (e) { if (x0 === null) return; dx = e.clientX - x0; top.style.setProperty('--dx', dx + 'px'); });
+  window.addEventListener('pointermove', function (e) { if (x0 === null) return; dx = e.clientX - x0; top.style.setProperty('--dx', dx + 'px'); top.style.setProperty('--rot', (dx / 24) + 'deg'); });
   window.addEventListener('pointerup', function () {
-    if (x0 === null) return; var d = dx; x0 = null; top.classList.remove('drag'); top.style.setProperty('--dx', '0px');
+    if (x0 === null) return; var d = dx; x0 = null; top.classList.remove('drag'); top.style.setProperty('--dx', '0px'); top.style.setProperty('--rot', '0deg');
     if (Math.abs(d) > 56) { top.dataset.swiped = '1'; go(d < 0 ? 1 : -1); }
   });
   box.addEventListener('click', function (e) { var b = e.target.closest('.preset'); if (b && b.dataset.swiped) { e.stopImmediatePropagation(); delete b.dataset.swiped; } }, true);

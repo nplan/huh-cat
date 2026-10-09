@@ -56,3 +56,9 @@ body { background: var(--n); color: var(--ink); font-family: "DM Sans", system-u
   .blk.n { overflow: auto; }
   .blk.w { padding: 32px 48px; }
 }
+@media (min-width: 960px) {
+  /* desktop has room: moods and tune side by side in the navy block, no tabs needed */
+  .blk.n .tabs { display: none; }
+  .blk.n #panel-sliders[hidden] { display: block !important; }
+  .blk.n #panel-sliders { margin-top: 40px; }
+}

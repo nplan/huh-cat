@@ -59,3 +59,4 @@ body { background: var(--bg); color: var(--fg); font-family: "Instrument Sans", 
   .act { flex: none; padding: 0 16px; }
   #slider-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
 }
+@media (min-width: 960px) { .side { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; } }

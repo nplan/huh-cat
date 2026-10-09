@@ -56,3 +56,4 @@ body { background: var(--paper); color: var(--ink); font-family: "DM Sans", syst
   #slider-list { grid-template-columns: repeat(4, 1fr); gap: 0 32px; }
   .foot { grid-column: 1 / -1; }
 }
+.preset { min-height: 44px; }

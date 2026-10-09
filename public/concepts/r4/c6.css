@@ -58,3 +58,4 @@ body { background: var(--bg); color: var(--fg); font-family: "DM Sans", system-u
   .slider { height: 88px; }
   .slider input::-webkit-slider-thumb { height: 88px; }
 }
+.preset { height: 44px; padding: 0 16px; }
