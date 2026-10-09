@@ -63,9 +63,9 @@
     var m = ctx.measureText(text);
     var asc = m.fontBoundingBoxAscent || size * 0.88;
     var desc = m.fontBoundingBoxDescent || size * 0.24;
-    var top = conf.y === 'bottom' ? H * 0.94 - size : H * 0.05;
+    var top = conf.y === 'bottom' ? H * 0.93 - size : H * 0.07;
     var baseline = top + (size - (asc + desc)) / 2 + asc;
-    var x0 = conf.align === 'left' ? W * 0.04 : conf.align === 'center' ? (W - width) / 2 : W * 0.96 - width;
+    var x0 = conf.align === 'left' ? W * 0.05 : conf.align === 'center' ? (W - width) / 2 : W * 0.95 - width;
     var xs = [];
     var x = x0;
     for (var j = 0; j < text.length; j++) { xs.push(x); x += adv100[j] * k; }

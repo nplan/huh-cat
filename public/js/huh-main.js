@@ -14,7 +14,6 @@
   var audio = $('voice');
   var status = $('status');
   var announceEl = $('announce');
-  var bottomText = $('bottom-text');
   var picks = [].slice.call(document.querySelectorAll('.clips button'));
   var presetBox = $('presets');
   var sliderList = $('slider-list');
@@ -247,8 +246,6 @@
     if (p) modeLabel.textContent = 'Preset: ' + p.label;
     else if (isPlainParams(custom)) modeLabel.textContent = 'Original huh';
     else modeLabel.textContent = from ? 'Custom (from ' + from.label + ')' : 'Custom';
-    var name = soundName().toUpperCase();
-    if (bottomText.textContent !== name) bottomText.textContent = name;
     clearTimeout(urlTimer);
     urlTimer = setTimeout(syncUrl, 400);
   }
@@ -273,7 +270,7 @@
   function shareUrl() {
     return location.origin + (local() ? '/p.html' : '/p') + '?h=' + HuhMeme.encode(shareState());
   }
-  window.HuhPage = { shareUrl: shareUrl, state: shareState, player: player };
+  window.HuhPage = { shareUrl: shareUrl, state: shareState, player: player, soundName: function () { return soundName(); } };
 
   // ---- Copy link (Share sheet on phones)
   var useSheet = !!(navigator.share && window.matchMedia && matchMedia('(pointer: coarse)').matches);
@@ -333,7 +330,7 @@
     if (exportReady) return exportReady;
     exportReady = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'js/huh-export.js?v=1';
+      s.src = 'js/huh-export.js?v=2';
       s.onload = function () { resolve(window.HuhExport); };
       s.onerror = function () { exportReady = null; reject(new Error('Could not load the exporter')); };
       document.head.appendChild(s);

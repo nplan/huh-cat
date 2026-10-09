@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>HUUUH?</title>
   <meta name="description" content="Someone sent you a huh. Tap to play." />
-  <meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#0A1433" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="huuuh.meme" />
   <meta property="og:title" content="HUUUH?" />
@@ -15,14 +15,14 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="icon" href="/favicon.ico" sizes="any" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/macro.css?v=1" />
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
+  <link rel="stylesheet" href="css/macro.css?v=3" />
 </head>
 <body class="player-page">
   <main class="page">
     <section class="macro" aria-label="The meme">
-      <h1 class="mtext top-text"><a href="/" class="home">HUUUH?</a></h1>
+      <h1 class="sr-only">HUUUH? Someone sent you a huh</h1>
       <div class="stage" id="stage" title="Play">
         <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
         <script>
@@ -33,7 +33,6 @@
         </script>
         <p class="caption meme top right" id="caption" aria-hidden="true"></p>
       </div>
-      <p class="mtext bottom-text" id="bottom-text">&nbsp;</p>
     </section>
     <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
     <button id="play" class="big-play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
@@ -50,7 +49,6 @@
       var $ = function (id) { return document.getElementById(id); };
       var shared = HuhMeme.codeFromLocation();
       var state = shared || { clip: 'A', presetId: 'original', basedOn: null, params: HuhAudio.normalizeParams({}) };
-      var bottom = $('bottom-text');
       var player = HuhMeme.create({
         video: $('huh'),
         audio: $('voice'),
@@ -77,11 +75,10 @@
       var presetsReady = HuhPresets.load('presets.json').then(function (r) {
         var data = r.base || {};
         player.setClipText(data.clips || {});
-        bottom.textContent = nameFor(data.presets || []).toUpperCase();
         document.title = 'HUUUH? \u2014 ' + nameFor(data.presets || []);
       }, function (err) {
         console.error(err);
-        bottom.textContent = HuhMeme.sameParams(state.params, {}) ? 'ORIGINAL HUH' : 'CUSTOM HUH';
+        document.title = 'HUUUH? \u2014 ' + (HuhMeme.sameParams(state.params, {}) ? 'Original huh' : 'Custom huh');
       });
       Promise.all([player.rawReady, presetsReady]).then(function () {
         player.renderNow(false);
