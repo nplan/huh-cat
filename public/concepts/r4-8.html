@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <base href="/" />
+  <title>HUUUH? Deck (round 4 concept 8)</title>
+  <meta name="theme-color" content="#0A1433" />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
+  <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/bricolage/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="concepts/r4/base.css?v=1" />
+  <link rel="stylesheet" href="concepts/r4/c8.css?v=1" />
+</head>
+<body class="r4 c8">
+<h1 class="sr-only">HUUUH? Ben the Huh? Cat, on demand</h1>
+<main class="wrap">
+  <section class="a"><div class="stage" id="stage" title="Play">
+  <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
+  <script>(function(){var m=/[?&]h=1([A-D])/.exec(location.search);if(m&&m[1]!=="A")document.getElementById("huh").src="/clips/"+m[1]+".mp4";})();</script>
+  <p class="caption meme top right" id="caption" aria-hidden="true"></p>
+</div><div class="row"><div class="clips" role="group" aria-label="Cat clip"><button type="button" data-clip="A" aria-pressed="true" aria-label="Cat A">A</button><button type="button" data-clip="B" aria-pressed="false" aria-label="Cat B">B</button><button type="button" data-clip="C" aria-pressed="false" aria-label="Cat C">C</button><button type="button" data-clip="D" aria-pressed="false" aria-label="Cat D">D</button></div><div class="acts"><button id="share" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span class="act-label">Copy link</span></button><button id="download" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span class="act-label">Download</span></button></div></div><p id="status" role="alert"></p><p id="announce" class="sr-only" role="status" aria-live="polite"></p></section>
+  <section class="b" aria-label="Sound"><div class="tabs" role="tablist" aria-label="Choose the sound"><button type="button" role="tab" id="tab-presets" aria-controls="panel-presets" aria-selected="true">Moods</button><button type="button" role="tab" id="tab-sliders" aria-controls="panel-sliders" aria-selected="false" tabindex="-1">Tune</button></div>
+    <div class="stackwrap"><button type="button" class="nav prev" aria-label="Previous mood"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></svg></button><div id="panel-presets" class="moods" role="tabpanel" aria-labelledby="tab-presets"><div class="presets" id="presets"></div></div><button type="button" class="nav next" aria-label="Next mood"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button></div>
+    <div id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden><div id="slider-list"></div><div class="slider-foot"><span id="mode">Original huh</span><button type="button" id="plain">Reset</button></div></div><button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span class="play-label">Play</span></button>
+  </section>
+  <footer class="foot"><a href="concepts/index.html#r4">Concepts</a><a href="lab.html">Lab</a></footer>
+</main>
+<audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
+<script src="vendor/rubberband/rubberband.js?v=9"></script>
+<script src="js/huh-vowel.js?v=1"></script>
+<script src="js/huh-audio.js?v=20"></script>
+<script src="js/huh-presets.js?v=3"></script>
+<script src="js/huh-meme.js?v=1"></script>
+<script src="js/huh-main.js?v=3"></script>
+<script src="concepts/r4/r4.js?v=1"></script>
+<script>(function(){
+  // The presets are one stack of cards. The top card is the selected mood; prev/next and swipe move through it.
+  var box = document.getElementById('presets'); var idx = 0;
+  function cards() { return [].slice.call(box.querySelectorAll('.preset')); }
+  function layout() {
+    var all = cards(); if (!all.length) return;
+    var sel = all.findIndex(function (b) { return b.getAttribute('aria-pressed') === 'true'; });
+    if (sel >= 0) idx = sel;
+    all.forEach(function (b, i) {
+      var pos = (i - idx + all.length) % all.length;
+      b.style.setProperty('--pos', pos > 3 ? 4 : pos);
+      b.dataset.pos = pos > 3 ? 'out' : pos;
+      b.tabIndex = pos === 0 ? 0 : -1;
+      b.setAttribute('aria-hidden', pos === 0 ? 'false' : 'true');
+    });
+  }
+  function go(d) { var all = cards(); if (!all.length) return; all[(idx + d + all.length) % all.length].click(); }
+  new MutationObserver(layout).observe(box, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed'] });
+  document.querySelector('.nav.prev').addEventListener('click', function () { go(-1); });
+  document.querySelector('.nav.next').addEventListener('click', function () { go(1); });
+  box.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(1); var t = box.querySelector('[data-pos="0"]'); t && t.focus(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); var u = box.querySelector('[data-pos="0"]'); u && u.focus(); }
+  });
+  // Swipe: drag the top card; past 56 px it flies off and the next mood plays.
+  var x0 = null, dx = 0, top = null;
+  box.addEventListener('pointerdown', function (e) { top = box.querySelector('[data-pos="0"]'); if (!top) return; x0 = e.clientX; dx = 0; top.classList.add('drag'); });
+  window.addEventListener('pointermove', function (e) { if (x0 === null) return; dx = e.clientX - x0; top.style.setProperty('--dx', dx + 'px'); });
+  window.addEventListener('pointerup', function () {
+    if (x0 === null) return; var d = dx; x0 = null; top.classList.remove('drag'); top.style.setProperty('--dx', '0px');
+    if (Math.abs(d) > 56) { top.dataset.swiped = '1'; go(d < 0 ? 1 : -1); }
+  });
+  box.addEventListener('click', function (e) { var b = e.target.closest('.preset'); if (b && b.dataset.swiped) { e.stopImmediatePropagation(); delete b.dataset.swiped; } }, true);
+  layout();
+})(); R4.haptic('.preset, #play, .nav');</script>
+</body>
+</html>

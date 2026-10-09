@@ -1,0 +1,61 @@
+/* C4 Split: a hard 50/50 split. Left is the screen (deeper navy, the video centred like a monitor);
+ * right is the controller: a mood list you can walk with up/down, then the sliders.
+ * Type: Instrument Sans (one family; weight + width for hierarchy). Shape: sharp (0). */
+@font-face { font-family: "Instrument Sans"; src: url("/fonts/instrument-sans/instrument-sans-latin.woff2") format("woff2"); font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; }
+:root { --screen: #050B1F; --bg: #0A1433; --row: #111d45; --row-hi: #182758; --line: #24336a; --fg: #fff; --mute: #a3add0; --accent: #FFD400; --ink: #0A1433; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: "Instrument Sans", system-ui, sans-serif; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.media { background: var(--screen); padding-bottom: 16px; }
+.stage { border-radius: 0; }
+.bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 0; }
+.clips { display: flex; gap: 4px; }
+.clips button { width: 44px; height: 44px; border: 1px solid var(--line); background: none; color: var(--mute); font-weight: 600; font-size: 16px; transition: color .15s, border-color .15s, background-color .15s; }
+.clips button[aria-pressed="true"] { color: var(--ink); background: var(--fg); border-color: var(--fg); }
+#play { height: 48px; min-width: 140px; padding: 0 24px; border: 0; background: var(--fg); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  font-weight: 700; font-size: 17px; transition: background-color .15s, transform .12s cubic-bezier(.23,1,.32,1); }
+#play svg { width: 16px; height: 16px; }
+#play:active { transform: translateY(1px); }
+.is-playing #play { background: var(--accent); }
+#status { margin: 8px 16px 0; color: #ffb3b3; font-size: 14px; }
+.side { padding: 24px 16px 32px; }
+.acts { display: flex; gap: 8px; }
+.act { flex: 1; height: 44px; border: 1px solid var(--line); background: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 15px;
+  transition: border-color .15s, color .15s; }
+.act svg { width: 18px; height: 18px; }
+.act:hover { border-color: var(--mute); }
+.act.done { border-color: var(--accent); color: var(--accent); }
+.h2 { display: flex; align-items: center; gap: 6px; margin: 32px 0 12px; font-size: 15px; font-weight: 600; color: var(--mute); }
+.h2 kbd { display: none; min-width: 22px; height: 22px; padding: 0 4px; border: 1px solid var(--line); font: 600 12px/20px "Instrument Sans"; text-align: center; color: var(--mute); }
+.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.preset { height: 52px; padding: 0 16px; border: 0; background: var(--row); text-align: left; font-weight: 600; font-size: 18px; font-stretch: 90%;
+  display: flex; align-items: center; justify-content: space-between; transition: background-color .15s, color .15s; }
+.preset::after { content: ""; width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; opacity: 0; transition: opacity .15s; }
+.preset:hover { background: var(--row-hi); }
+.preset:hover::after { opacity: .5; }
+.preset[aria-pressed="true"] { background: var(--accent); color: var(--ink); }
+.preset[aria-pressed="true"]::after { opacity: 1; }
+.preset[data-preset="original"] { grid-column: 1 / -1; }
+.slider { display: block; margin-bottom: 12px; }
+.slider .top { display: flex; justify-content: space-between; font-weight: 600; font-size: 16px; }
+.slider output { color: var(--mute); font-variant-numeric: tabular-nums; font-size: 14px; }
+.slider .ends { display: flex; justify-content: space-between; color: var(--mute); font-size: 13px; margin-top: -4px; }
+.slider input { display: block; width: 100%; height: 44px; touch-action: pan-y; }
+.slider input::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(90deg, var(--line) var(--fa), var(--accent) var(--fa), var(--accent) var(--fb), var(--line) var(--fb)); }
+.slider input::-moz-range-track { height: 2px; background: var(--line); }
+.slider input::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -9px; border-radius: 0; background: var(--fg); border: 0; }
+.slider input::-moz-range-thumb { width: 20px; height: 20px; border-radius: 0; background: var(--fg); border: 0; }
+.slider input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+.slider-foot { display: flex; justify-content: space-between; align-items: center; color: var(--mute); font-size: 14px; }
+#plain { height: 40px; padding: 0 16px; border: 1px solid var(--line); background: none; font-weight: 600; font-size: 14px; }
+.foot { display: flex; gap: 24px; margin-top: 48px; font-size: 14px; }
+.foot a { color: var(--mute); text-decoration: none; padding: 8px 0; }
+@media (min-width: 960px) {
+  .split { display: grid; grid-template-columns: 1fr 1fr; min-height: 100dvh; }
+  .media { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; justify-content: center; padding: 48px; }
+  .bar { padding: 24px 0 0; }
+  .side { padding: 48px 64px; max-width: 720px; }
+  .h2 kbd { display: inline-block; }
+  .acts { justify-content: flex-end; }
+  .act { flex: none; padding: 0 16px; }
+  #slider-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+}
