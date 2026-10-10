@@ -19,9 +19,12 @@
  *  - Where a front vowel would make F2 far louder than F1 compared with
  *    real speakers (Peterson & Barney levels), F2 is turned down.
  *  - Per-frame K-weighted loudness match, smoothed over +-3 frames.
- * Source formant tracks are precomputed for clip A only (Praat Burg,
- * 5 formants, 4000 Hz ceiling, smoothed); other audio passes through.
- * The chart point ORIGIN is the huh's own vowel: no change.
+ * Source formant tracks are precomputed per base sample (Praat Burg,
+ * 5 formants, 4000 Hz ceiling, smoothed), matched by trimmed length:
+ * TRACKS_A (the huh, A.wav) and TRACKS_BLAH (the blaaah easter egg,
+ * BLAH.wav); other audio passes through. Each sample's own vowel is its
+ * no-change point (the huh's is ORIGIN, the blaaah's BLAH_HOME), and a pad
+ * point moves the formants by the chart ratio from that point.
  */
 (function (factory) {
   var api = factory();
@@ -29,6 +32,12 @@
   if (typeof window !== 'undefined') window.HuhVowel = api;
 })(function () {
   var TRACKS_A = {"sampleRate":44100,"length":17056,"boundary":4731,"step":0.005,"start":0.07,"F1":[611,611,611,611,603,594,584,574,564,554,543,541,539,539,539,538,540,541,542,544,545,545,544,543,541,542,545,548,553,558,561,563,558,551,545,538,531,526,523,523,524,523,519,511,496,481,467,452,437,426,419,411,399,386,372,357,343,328,319,315,312,309,309,309],"F2":[903,903,903,903,903,901,898,898,897,897,896,897,901,904,905,906,906,907,905,905,907,908,912,916,921,927,931,935,938,938,937,935,933,931,929,926,927,929,931,933,935,937,937,937,934,925,915,905,896,891,888,885,889,894,897,898,896,893,890,887,884,882,882,882],"F3":[2197,2197,2202,2208,2213,2218,2217,2216,2214,2207,2194,2168,2143,2121,2099,2078,2056,2050,2056,2062,2071,2070,2065,2060,2047,2033,2020,2007,2017,2031,2049,2066,2084,2122,2165,2199,2234,2266,2301,2337,2355,2367,2377,2386,2402,2417,2435,2453,2471,2487,2504,2516,2527,2531,2536,2529,2523,2516,2505,2495,2485,2474,2474,2474],"ref":{"F1":541,"F2":927,"F3":2084}};
+
+  // BLAH.wav (made offline from A.wav, see huh-design/blaah): b + l + an open a,
+  // the voice bar's frames hold the l's formants, F1 floored at 300 Hz. ref F1
+  // 787 Hz: the 10 ms Burg median of the steady vowel (the measures spread
+  // 787-856 Hz), the low end so its chart point stays on the chart.
+  var TRACKS_BLAH = {"sampleRate":44100,"length":32878,"step":0.005,"start":0.04,"F1":[300,300,300,300,300,300,300,300,300,300,300,300,300,306,335,368,408,446,484,556,644,724,795,855,875,875,874,871,868,863,858,853,850,848,847,847,853,879,918,968,1017,1061,1085,1091,1081,1068,1054,1040,1027,1009,991,969,941,908,880,854,834,819,814,818,825,832,841,863,884,919,954,987,1007,1017,998,979,960,941,927,926,925,925,923,919,901,873,842,807,775,755,742,732,725,716,710,705,701,699,699,697,693,690,686,680,672,666,659,653,646,640,630,615,593,564,539,517,501,499,512,526,539,559,573,583,593,604,615,627,652,683,713,736,759,744,669,586,503,420,357,349,349,349],"F2":[968,968,968,968,968,968,968,972,976,980,984,987,993,1002,1011,1020,1029,1034,1035,1037,1057,1099,1150,1202,1252,1285,1295,1292,1289,1285,1280,1275,1272,1269,1266,1264,1262,1260,1258,1255,1253,1252,1298,1346,1394,1442,1463,1431,1396,1358,1321,1310,1294,1282,1273,1262,1251,1248,1246,1242,1239,1236,1234,1231,1231,1231,1233,1236,1238,1241,1243,1243,1241,1236,1232,1227,1223,1220,1216,1209,1202,1195,1186,1181,1180,1177,1175,1172,1164,1144,1124,1103,1084,1069,1069,1106,1147,1188,1229,1265,1260,1252,1240,1223,1203,1185,1163,1141,1121,1105,1091,1087,1087,1090,1097,1110,1122,1133,1144,1151,1150,1148,1147,1145,1143,1144,1144,1145,1142,1126,1110,1094,1078,1066,1066,1066,1066,1066],"F3":[2143,2143,2143,2143,2143,2143,2143,2127,2111,2094,2092,2097,2126,2166,2207,2247,2282,2293,2291,2265,2214,2157,2102,2046,2008,1995,1988,1980,1974,1972,1970,1968,1966,1966,1968,1972,1977,2007,2054,2111,2181,2257,2314,2353,2381,2396,2285,2167,2050,1932,1825,1837,1852,1875,1910,1951,2000,2051,2104,2144,2169,2184,2196,2196,2196,2196,2203,2216,2238,2261,2285,2303,2315,2321,2329,2336,2342,2346,2258,2166,2071,1976,1881,1877,1875,1875,1888,1946,2005,2064,2122,2156,2142,2129,2116,2139,2183,2231,2288,2350,2375,2392,2407,2413,2418,2425,2433,2446,2458,2473,2488,2507,2521,2535,2543,2549,2546,2504,2459,2413,2367,2323,2320,2321,2322,2324,2327,2328,2329,2326,2322,2318,2315,2311,2311,2311,2311,2311],"ref":{"F1":787,"F2":1239,"F3":2156}};
 
   // Chart corners (F1, F2, F3): the cardinal vowels i, u, a, ɑ (F1/F2 from
   // the classic cardinal-vowel table, adult male; F3 typical values). The
@@ -99,27 +108,40 @@
     return { x: x, y: y };
   }
 
-  var home = chartPoint(TRACKS_A.ref.F1, TRACKS_A.ref.F2);
-  // Rounded so it can be a saved default; the shift is relative to it.
-  var ORIGIN = { x: Math.round(home.x * 1000) / 1000, y: Math.round(home.y * 1000) / 1000 };
+  function homeOf(tracks) {
+    var h = chartPoint(tracks.ref.F1, tracks.ref.F2);
+    // Rounded so it can be a saved default; the shift is relative to it.
+    return { x: Math.round(h.x * 1000) / 1000, y: Math.round(h.y * 1000) / 1000 };
+  }
+  var ORIGIN = homeOf(TRACKS_A);
+  var BLAH_HOME = homeOf(TRACKS_BLAH);
 
   /**
    * Target ratio per formant for pad point (x, y), relative to the source
    * vowel's own point, so the source position is exactly no change.
    */
-  function ratiosAt(x, y) {
+  function ratiosAt(x, y, from) {
+    var o = from || ORIGIN;
     var at = chartAt(x, y);
-    var h = chartAt(ORIGIN.x, ORIGIN.y);
+    var h = chartAt(o.x, o.y);
     return [at[0] / h[0], at[1] / h[1], at[2] / h[2]];
   }
 
-  function isIdentity(x, y) {
-    return Math.abs(x - ORIGIN.x) < 1e-6 && Math.abs(y - ORIGIN.y) < 1e-6;
+  function isIdentity(x, y, from) {
+    var o = from || ORIGIN;
+    return Math.abs(x - o.x) < 1e-6 && Math.abs(y - o.y) < 1e-6;
   }
 
   function tracksFor(voiced, sampleRate) {
     if (sampleRate === TRACKS_A.sampleRate && voiced.length === TRACKS_A.length) return TRACKS_A;
+    if (sampleRate === TRACKS_BLAH.sampleRate && voiced.length === TRACKS_BLAH.length) return TRACKS_BLAH;
     return null;
+  }
+
+  /** The no-change chart point of this (trimmed) audio, or null if it has no tracks. */
+  function homeFor(voiced, sampleRate) {
+    var tr = voiced && tracksFor(voiced, sampleRate);
+    return tr === TRACKS_A ? ORIGIN : tr === TRACKS_BLAH ? BLAH_HOME : null;
   }
 
   function trackAt(tr, key, t) {
@@ -346,10 +368,11 @@
    */
   function shiftVowel(voiced, sampleRate, x, y, strength) {
     var s = strength === undefined ? 1 : strength;
-    if (!(s > 0) || isIdentity(x, y)) return voiced;
     var tr = tracksFor(voiced, sampleRate);
     if (!tr) return voiced;
-    var ratio = ratiosAt(x, y);
+    var from = tr === TRACKS_BLAH ? BLAH_HOME : ORIGIN;
+    if (!(s > 0) || isIdentity(x, y, from)) return voiced;
+    var ratio = ratiosAt(x, y, from);
     var tb = getTables(sampleRate);
     var n = voiced.length;
     var bins = M / 2 + 1, df = sampleRate / M;
@@ -505,6 +528,9 @@
     CORNERS: CORNERS,
     VOWELS: VOWELS,
     ORIGIN: ORIGIN,
+    BLAH_HOME: BLAH_HOME,
+    TRACKS_BLAH: TRACKS_BLAH,
+    homeFor: homeFor,
     TRACKS_A: TRACKS_A,
     chartAt: chartAt,
     chartPoint: chartPoint,

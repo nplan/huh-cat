@@ -33,6 +33,14 @@
         "align": "right",
         "width": 0.36
       }
+    },
+    "G": {
+      "note": "sour-cream gag (blaaah easter egg): cat in the left half, face upper-left; blanket free on the right",
+      "text": {
+        "y": "top",
+        "align": "right",
+        "width": 0.36
+      }
     }
   },
   "presets": [
@@ -194,6 +202,27 @@
         "attackMs": 27,
         "accent": 0,
         "vowel": -0.2
+      }
+    },
+    {
+      "id": "blaaah",
+      "label": "Blaaah",
+      "emoji": "🤮",
+      "egg": {
+        "from": "disgusted",
+        "clip": "G",
+        "note": "Tap Disgusted twice: the BLAH.wav voice on the gag clip G"
+      },
+      "params": {
+        "pitchSemitones": 0,
+        "durationScale": 1,
+        "peakAt": 0.7,
+        "riseSemitones": 0,
+        "fallSemitones": 0,
+        "gainDb": 0,
+        "attackMs": 0,
+        "accent": 0,
+        "vowel": 0
       }
     }
   ]

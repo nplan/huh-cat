@@ -38,6 +38,14 @@
   if (typeof window !== 'undefined') window.HuhMeme = api;
 })(function () {
   var CLIPS = ['A', 'B', 'C', 'D'];
+  // The blaaah easter egg's clip (the sour-cream gag). Not a cat chip; it
+  // carries its own voice, BLAH.wav (word "blah": BLAAAH!). Every other clip
+  // uses the huh, A.wav. A share code's clip letter is the whole egg state.
+  var EGG_CLIP = 'G';
+  var ALL_CLIPS = CLIPS.concat([EGG_CLIP]);
+  var SAMPLES = { A: 'audio/A.wav', BLAH: 'audio/BLAH.wav' };
+  var WORDS = { A: 'huh', BLAH: 'blah' };
+  function sampleOf(c) { return c === EGG_CLIP ? 'BLAH' : 'A'; }
   var POSTER_V = 1;
   function posterUrl(c) { return '/clips/' + c + '.jpg?v=' + POSTER_V; }
   // The video starts once the sound clock has passed this (s). Chrome reports
@@ -95,7 +103,7 @@
     var defs = KEYS.map(function (k) { return k in DEF2D ? DEF2D[k] : numStr(d[k]); });
     var n = vals.length;
     while (n > 0 && (vals[n - 1] === '' || vals[n - 1] === defs[n - 1])) n--;
-    var clip = CLIPS.indexOf(state.clip) >= 0 ? state.clip : 'A';
+    var clip = ALL_CLIPS.indexOf(state.clip) >= 0 ? state.clip : 'A';
     var id = state.presetId && /^[a-z0-9][a-z0-9-]{0,31}$/.test(state.presetId) ? state.presetId : '';
     var base = !id && state.basedOn && /^[a-z0-9][a-z0-9-]{0,31}$/.test(state.basedOn) ? state.basedOn : '';
     var field = id || ('-' + base);
@@ -109,7 +117,7 @@
     var head = parts[0] || '';
     if (head.charAt(0) !== CODE_VERSION || head.length !== 2) return null;
     var clip = head.charAt(1);
-    if (CLIPS.indexOf(clip) < 0) return null;
+    if (ALL_CLIPS.indexOf(clip) < 0) return null;
     var field = parts.length > 1 ? parts[1] : '-';
     var presetId = null;
     var basedOn = null;
@@ -182,7 +190,7 @@
     var onPlayState = opts.onPlayState || function () {};
     // Show the whole caption before the first play (the still is a meme).
 
-    var srcClip = /\/clips\/([A-D])\.mp4/.exec(video.getAttribute('src') || '');
+    var srcClip = /\/clips\/([A-DG])\.mp4/.exec(video.getAttribute('src') || '');
     var clip = srcClip ? srcClip[1] : 'A';
     var still = opts.still || (stage && stage.querySelector('.still'));
     var clipText = {};
@@ -207,7 +215,8 @@
     var baseRate = 1;
     var debounceTimer = 0;
     var engineLoaded = false;
-    var rawClip = null;
+    var raws = {}; // decoded base samples by name (A, BLAH)
+    var rawLoads = {};
     var cache = {};
     var cacheOrder = [];
     var warmed = false;
@@ -216,30 +225,44 @@
 
     var engineReady = HuhAudio.loadEngine(base + 'vendor/rubberband/rubberband.wasm');
     engineReady.then(function () { engineLoaded = true; }, function () {});
-    var bytesReady = HuhAudio.fetchWavBytes(base + 'audio/A.wav');
-    var rawReady = Promise.all([bytesReady, engineReady]).then(function (parts) {
-      return HuhAudio.decodeWavOffline(parts[0]);
-    }).then(function (buf) {
-      rawClip = buf;
-      return buf;
-    });
+    function loadRaw(name) {
+      if (rawLoads[name]) return rawLoads[name];
+      var bytes = HuhAudio.fetchWavBytes(base + SAMPLES[name]);
+      rawLoads[name] = Promise.all([bytes, engineReady]).then(function (parts) {
+        return HuhAudio.decodeWavOffline(parts[0]);
+      }).then(function (buf) {
+        raws[name] = buf;
+        return buf;
+      });
+      rawLoads[name].catch(function () { delete rawLoads[name]; });
+      return rawLoads[name];
+    }
+    var rawReady = loadRaw(sampleOf(clip));
+    // The other base sample, once the page is idle, so the egg (or the way
+    // back from it) plays at once.
+    rawReady.then(function () {
+      setTimeout(function () { for (var nm in SAMPLES) if (SAMPLES.hasOwnProperty(nm)) loadRaw(nm); }, 800);
+    }, function () {});
 
-    if (!audio.getAttribute('src')) audio.src = base + 'audio/A.wav';
+    // Before the engine is up the raw sample plays (the plain huh / blaaah).
+    if (!audio.getAttribute('src') || sampleOf(clip) !== 'A') audio.src = base + SAMPLES[sampleOf(clip)];
     video.muted = true;
     video.controls = false;
 
-    function keyOf(params) {
-      return JSON.stringify(HuhAudio.normalizeParams(params));
+    function keyOf(params, sample) {
+      return sample + '|' + JSON.stringify(HuhAudio.normalizeParams(params));
     }
 
-    function renderEntry(params) {
-      var key = keyOf(params);
+    function renderEntry(params, forSample) {
+      var sample = forSample || sampleOf(clip);
+      var key = keyOf(params, sample);
       var hit = cache[key];
       if (hit) return hit;
-      var buf = HuhAudio.renderHuh(rawClip, params);
-      var entry = { key: key, url: URL.createObjectURL(HuhAudio.encodeWav(buf)), duration: buf.duration, buffer: buf, params: HuhAudio.normalizeParams(params) };
+      if (!raws[sample]) throw new Error('The ' + sample + ' sound is still loading');
+      var buf = HuhAudio.renderHuh(raws[sample], params);
+      var entry = { key: key, sample: sample, url: URL.createObjectURL(HuhAudio.encodeWav(buf)), duration: buf.duration, buffer: buf, params: HuhAudio.normalizeParams(params) };
       try {
-        entry.caption = HuhAudio.captionTiming(buf.getChannelData(0), buf.sampleRate, params);
+        entry.caption = HuhAudio.captionTiming(buf.getChannelData(0), buf.sampleRate, params, WORDS[sample]);
       } catch (e) {
         entry.caption = null;
       }
@@ -305,7 +328,11 @@
     }
 
     function renderNow(swapNow) {
-      if (!rawClip || !engineLoaded) return false;
+      if (!raws[sampleOf(clip)] || !engineLoaded) {
+        // Not decoded yet: render as soon as it is (a switch to the egg).
+        loadRaw(sampleOf(clip)).then(function () { if (!active) renderNow(false); }, function () {});
+        return false;
+      }
       var entry;
       try {
         entry = renderEntry(getParams());
@@ -423,9 +450,9 @@
       if (Math.abs(r - video.playbackRate) > 0.1 * baseRate) video.playbackRate = r;
     }
 
-    function play() {
+    function play(force) {
       var now = Date.now();
-      if (now - playStamp < 250) return;
+      if (!force && now - playStamp < 250) return;
       playStamp = now;
       if (rafId) cancelAnimationFrame(rafId);
       rafId = 0;
@@ -434,8 +461,9 @@
       warming = false;
       showVideo();
       // A missing render is done right here inside the tap. (Before the
-      // engine is up, the raw A.wav plays: the plain huh.)
+      // engine is up, the raw sample plays: the plain huh / blaaah.)
       renderNow(true);
+      if (current && current.sample !== sampleOf(clip)) { current = null; audio.src = base + SAMPLES[sampleOf(clip)]; }
       setActive(true);
       waitingForSound = true;
       correcting = false;
@@ -580,7 +608,7 @@
     if (video.getAttribute('poster') !== posterUrl(clip)) video.poster = posterUrl(clip);
     armStill();
     setTimeout(function () {
-      for (var pc = 0; pc < CLIPS.length; pc++) { var im = new Image(); im.src = posterUrl(CLIPS[pc]); }
+      for (var pc = 0; pc < ALL_CLIPS.length; pc++) { var im = new Image(); im.src = posterUrl(ALL_CLIPS[pc]); }
     }, 300);
     if (video.readyState >= 2) setTimeout(warmVideo, 0);
     else video.addEventListener('loadeddata', function once() {
@@ -589,8 +617,9 @@
     });
 
     function setClip(next) {
-      if (CLIPS.indexOf(next) < 0) return false;
+      if (ALL_CLIPS.indexOf(next) < 0) return false;
       if (next === clip) return false;
+      var voiceChanged = sampleOf(next) !== sampleOf(clip);
       clip = next;
       video.pause();
       video.poster = posterUrl(clip);
@@ -606,6 +635,15 @@
         if (!active) warmVideo();
       });
       placeCaption();
+      if (voiceChanged) {
+        // Into or out of the egg: the other voice. Its sound (and caption) now,
+        // if already decoded; else the raw sample until it is.
+        if (!renderNow(true) && (!current || current.sample !== sampleOf(clip))) {
+          current = null;
+          audio.src = base + SAMPLES[sampleOf(clip)];
+          setCaption(null, false);
+        }
+      }
       return true;
     }
 
@@ -614,13 +652,18 @@
       placeCaption();
     }
 
+    // list: params (for the current clip's voice) or { params, sample }.
     function prerender(list) {
       var i = 0;
       var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 60); };
       function next() {
         if (i >= list.length) return;
-        var params = list[i++];
-        try { renderEntry(params); } catch (e) { console.error(e); }
+        var item = list[i++];
+        var withSample = item && item.sample && item.params;
+        var params = withSample ? item.params : item;
+        var sample = withSample ? item.sample : sampleOf(clip);
+        if (!raws[sample]) { loadRaw(sample).then(function () { try { renderEntry(params, sample); } catch (e) { console.error(e); } }, function () {}); idle(next, { timeout: 400 }); return; }
+        try { renderEntry(params, sample); } catch (e) { console.error(e); }
         idle(next, { timeout: 400 });
       }
       idle(next, { timeout: 400 });
@@ -640,14 +683,19 @@
       clip: function () { return clip; },
       clipConfig: function () { return clipConfigOf(clipText, clip); },
       current: function () { return current; },
-      entryFor: function (params) { return rawClip && engineLoaded ? renderEntry(params) : null; },
-      ready: function () { return !!(rawClip && engineLoaded); },
+      entryFor: function (params) { return raws[sampleOf(clip)] && engineLoaded ? renderEntry(params) : null; },
+      ready: function () { return !!(raws[sampleOf(clip)] && engineLoaded); },
+      sample: function () { return sampleOf(clip); },
+      word: function () { return WORDS[sampleOf(clip)]; },
       stats: stats
     };
   }
 
   return {
     CLIPS: CLIPS,
+    EGG_CLIP: EGG_CLIP,
+    ALL_CLIPS: ALL_CLIPS,
+    sampleOf: sampleOf,
     KEYS: KEYS,
     encode: encode,
     decode: decode,

@@ -135,11 +135,13 @@
   }
 
   // log(F1'/F1), log(F2'/F2) from the huh's own vowel to a target.
-  function homeFormants() {
-    return HuhVowel.chartAt(VOWEL_HOME.x, VOWEL_HOME.y);
+  // home: the sample's own vowel (default the huh's; the blaaah has its own).
+  function homeFormants(home) {
+    var o = home || VOWEL_HOME;
+    return HuhVowel.chartAt(o.x, o.y);
   }
-  function lineEnd(sign) {
-    var h = homeFormants();
+  function lineEnd(sign, home) {
+    var h = homeFormants(home);
     if (sign < 0) return [Math.log(VOWEL_NEG[0] / h[0]), Math.log(VOWEL_NEG[1] / h[1])];
     return [VOWEL_POS_REACH * Math.log(VOWEL_POS[0] / h[0]), VOWEL_POS_REACH * Math.log(VOWEL_POS[1] / h[1])];
   }
@@ -231,24 +233,26 @@
   }
 
   /**
-   * Chart point rendered for params.vowel, or null for the huh's own vowel.
-   * The path is straight in log F1 / log F2 from the huh to each end.
+   * Chart point rendered for params.vowel, or null for the sample's own
+   * vowel. The path is straight in log F1 / log F2 from the sample's own
+   * vowel (home, default the huh's) to each end: -1 a schwa, +1 70% toward a.
    */
-  function vowelPoint(params) {
+  function vowelPoint(params, home) {
     var p = normalizeParams(params);
     if (p.vowelX !== undefined) return { x: p.vowelX, y: p.vowelY, s: p.vowelStrength };
     if (!HuhVowel || p.vowel === 0) return null;
-    var e = lineEnd(p.vowel < 0 ? -1 : 1);
+    var e = lineEnd(p.vowel < 0 ? -1 : 1, home);
     var t = Math.abs(p.vowel);
-    var h = homeFormants();
+    var h = homeFormants(home);
     var pt = HuhVowel.chartPoint(h[0] * Math.exp(t * e[0]), h[1] * Math.exp(t * e[1]));
     return { x: clamp(pt.x, 0, 1), y: clamp(pt.y, 0, 1), s: 1 };
   }
 
-  /** Chart point of 1D vowel v on the line (the huh's own vowel at 0). */
-  function vowelLinePoint(v) {
-    var pt = vowelPoint({ vowel: v });
-    return pt ? { x: pt.x, y: pt.y } : { x: VOWEL_HOME.x, y: VOWEL_HOME.y };
+  /** Chart point of 1D vowel v on the line (the sample's own vowel at 0; default the huh's). */
+  function vowelLinePoint(v, home) {
+    var o = home || VOWEL_HOME;
+    var pt = vowelPoint({ vowel: v }, o);
+    return pt ? { x: pt.x, y: pt.y } : { x: o.x, y: o.y };
   }
 
   function cosineInterp(a, b, u) {
@@ -601,10 +605,17 @@
    * over the loud vowel (within 20 dB), one u per ~85 ms (2..8), the last
    * h where the vowel fades, and ? at the pitch peak of a rise or else
    * at the end. Times are seconds on the rendered sound.
+   * word 'blah' (the blaaah easter egg, BLAH.wav) gives "blaaah!": b at the
+   * start of the loud part (its release), then l, the a's (one per ~180 ms of
+   * loud sound after the ~0.1 s b+l, 1..8: BLAAAH! at the defaults), h where
+   * it fades and ! at the end, spaced evenly the same way.
    */
   var CAPTION_U_SEC = 0.095;
   var CAPTION_H_LEAD = 0.04;
-  function captionTiming(samples, sampleRate, params) {
+  var CAPTION_A_SEC = 0.18;
+  var CAPTION_BL_SEC = 0.1;
+  function captionTiming(samples, sampleRate, params, word) {
+    var blah = word === 'blah';
     var p = normalizeParams(params);
     var n = samples ? samples.length : 0;
     var dur = n / sampleRate;
@@ -637,6 +648,7 @@
     var b = vEnd >= 0 ? (vEnd + 1) * 0.01 : onset + (end - onset) * 0.85;
     if (a < onset) a = onset;
     if (b <= a) b = Math.min(end, a + 0.05);
+    if (blah) return blahTiming(a, b, end, dur);
     // One u per ~95 ms of loud vowel, 1..8 (Classic: HUUUH?, the shortest: HUH?).
     var count = Math.max(1, Math.min(8, Math.round((b - a) / CAPTION_U_SEC)));
     // The first h sits just before the vowel (not at the faint breath start,
@@ -662,6 +674,22 @@
     return { text: text, times: times, onset: onset, vowelStart: a, vowelEnd: b, end: end, duration: dur };
   }
 
+  function blahTiming(a, b, end, dur) {
+    var count = Math.max(1, Math.min(8, Math.round((b - a - CAPTION_BL_SEC) / CAPTION_A_SEC)));
+    // b, l, the a's and h evenly from the loud start to the fade; ! after.
+    var first = a;
+    var lastH = Math.max(first + 0.02 * (count + 2), b - 0.02);
+    var step = (lastH - first) / (count + 2);
+    var times = [];
+    for (var k = 0; k <= count + 2; k++) times.push(first + step * k);
+    times.push(Math.max(lastH, Math.min(end - 0.01, lastH + step, dur - 0.005)));
+    var text = 'bl';
+    for (var u = 0; u < count; u++) text += 'a';
+    text += 'h!';
+    for (var t = 0; t < times.length; t++) times[t] = Math.round(times[t] * 1000) / 1000;
+    return { text: text, times: times, onset: a, vowelStart: a, vowelEnd: b, end: end, duration: dur, word: 'blah' };
+  }
+
   function renderMono(input, sampleRate, params) {
     var p = normalizeParams(params);
     var rb = rubberband();
@@ -670,9 +698,11 @@
     if (!input || input.length === 0) return new Float32Array(1);
     var trimmed = trimSilence(input, sampleRate);
     var voiced = trimmed;
-    // The vowel stage runs only off the default vowel (and only on clip A,
-    // whose formant tracks huh-vowel.js carries; other clips pass through).
-    var vp = vowelPoint(p);
+    // The vowel stage runs only off the default vowel (and only on the base
+    // samples whose formant tracks huh-vowel.js carries: A.wav and BLAH.wav,
+    // each moved from its own vowel; other audio passes through).
+    var home = HuhVowel && HuhVowel.homeFor ? HuhVowel.homeFor(trimmed, sampleRate) : null;
+    var vp = vowelPoint(p, home || VOWEL_HOME);
     if (vp) voiced = HuhVowel.shiftVowel(trimmed, sampleRate, vp.x, vp.y, vp.s);
     var options = { keepVowel: p.keepVowel };
     var rendered;

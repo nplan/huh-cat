@@ -83,7 +83,7 @@
         <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
       </section>
       <section class="card vowel-card" id="vowel-card" aria-labelledby="vowel-title">
-        <div class="card-head"><h2 id="vowel-title">Vowel</h2><span class="hint" style="margin:0">clip A</span></div>
+        <div class="card-head"><h2 id="vowel-title">Vowel</h2><span class="hint" id="vowel-sample" style="margin:0">A.wav</span></div>
         <div class="vowel-head">
           <output id="vowel-readout">huh (unchanged)</output>
           <button type="button" class="stk" id="vowel-reset" disabled>Reset vowel</button>
@@ -95,8 +95,8 @@
     </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
-  <script src="js/huh-vowel.js?v=1"></script>
-  <script src="js/huh-audio.js?v=22"></script>
+  <script src="js/huh-vowel.js?v=2"></script>
+  <script src="js/huh-audio.js?v=23"></script>
   <script src="js/huh-presets.js?v=4"></script>
   <script>
     (function () {
@@ -111,7 +111,15 @@
         ['accent', 2, 'Accent', '0.01'],
         ['vowel', 2, 'Vowel (\u0259 \u2194 a)', '0.01']
       ];
-      var rawClip = null;
+      // Base samples: the huh (A.wav) and, for easter-egg presets (an "egg" in
+      // presets.json, e.g. blaaah), their own voice (BLAH.wav).
+      var raws = {};
+      var SAMPLE_URL = { A: 'audio/A.wav', BLAH: 'audio/BLAH.wav' };
+      function sampleNow() {
+        var p = selected && selected !== DEFAULT_ID ? presetMeta(selected) : null;
+        return p && p.egg && p.egg.clip && window.HuhMeme ? HuhMeme.sampleOf(p.egg.clip) : (p && p.egg ? 'BLAH' : 'A');
+      }
+      function rawNow() { return raws[sampleNow()] || null; }
       var decoding = null;
       var engineReadyFlag = false;
       // Presets: presets.json (base) with this browser's saved edits
@@ -121,7 +129,13 @@
       // Full 2D vowel (the chart pad). Off: the vowel is the 1D Vowel knob, a
       // point on the line through the huh. On: vowelX/vowelY/vowelStrength are
       // rendered and saved, and the Vowel knob shows the nearest 1D value (~).
+      // The ring: the selected sample's own vowel (the huh's, or the blaaah's).
       var HOME = HuhAudio.VOWEL_HOME;
+      function syncHome() {
+        var vs = document.getElementById('vowel-sample');
+        if (vs) vs.textContent = sampleNow() === 'BLAH' ? 'BLAH.wav' : 'A.wav';
+        HOME = sampleNow() === 'BLAH' && window.HuhVowel && HuhVowel.BLAH_HOME ? HuhVowel.BLAH_HOME : HuhAudio.VOWEL_HOME;
+      }
       var v2d = null; // { x, y, s } or null
       var basePresets = null;
       var presetList = [];
@@ -176,12 +190,16 @@
       if (!audio.getAttribute('src')) audio.src = 'audio/A.wav';
       var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
       var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
+      // BLAH.wav after A (only egg presets use it).
+      engineReady.then(function () { return HuhAudio.fetchWavBytes(SAMPLE_URL.BLAH); }).then(function (b) {
+        return HuhAudio.decodeWavOffline(b);
+      }).then(function (buf) { raws.BLAH = buf; if (sampleNow() === 'BLAH') scheduleRender(); }, function (err) { console.warn(err); });
       Promise.all([bytesReady, engineReady]).then(function (parts) {
         engineReadyFlag = true;
         if (!status.textContent) status.textContent = 'ready';
         return HuhAudio.decodeWavOffline(parts[0]);
       }).then(function (buf) {
-        rawClip = buf;
+        raws.A = buf;
         scheduleRender();
         // Warm the vowel engine after the first render, off the Play path.
         setTimeout(function () {
@@ -331,7 +349,7 @@
       var lastWave = null;
 
       function paramsKey(params) {
-        return JSON.stringify(params);
+        return sampleNow() + '|' + JSON.stringify(params);
       }
 
       function keepRender(rendered, key, swapNow) {
@@ -345,7 +363,7 @@
       // Play calls this: if the knobs moved since the last render, render
       // right here inside the tap and load it, so Play is the current sound.
       function renderForPlay() {
-        if (!rawClip || !engineReadyFlag) return;
+        if (!rawNow() || !engineReadyFlag) return;
         var params = readParams();
         var key = paramsKey(params);
         if (latestBuffer && key === latestKey) {
@@ -355,22 +373,23 @@
         ++renderGen;
         pending = null;
         try {
-          keepRender(HuhAudio.renderHuh(rawClip, params), key, true);
+          keepRender(HuhAudio.renderHuh(rawNow(), params), key, true);
         } catch (err) {
           status.textContent = err && err.message ? err.message : String(err);
         }
       }
 
       function scheduleRender() {
-        if (!rawClip || !engineReadyFlag) return Promise.resolve(null);
+        if (!rawNow() || !engineReadyFlag) return Promise.resolve(null);
         var params = readParams();
         var key = paramsKey(params);
         if (latestBuffer && key === latestKey) return Promise.resolve(latestBuffer);
         if (pending && pending.key === key) return pending.promise;
         var gen = ++renderGen;
         var promise = engineReady.then(function () {
-          if (!rawClip || gen !== renderGen) return null;
-          var rendered = HuhAudio.renderHuh(rawClip, params);
+          var raw = rawNow();
+          if (!raw || gen !== renderGen) return null;
+          var rendered = HuhAudio.renderHuh(raw, params);
           if (gen !== renderGen) return null;
           keepRender(rendered, key, false);
           return rendered;
@@ -560,7 +579,7 @@
       // Where the sound is on the chart: the dot, pulled toward the ring by strength.
       function heardPoint(params) {
         if (!V) return null;
-        var pt = HuhAudio.vowelPoint(params);
+        var pt = HuhAudio.vowelPoint(params, HOME);
         if (!pt) return null;
         if (!(pt.s < 1)) return { x: pt.x, y: pt.y };
         var f = V.chartAt(pt.x, pt.y);
@@ -589,7 +608,7 @@
       // The handle: the 2D point, or the 1D knob's point on the line.
       function dotPoint() {
         if (v2d) return { x: v2d.x, y: v2d.y };
-        return HuhAudio.vowelLinePoint(Number(document.getElementById('vowel').value));
+        return HuhAudio.vowelLinePoint(Number(document.getElementById('vowel').value), HOME);
       }
 
       function drawVowelPad() {
@@ -684,7 +703,7 @@
         g.setLineDash([3, 4]);
         g.beginPath();
         for (var li = -20; li <= 20; li++) {
-          var lp = HuhAudio.vowelLinePoint(li / 20);
+          var lp = HuhAudio.vowelLinePoint(li / 20, HOME);
           var lq = chartPx(lp.x, lp.y, size);
           if (li === -20) g.moveTo(lq.x, lq.y); else g.lineTo(lq.x, lq.y);
         }
@@ -703,7 +722,7 @@
         g.fillStyle = C.fg;
         g.font = '700 11px "DM Sans", system-ui, sans-serif';
         g.textAlign = 'left';
-        g.fillText('huh', home.x + 12, home.y + 17);
+        g.fillText(HOME === HuhAudio.VOWEL_HOME ? 'huh' : 'blaaah', home.x + 12, home.y + 17);
 
         var heard = heardPoint(params);
         if (heard && v2d && v2d.s < 1) {
@@ -763,6 +782,7 @@
         var py = (e.clientY - rect.top) * (size.h / (rect.height || size.h));
         var home = chartPx(HOME.x, HOME.y, size);
         if (Math.abs(px - home.x) <= SNAP_PX && Math.abs(py - home.y) <= SNAP_PX) {
+          if (HOME !== HuhAudio.VOWEL_HOME) { v2d = null; setKnob('vowel', 0); return; } // the blaaah's own vowel
           setVowel2D(HOME.x, HOME.y);
           return;
         }
@@ -1007,6 +1027,7 @@
       }
 
       function loadStored() {
+        syncHome();
         setKnobs(storedValues(selected));
         // What the sliders show after loading (steps and ranges applied) is the clean state.
         baseline = knobValues();

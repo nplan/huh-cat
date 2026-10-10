@@ -27,7 +27,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/theme.css?v=2" />
-  <link rel="stylesheet" href="css/blocks.css?v=17" />
+  <link rel="stylesheet" href="css/blocks.css?v=18" />
   <script src="js/theme.js?v=2"></script>
 </head>
 <body class="player">
@@ -39,7 +39,7 @@
         <img class="still" id="still" src="/clips/A.jpg?v=1" width="1280" height="720" alt="" aria-hidden="true">
         <script>
           (function () {
-            var m = /[?&]h=1([A-D])/.exec(location.search);
+            var m = /[?&]h=1([A-DG])/.exec(location.search);
             if (m && m[1] !== 'A') {
               var v = document.getElementById('huh');
               v.src = '/clips/' + m[1] + '.mp4';
@@ -56,10 +56,10 @@
     </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
-  <script src="js/huh-vowel.js?v=1"></script>
-  <script src="js/huh-audio.js?v=22"></script>
+  <script src="js/huh-vowel.js?v=2"></script>
+  <script src="js/huh-audio.js?v=23"></script>
   <script src="js/huh-presets.js?v=4"></script>
-  <script src="js/huh-meme.js?v=11"></script>
+  <script src="js/huh-meme.js?v=12"></script>
   <script>
     (function () {
       var $ = function (id) { return document.getElementById(id); };
@@ -86,6 +86,8 @@
         var p = null;
         var id = state.presetId || state.basedOn;
         for (var i = 0; i < presets.length; i++) if (presets[i].id === id) p = presets[i];
+        // The egg (gag clip G) is never Classic: its plain sound is the blaaah.
+        if (state.clip === HuhMeme.EGG_CLIP) return state.presetId && p ? p.label : 'Custom blaaah';
         if (state.presetId === 'original' || HuhMeme.sameParams(state.params, {})) return HuhPresets.PLAIN_LABEL;
         if (state.presetId && p) return p.label;
         return 'Custom huh';

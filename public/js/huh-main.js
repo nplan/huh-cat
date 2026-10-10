@@ -1,7 +1,16 @@
 'use strict';
 /* Main meme page: presets, sliders, cat picker, Play / Space / tap the
  * video, Copy link (share code), Download (js/huh-export.js, loaded on
- * first use). Playback and sync live in huh-meme.js. */
+ * first use). Playback and sync live in huh-meme.js.
+ *
+ * Easter egg (presets.json entries with an "egg"): tapping a mood that is
+ * already selected (Disgusted) turns that button into the egg (BLAAAH) and
+ * the clip into the egg's clip (G, the sour-cream gag, with its own voice
+ * BLAH.wav); no cat chip is pressed. Tapping BLAAAH again replays it (as any
+ * selected mood does); Reset in Tune goes back to the plain blaaah. Any other
+ * mood exits to that mood on the previous cat; a cat chip exits to that cat
+ * with the mood the egg came from. Tune works on the blaaah. Share links carry
+ * the egg as clip G; Download renders the gag clip with BLAAAH!. */
 (function () {
   var SLIDER_UI = [
     ['pitch', 'Pitch', 'low', 'high'],
@@ -20,7 +29,9 @@
   var modeLabel = $('mode');
   var shareBtn = $('share');
   var downloadBtn = $('download');
-  var presets = [];
+  var presets = []; // the mood grid (and Classic)
+  var eggs = []; // easter-egg presets (not in the grid), each { egg: { from, clip } }
+  var eggPrevClip = null;
   var selected = null;
   var sliders = { pitch: 0, length: 0, question: 0, vowel: 0 };
   var sliderExact = { pitch: true, length: true, question: true, vowel: true };
@@ -57,6 +68,8 @@
       params: HuhAudio.normalizeParams({}),
       fixed: true
     }].concat((r.data && r.data.presets) || []);
+    eggs = presets.filter(function (p) { return p.egg && p.egg.from && p.egg.clip; });
+    presets = presets.filter(function (p) { return eggs.indexOf(p) < 0; });
     player.setClipText((r.data && r.data.clips) || {});
     buildPresets();
     applyIncoming();
@@ -88,7 +101,48 @@
 
   function presetById(id) {
     for (var i = 0; i < presets.length; i++) if (presets[i].id === id) return presets[i];
+    for (var j = 0; j < eggs.length; j++) if (eggs[j].id === id) return eggs[j];
     return null;
+  }
+
+  // ---- easter egg
+  function activeEgg() {
+    for (var i = 0; i < eggs.length; i++) if (eggs[i].egg.clip === player.clip()) return eggs[i];
+    return null;
+  }
+  function eggFrom(id) {
+    for (var i = 0; i < eggs.length; i++) if (eggs[i].egg.from === id) return eggs[i];
+    return null;
+  }
+  function enterEgg(e) {
+    eggPrevClip = player.clip();
+    selected = e.id;
+    basedOn = null;
+    setClipUi(e.egg.clip, false);
+    showNearest(e.params);
+    updateUi();
+    var b = presetBox.querySelector('[data-preset="' + e.egg.from + '"]');
+    if (b) { b.classList.remove('egg-pop'); void b.offsetWidth; b.classList.add('egg-pop'); }
+    announce(e.label + '!');
+    player.play(true); // the second tap of a double tap: past the 250 ms play guard
+  }
+  function exitEgg(toClip) {
+    var back = toClip || (eggPrevClip && HuhMeme.CLIPS.indexOf(eggPrevClip) >= 0 ? eggPrevClip : 'A');
+    eggPrevClip = null;
+    setClipUi(back, false);
+  }
+  // A tap on a mood button (the egg's button shows the egg while it is on).
+  function tapPreset(id) {
+    var e = activeEgg();
+    if (e) {
+      if (id === e.egg.from) { choosePreset(e.id); return; }
+      exitEgg(null);
+      choosePreset(id);
+      return;
+    }
+    var egg = eggFrom(id);
+    if (egg && selected === id) { enterEgg(egg); return; }
+    choosePreset(id);
   }
 
   function currentParams() {
@@ -116,7 +170,7 @@
       name.textContent = p.label || p.id;
       b.appendChild(emo);
       b.appendChild(name);
-      b.addEventListener('click', function () { choosePreset(p.id); });
+      b.addEventListener('click', function () { tapPreset(p.id); });
       presetBox.appendChild(b);
     });
     updateUi();
@@ -232,18 +286,30 @@
   $('plain').addEventListener('click', function () {
     basedOn = null;
     custom = HuhPresets.fromSliders({});
-    choosePreset('original');
+    var e = activeEgg();
+    choosePreset(e ? e.id : 'original'); // in the egg: the plain blaaah
   });
 
   function soundName() {
     var p = selected ? presetById(selected) : null;
     if (p) return p.label;
+    if (activeEgg()) return 'Custom ' + activeEgg().label.toLowerCase();
     return isPlainParams(custom) ? HuhPresets.PLAIN_LABEL : 'Custom huh';
   }
 
   function updateUi() {
+    var e = activeEgg();
     [].forEach.call(presetBox.querySelectorAll('.preset'), function (b) {
-      b.setAttribute('aria-pressed', b.getAttribute('data-preset') === selected ? 'true' : 'false');
+      var id = b.getAttribute('data-preset');
+      var p = presetById(id);
+      var asEgg = !!(e && e.egg.from === id);
+      var shown = asEgg ? e : p;
+      b.setAttribute('aria-pressed', (asEgg ? e.id : id) === selected ? 'true' : 'false');
+      b.classList.toggle('egg', asEgg);
+      var nm = b.querySelector('.name');
+      var em = b.querySelector('.emo');
+      if (shown && nm && nm.textContent !== shown.label) nm.textContent = shown.label;
+      if (shown && em) em.textContent = shown.emoji || '';
     });
     var p = selected ? presetById(selected) : null;
     var from = basedOn ? presetById(basedOn) : null;
@@ -270,7 +336,8 @@
   function shareUrl() {
     return location.origin + (local() ? '/p.html' : '/p') + '?h=' + HuhMeme.encode(shareState());
   }
-  window.HuhPage = { shareUrl: shareUrl, state: shareState, player: player, soundName: function () { return soundName(); } };
+  window.HuhPage = { shareUrl: shareUrl, state: shareState, player: player, soundName: function () { return soundName(); },
+    egg: function () { var e = activeEgg(); return e ? e.id : null; }, selected: function () { return selected; } };
 
   // ---- Copy link (Share sheet on phones)
   var useSheet = !!(navigator.share && window.matchMedia && matchMedia('(pointer: coarse)').matches);
@@ -428,6 +495,18 @@
   }
   picks.forEach(function (b) {
     b.addEventListener('click', function () {
+      var e = activeEgg();
+      if (e) {
+        // Out of the egg: this cat, and the mood the egg came from.
+        var wasPlaying = player.isActive();
+        exitEgg(b.getAttribute('data-clip'));
+        var from = presetById(e.egg.from);
+        if (from && selected === e.id) { selected = from.id; showNearest(from.params); }
+        else if (from && !selected) { selected = from.id; basedOn = null; showNearest(from.params); }
+        updateUi();
+        if (wasPlaying) player.play(true);
+        return;
+      }
       setClipUi(b.getAttribute('data-clip'), player.isActive());
     });
   });
@@ -460,7 +539,10 @@
 
   Promise.all([player.rawReady, presetsReady]).then(function () {
     player.renderNow(false);
-    var rest = presets.map(function (p) { return p.params; });
+    // Every mood in the huh voice, then the egg(s) in their own voice.
+    var rest = presets.map(function (p) { return { params: p.params, sample: 'A' }; }).concat(eggs.map(function (p) {
+      return { params: p.params, sample: HuhMeme.sampleOf(p.egg.clip) };
+    }));
     player.prerender(rest);
   }).catch(function (err) {
     console.error(err);

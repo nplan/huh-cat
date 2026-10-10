@@ -8,7 +8,9 @@ Fine-tune Ben the [Huh? Cat](https://knowyourmeme.com/memes/huh-cat) for every o
 - Source on GitHub
 
 ## Clips
-Four standalone huhs in `public/clips/` (`huh-07a`, `huh-07b`, `huh-08a`, `huh-08b`).
+Four standalone huhs in `public/clips/` (`huh-07a`, `huh-07b`, `huh-08a`, `huh-08b`) as A–D, plus
+G, the sour-cream gag for the blaaah easter egg (tap Disgusted twice), with its own voice
+`public/audio/BLAH.wav`. Sources and licenses: [CREDITS.md](CREDITS.md).
 
 ## Local
 ```bash
