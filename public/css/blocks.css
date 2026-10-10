@@ -22,6 +22,10 @@ a { color: inherit; }
 .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #000; cursor: pointer;
   border-radius: var(--r); box-shadow: 0 0 0 3px var(--b1-ink), 6px 6px 0 3px var(--b1-ink); }
 .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The clip's first frame over the video until the video has really painted a frame (iOS Safari
+ * shows a black video layer, not its poster, once it has some data but before the first play). */
+.stage .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; pointer-events: none; }
+.stage .still.off { visibility: hidden; }
 .caption {
   position: absolute; margin: 0; pointer-events: none; white-space: nowrap; z-index: 2;
   font-family: "Anton", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;

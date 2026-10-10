@@ -21,11 +21,16 @@
  * more. The video decoder is also warmed once at load (muted play + pause
  * before any user play).
  *
- * Every clip has a poster (its first frame, clips/X.jpg): iOS Safari does
- * not load or paint a muted video before the first user play (preload and
- * the warm-up are ignored there), so without one the stage stays black on
- * load and after each clip switch. The poster is swapped before the src, and
- * all four are preloaded, so a switch never flashes black.
+ * Every clip has its first frame as a jpg (clips/X.jpg), used twice: as the
+ * video poster and as an <img class="still"> laid over the video. iOS Safari
+ * does not paint a muted video before the first user play, and once a
+ * switched-to clip has some data it drops the native poster and shows its
+ * (black, unpainted) video layer. So the still stays on top until the video
+ * has presented a frame in a user play (requestVideoFrameCallback; else a
+ * timeupdate past 0), and comes back on every clip switch. Warm-up frames do
+ * not count: the warm-up's play starts playback, after which iOS never shows
+ * the poster again, and its pause + rewind leaves the layer black. All four jpgs
+ * are preloaded so a switch never flashes black.
  */
 (function (factory) {
   var api = factory();
@@ -165,7 +170,10 @@
     var onPlayState = opts.onPlayState || function () {};
     // Show the whole caption before the first play (the still is a meme).
 
-    var clip = 'A';
+    var srcClip = /\/clips\/([A-D])\.mp4/.exec(video.getAttribute('src') || '');
+    var clip = srcClip ? srcClip[1] : 'A';
+    var still = opts.still || (stage && stage.querySelector('.still'));
+    var frameCb = 0;
     var clipText = {};
     var captionSpans = [];
     var captionTimes = [];
@@ -503,8 +511,33 @@
       });
       if (r && r.catch) r.catch(function () { warming = false; });
     }
+    // ---- the still over the video, until the video has painted a frame ----
+    function hideStill() {
+      if (still && still.className.indexOf(' off') < 0) still.className += ' off';
+    }
+    function armStill() {
+      if (!still) return;
+      if (frameCb && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(frameCb);
+      frameCb = 0;
+      if (still.getAttribute('src') !== posterUrl(clip)) still.src = posterUrl(clip);
+      still.className = still.className.replace(/ off/g, '');
+      // A frame of the current src presented during a real (user) play: the
+      // video shows. Frames of the muted warm-up do not count: it ends with a
+      // pause + rewind, after which iOS shows neither poster nor frame.
+      if (video.requestVideoFrameCallback) {
+        var onFrame = function () {
+          if (active && !waitingForSound) { frameCb = 0; hideStill(); }
+          else frameCb = video.requestVideoFrameCallback(onFrame);
+        };
+        frameCb = video.requestVideoFrameCallback(onFrame);
+      }
+    }
+    if (!video.requestVideoFrameCallback) {
+      video.addEventListener('timeupdate', function () { if (active && !video.paused && video.currentTime > 0) hideStill(); });
+    }
     // Poster for the starting clip, then the other three cached for switching.
     if (video.getAttribute('poster') !== posterUrl(clip)) video.poster = posterUrl(clip);
+    armStill();
     setTimeout(function () {
       for (var pc = 0; pc < CLIPS.length; pc++) { var im = new Image(); im.src = posterUrl(CLIPS[pc]); }
     }, 300);
@@ -520,8 +553,10 @@
       clip = next;
       video.pause();
       video.poster = posterUrl(clip);
+      armStill();
       video.src = '/clips/' + clip + '.mp4';
       video.load();
+      armStill(); // re-arm on the new src (a callback can belong to the old one)
       video.muted = true;
       warmed = false;
       video.addEventListener('loadeddata', function once() {
@@ -557,6 +592,7 @@
       scheduleRender: scheduleRender,
       prerender: prerender,
       setClip: setClip,
+      stillShown: function () { return !!still && still.className.indexOf(' off') < 0; },
       setClipText: setClipText,
       fitCaption: fitCaption,
       isActive: function () { return active; },

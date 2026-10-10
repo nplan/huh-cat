@@ -19,7 +19,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/theme.css?v=1" />
-  <link rel="stylesheet" href="css/blocks.css?v=6" />
+  <link rel="stylesheet" href="css/blocks.css?v=7" />
   <script src="js/theme.js?v=1"></script>
 </head>
 <body class="player">
@@ -28,10 +28,15 @@
     <div class="inner">
       <div class="stage" id="stage" title="Play">
         <video id="huh" src="/clips/A.mp4" poster="/clips/A.jpg?v=1" width="1280" height="720" playsinline muted preload="auto"></video>
+        <img class="still" id="still" src="/clips/A.jpg?v=1" width="1280" height="720" alt="" aria-hidden="true">
         <script>
           (function () {
             var m = /[?&]h=1([A-D])/.exec(location.search);
-            if (m && m[1] !== 'A') document.getElementById('huh').src = '/clips/' + m[1] + '.mp4';
+            if (m && m[1] !== 'A') {
+              var v = document.getElementById('huh');
+              v.src = '/clips/' + m[1] + '.mp4';
+              v.poster = document.getElementById('still').src = '/clips/' + m[1] + '.jpg?v=1';
+            }
           })();
         </script>
         <p class="caption meme top right" id="caption" aria-hidden="true"></p>
@@ -46,7 +51,7 @@
   <script src="js/huh-vowel.js?v=1"></script>
   <script src="js/huh-audio.js?v=22"></script>
   <script src="js/huh-presets.js?v=4"></script>
-  <script src="js/huh-meme.js?v=4"></script>
+  <script src="js/huh-meme.js?v=5"></script>
   <script>
     (function () {
       var $ = function (id) { return document.getElementById(id); };
