@@ -59,6 +59,20 @@
   // picture trails slightly, and each rate change can flush its video pipeline.
   // navigator.userAgentData exists only in Blink (not WebKit, nor iOS Chrome).
   var BLINK = typeof navigator !== 'undefined' && !!navigator.userAgentData;
+  // ---- Black-frame-at-Play variants (iOS, clips A/B), dev switch ?bf=0..4, read once ----
+  // 0  still over the video, hidden after 2 moved frames + 60 ms fade (7c6ef80)
+  // 1  still underneath the video (transparent video bg), never hidden
+  // 2  no rewind at Play when parked at 0, no muted warm-up on WebKit, still over, hidden on 1st frame
+  // 3  no rewind at Play when parked at 0 (warm-up kept), still over, hidden on 1st frame
+  // 4  1 + 3: still underneath, no rewind when parked
+  var BF_DEFAULT = 4;
+  var BF = (function () {
+    var m = typeof location !== 'undefined' && location.hostname !== 'huuuh.meme' && /[?&]bf=([0-4])\b/.exec(location.search);
+    return m ? +m[1] : BF_DEFAULT;
+  })();
+  var STILL_UNDER = BF === 1 || BF === 4;
+  var NO_REWIND = BF >= 2;
+  var NO_WK_WARM = BF === 2;
   var VIDEO_MOVED = BLINK ? 0.008 : 0;
   var CATCHUP_FROM = BLINK ? 0.006 : 0.030;
   var CATCHUP_DONE = BLINK ? 0.003 : 0.012;
@@ -213,6 +227,9 @@
     var cacheOrder = [];
     var warmed = false;
     var warming = false;
+    var parked = true; // the video sits at its first frame (fresh src, or rewound after the warm-up)
+    if (stage) stage.className += STILL_UNDER ? ' bf-under' : (BF ? ' bf-cut' : '');
+    if (typeof document !== 'undefined') document.documentElement.setAttribute('data-bf', BF);
 
     var engineReady = HuhAudio.loadEngine(base + 'vendor/rubberband/rubberband.wasm');
     engineReady.then(function () { engineLoaded = true; }, function () {});
@@ -446,8 +463,11 @@
       audio.pause();
       audio.currentTime = 0;
       video.pause();
-      // Rewind while paused (the clips have one keyframe, at 0).
-      try { video.currentTime = 0; } catch (e0) {}
+      // Rewind while paused (the clips have one keyframe, at 0). Not when the
+      // video already sits at its first frame (bf 2-4): on iOS that seek leaves
+      // the layer empty for a frame at the start.
+      if (!(NO_REWIND && parked)) { try { video.currentTime = 0; } catch (e0) {} }
+      parked = false;
       video.muted = true;
       applyRate();
       var p;
@@ -522,7 +542,9 @@
     // Warm the video decoder once (muted, before any user play).
     function warmVideo() {
       if (warmed || active) return;
+      if (NO_WK_WARM && !BLINK) return;
       warmed = true;
+      parked = false;
       warming = true;
       var r = video.play();
       var stop = function () {
@@ -531,6 +553,7 @@
         if (active) return;
         video.pause();
         try { video.currentTime = 0; } catch (e) {}
+        parked = true;
       };
       video.addEventListener('playing', function once() {
         video.removeEventListener('playing', once);
@@ -555,6 +578,7 @@
       frameCb = 0;
       if (still.getAttribute('src') !== posterUrl(clip)) still.src = posterUrl(clip);
       still.className = still.className.replace(/ off/g, '');
+      if (STILL_UNDER) return; // underneath: shows through whenever the video layer is empty
       // A frame of the current src presented during a real (user) play: the
       // video shows. Frames of the muted warm-up do not count: it ends with a
       // pause + rewind, after which iOS shows neither poster nor frame.
@@ -562,6 +586,10 @@
         var moving = 0;
         var onFrame = function (now, meta) {
           var t = meta && typeof meta.mediaTime === 'number' ? meta.mediaTime : video.currentTime;
+          if (BF !== 0) { // bf 2/3: first frame of a user play (as 242e65b)
+            if (active && !waitingForSound) { frameCb = 0; hideStill(); return; }
+            frameCb = video.requestVideoFrameCallback(onFrame); return;
+          }
           if (active && !waitingForSound && t > 0.001) moving++;
           else if (!active) moving = 0;
           if (moving >= STILL_FRAMES) {
@@ -573,7 +601,7 @@
       }
     }
     if (!video.requestVideoFrameCallback) {
-      video.addEventListener('timeupdate', function () { if (active && !video.paused && video.currentTime > 0.05) hideStill(); });
+      video.addEventListener('timeupdate', function () { if (!STILL_UNDER && active && !video.paused && video.currentTime > (BF ? 0 : 0.05)) hideStill(); });
     }
     // Poster for the starting clip, then the other three cached for switching.
     if (video.getAttribute('poster') !== posterUrl(clip)) video.poster = posterUrl(clip);
@@ -596,6 +624,7 @@
       armStill();
       video.src = '/clips/' + clip + '.mp4';
       video.load();
+      parked = true;
       armStill(); // re-arm on the new src (a callback can belong to the old one)
       video.muted = true;
       warmed = false;
