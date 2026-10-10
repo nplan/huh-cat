@@ -59,7 +59,7 @@ a { color: inherit; }
 .clips button, #play, .act, .preset, #plain, .make a { --bd: var(--b1-ink); border: 3px solid var(--bd); border-radius: var(--r); box-shadow: var(--sticker) var(--sticker) 0 var(--bd);
   transition: transform .08s, box-shadow .08s, background-color .12s, color .12s; }
 .clips button:active, #play:active, .act:active, .preset:active, #plain:active, .make a:active { transform: translate(var(--sticker), var(--sticker)); box-shadow: 0 0 0 var(--bd); }
-.row { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; row-gap: 16px; margin-top: 24px; reading-flow: flex-visual; }
 .clips { display: flex; gap: 8px; }
 .clips button { width: 44px; height: 44px; padding: 0; background: var(--chip); color: var(--chip-fg); font: 400 17px/1 "Archivo Black", sans-serif; }
 .clips button[aria-pressed="true"] { background: var(--b1-ink); color: var(--b1); }
@@ -107,7 +107,9 @@ a { color: inherit; }
 
 /* ---- Copy link / Download: on mobile two equal yellow stickers under the cats | Play row
  * (in the meme block); on desktop they join that row (see the desktop block). */
-.acts { display: flex; gap: 12px; margin-top: 16px; padding: 0 var(--sticker) var(--sticker) 0; }
+/* DOM order is cats, Copy link, Download, Play (the desktop row). On mobile the buttons wrap to a
+ * full-width line under cats | Play; reading-flow keeps Tab in that visual order. */
+.row .acts { order: 3; flex: 1 0 100%; display: flex; gap: 12px; padding: 0 var(--sticker) var(--sticker) 0; }
 .act { --bd: var(--b1-ink); flex: 1; min-width: 0; height: 46px; padding: 0 8px; background: var(--b3); color: var(--b3-ink); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   font: 400 15px/1 "Archivo Black", sans-serif; text-transform: uppercase; white-space: nowrap; }
 .act svg { width: 18px; height: 18px; flex: none; }
@@ -144,7 +146,7 @@ a { color: inherit; }
     width: 168px; height: var(--ctrl); padding: 0; justify-content: center; font-size: 21px; }
   #play svg { width: 17px; height: 17px; }
   /* Copy link / Download: yellow stickers left of Play (Play stays the big one) */
-  .acts { grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: center; margin: var(--gap) calc(var(--side) + 168px + 14px) 0 0; padding: 0; gap: 10px; }
+  .row .acts { order: 0; flex: none; grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: center; margin: var(--gap) calc(var(--side) + 168px + 14px) 0 0; padding: 0; gap: 10px; }
   .act { --bd: var(--b1-ink); flex: none; height: 48px; padding: 0 16px; background: var(--b3); color: var(--b3-ink); font-size: 15px; }
   .act.done { background: var(--b1-ink); color: var(--b3); }
   .blk.w :focus-visible { outline-color: var(--b1-ink); }
