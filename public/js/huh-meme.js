@@ -20,6 +20,12 @@
  * rewind to 0 issued before the sound never completes, it is issued once
  * more. The video decoder is also warmed once at load (muted play + pause
  * before any user play).
+ *
+ * Every clip has a poster (its first frame, clips/X.jpg): iOS Safari does
+ * not load or paint a muted video before the first user play (preload and
+ * the warm-up are ignored there), so without one the stage stays black on
+ * load and after each clip switch. The poster is swapped before the src, and
+ * all four are preloaded, so a switch never flashes black.
  */
 (function (factory) {
   var api = factory();
@@ -27,6 +33,8 @@
   if (typeof window !== 'undefined') window.HuhMeme = api;
 })(function () {
   var CLIPS = ['A', 'B', 'C', 'D'];
+  var POSTER_V = 1;
+  function posterUrl(c) { return '/clips/' + c + '.jpg?v=' + POSTER_V; }
   // The video starts once the sound clock has passed this (s). Chrome reports
   // a few ms (0.009...) while its output is still starting and then holds it;
   // 15 ms is past that stutter and still well inside the first video frame.
@@ -495,6 +503,11 @@
       });
       if (r && r.catch) r.catch(function () { warming = false; });
     }
+    // Poster for the starting clip, then the other three cached for switching.
+    if (video.getAttribute('poster') !== posterUrl(clip)) video.poster = posterUrl(clip);
+    setTimeout(function () {
+      for (var pc = 0; pc < CLIPS.length; pc++) { var im = new Image(); im.src = posterUrl(CLIPS[pc]); }
+    }, 300);
     if (video.readyState >= 2) setTimeout(warmVideo, 0);
     else video.addEventListener('loadeddata', function once() {
       video.removeEventListener('loadeddata', once);
@@ -506,6 +519,7 @@
       if (next === clip) return false;
       clip = next;
       video.pause();
+      video.poster = posterUrl(clip);
       video.src = '/clips/' + clip + '.mp4';
       video.load();
       video.muted = true;
