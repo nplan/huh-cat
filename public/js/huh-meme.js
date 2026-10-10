@@ -31,6 +31,12 @@
   // a few ms (0.009...) while its output is still starting and then holds it;
   // 15 ms is past that stutter and still well inside the first video frame.
   var SOUND_STARTED = 0.015;
+  // ...and that first value can then hold for ~80 ms while the output really
+  // starts. The caption waits until the clock has moved on by CLOCK_MOVED from
+  // that first value (or CLOCK_WAIT_MS passed), so the first letter does not
+  // show before the sound is heard and then stall.
+  var CLOCK_MOVED = 0.008;
+  var CLOCK_WAIT_MS = 200;
   // Order of params in a share code. Never reorder; add new keys at the end
   // (older codes then leave them at their defaults).
   var KEYS = ['pitchSemitones', 'durationScale', 'peakAt', 'riseSemitones', 'fallSemitones',
@@ -156,6 +162,8 @@
     var captionSpans = [];
     var captionTimes = [];
     var captionShown = !!opts.captionBeforePlay;
+    var clockRunning = false;
+    var firstClock = -1;
     var active = false;
     var waitingForSound = false;
     var correcting = false;
@@ -388,6 +396,8 @@
       setActive(true);
       waitingForSound = true;
       correcting = false;
+      clockRunning = false;
+      firstClock = -1;
       captionShown = true;
       setCaption(current, false);
       audio.pause();
@@ -431,7 +441,11 @@
           if (!audio.paused && isFinite(at) && at >= SOUND_STARTED) startVideo();
         }
         if (!waitingForSound && isFinite(at)) {
-          showCaptionAt(at);
+          if (!clockRunning) {
+            if (firstClock < 0) firstClock = at;
+            if (at - firstClock >= CLOCK_MOVED || performance.now() - videoStartAt > CLOCK_WAIT_MS) clockRunning = true;
+          }
+          if (clockRunning) showCaptionAt(at);
           if (!video.seeking && !video.paused) correct(at);
           else if (video.seeking && !reseeked && performance.now() - videoStartAt > 150) {
             // The rewind to 0 (issued while paused, before the sound) never

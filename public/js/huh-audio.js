@@ -602,7 +602,8 @@
    * h where the vowel fades, and ? at the pitch peak of a rise or else
    * at the end. Times are seconds on the rendered sound.
    */
-  var CAPTION_U_SEC = 0.085;
+  var CAPTION_U_SEC = 0.095;
+  var CAPTION_H_LEAD = 0.04;
   function captionTiming(samples, sampleRate, params) {
     var p = normalizeParams(params);
     var n = samples ? samples.length : 0;
@@ -636,16 +637,23 @@
     var b = vEnd >= 0 ? (vEnd + 1) * 0.01 : onset + (end - onset) * 0.85;
     if (a < onset) a = onset;
     if (b <= a) b = Math.min(end, a + 0.05);
-    var count = Math.max(2, Math.min(8, Math.round((b - a) / CAPTION_U_SEC)));
-    var times = [onset];
-    for (var k = 0; k < count; k++) times.push(a + (b - a) * k / count);
-    var lastH = Math.max(a, b - 0.02);
-    times.push(lastH);
+    // One u per ~95 ms of loud vowel, 1..8 (Classic: HUUUH?, the shortest: HUH?).
+    var count = Math.max(1, Math.min(8, Math.round((b - a) / CAPTION_U_SEC)));
+    // The first h sits just before the vowel (not at the faint breath start,
+    // which can be far earlier and is barely audible); the closing h where the
+    // vowel fades. h, the u's and the closing h are spaced evenly between.
+    var firstH = Math.max(onset, a - CAPTION_H_LEAD);
+    var lastH = Math.max(firstH + 0.02 * (count + 1), b - 0.02);
+    var step = (lastH - firstH) / (count + 1);
+    var times = [];
+    for (var k = 0; k <= count + 1; k++) times.push(firstH + step * k);
+    // ? at the pitch peak of a rising question, else at the end; never more
+    // than one letter step after the closing h, so nothing waits.
     var q = end - 0.01;
     if (p.riseSemitones > p.fallSemitones * 0.5 && p.riseSemitones > 0 && p.peakAt >= 0.5) {
       q = Math.max(lastH, p.peakAt * dur);
     }
-    q = Math.max(lastH, Math.min(q, dur - 0.005));
+    q = Math.max(lastH, Math.min(q, lastH + step, dur - 0.005));
     times.push(q);
     var text = 'h';
     for (var u = 0; u < count; u++) text += 'u';
