@@ -50,6 +50,18 @@
   // show before the sound is heard and then stall.
   var CLOCK_MOVED = 0.008;
   var CLOCK_WAIT_MS = 200;
+  // Blink (desktop / Android Chrome) shows that hold on every play: a picture
+  // started on the first value ran ~16 ms ahead of the heard sound (measured
+  // against the real output). So on Blink the picture waits until the clock has
+  // moved VIDEO_MOVED past its first value, and catch-up (correct()) steps in
+  // from CATCHUP_FROM and closes to CATCHUP_DONE (Blink changes playbackRate
+  // cheaply). WebKit is unchanged: its clock moves from the first value, its
+  // picture trails slightly, and each rate change can flush its video pipeline.
+  // navigator.userAgentData exists only in Blink (not WebKit, nor iOS Chrome).
+  var BLINK = typeof navigator !== 'undefined' && !!navigator.userAgentData;
+  var VIDEO_MOVED = BLINK ? 0.008 : 0;
+  var CATCHUP_FROM = BLINK ? 0.006 : 0.030;
+  var CATCHUP_DONE = BLINK ? 0.003 : 0.012;
   // Order of params in a share code. Never reorder; add new keys at the end
   // (older codes then leave them at their defaults).
   var KEYS = ['pitchSemitones', 'durationScale', 'peakAt', 'riseSemitones', 'fallSemitones',
@@ -180,6 +192,8 @@
     var captionShown = !!opts.captionBeforePlay;
     var clockRunning = false;
     var firstClock = -1;
+    var holdClock = -1;
+    var holdSince = 0;
     var active = false;
     var waitingForSound = false;
     var correcting = false;
@@ -357,8 +371,20 @@
       flushQueued();
     }
 
+    // Start the picture once the sound is really running (see SOUND_STARTED).
+    function soundGo(at) {
+      if (!active || !waitingForSound || audio.paused || !isFinite(at) || at < SOUND_STARTED) return;
+      if (VIDEO_MOVED > 0) {
+        if (holdClock < 0) { holdClock = at; holdSince = performance.now(); return; }
+        if (at - holdClock < VIDEO_MOVED && performance.now() - holdSince < CLOCK_WAIT_MS) return;
+      }
+      startVideo();
+    }
+
     function startVideo() {
       waitingForSound = false;
+      // On Blink the start already waited for the clock to move: the caption may go now.
+      if (VIDEO_MOVED > 0) clockRunning = true;
       correcting = false;
       videoStartAt = performance.now();
       stats.plays++;
@@ -368,9 +394,9 @@
       if (started && started.catch) started.catch(function (err) { if (err && err.name !== 'AbortError') console.error(err); });
     }
 
-    // Catch-up: when the picture is off by more than 30 ms (sound time), set one
+    // Catch-up: when the picture is off by more than CATCHUP_FROM (30 ms; Blink 6 ms) of sound time, set one
     // catch-up rate that closes the gap over ~150 ms, hold it, re-aim at most
-    // every 150 ms, and go back to the base rate once within 12 ms. Few rate
+    // every 150 ms, and go back to the base rate once within CATCHUP_DONE (12 ms; Blink 3 ms). Few rate
     // changes on purpose: some engines (WebKit on GStreamer) flush the video
     // pipeline on every playbackRate change, so a per-frame rate makes it stall.
     function correct(at) {
@@ -378,12 +404,12 @@
       var now = performance.now();
       var remainSound = currentSoundDuration() - at;
       if (!correcting) {
-        if (Math.abs(drift) <= 0.03 || remainSound <= 0.06) return;
+        if (Math.abs(drift) <= CATCHUP_FROM || remainSound <= 0.06) return;
         correcting = true;
         nextAim = 0;
         stats.corrections++;
       }
-      if (Math.abs(drift) < 0.012 || remainSound <= 0.04) {
+      if (Math.abs(drift) < CATCHUP_DONE || remainSound <= 0.04) {
         correcting = false;
         if (Math.abs(video.playbackRate - baseRate) > 0.001) video.playbackRate = baseRate;
         return;
@@ -414,6 +440,7 @@
       correcting = false;
       clockRunning = false;
       firstClock = -1;
+      holdClock = -1;
       captionShown = true;
       setCaption(current, false);
       audio.pause();
@@ -454,7 +481,7 @@
         var at = audio.currentTime;
         if (waitingForSound) {
           // Start the picture only once the sound is really running.
-          if (!audio.paused && isFinite(at) && at >= SOUND_STARTED) startVideo();
+          soundGo(at);
         }
         if (!waitingForSound && isFinite(at)) {
           if (!clockRunning) {
@@ -484,10 +511,10 @@
     audio.addEventListener('playing', function () {
       // Usually the clock is already moving here; if so start right away
       // instead of waiting for the next animation frame.
-      if (active && waitingForSound && audio.currentTime >= SOUND_STARTED) startVideo();
+      soundGo(audio.currentTime);
     });
     audio.addEventListener('timeupdate', function () {
-      if (active && waitingForSound && !audio.paused && audio.currentTime >= SOUND_STARTED) startVideo();
+      soundGo(audio.currentTime);
     });
     audio.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
     video.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
