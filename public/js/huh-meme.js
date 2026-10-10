@@ -542,6 +542,13 @@
     function hideStill() {
       if (still && still.className.indexOf(' off') < 0) still.className += ' off';
     }
+    // The still goes after STILL_FRAMES frames of a user play whose media time
+    // has moved past 0, then on the next animation frame. On iOS (A/B, which the
+    // warm-up has played, paused and rewound) the first callback after play()
+    // can come before the restarted video layer is composited: hiding then
+    // showed one black frame. The overlap is the same image as the clip's first
+    // (near-still) frames, so it does not show.
+    var STILL_FRAMES = 2;
     function armStill() {
       if (!still) return;
       if (frameCb && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(frameCb);
@@ -552,15 +559,21 @@
       // video shows. Frames of the muted warm-up do not count: it ends with a
       // pause + rewind, after which iOS shows neither poster nor frame.
       if (video.requestVideoFrameCallback) {
-        var onFrame = function () {
-          if (active && !waitingForSound) { frameCb = 0; hideStill(); }
-          else frameCb = video.requestVideoFrameCallback(onFrame);
+        var moving = 0;
+        var onFrame = function (now, meta) {
+          var t = meta && typeof meta.mediaTime === 'number' ? meta.mediaTime : video.currentTime;
+          if (active && !waitingForSound && t > 0.001) moving++;
+          else if (!active) moving = 0;
+          if (moving >= STILL_FRAMES) {
+            frameCb = 0;
+            requestAnimationFrame(hideStill);
+          } else frameCb = video.requestVideoFrameCallback(onFrame);
         };
         frameCb = video.requestVideoFrameCallback(onFrame);
       }
     }
     if (!video.requestVideoFrameCallback) {
-      video.addEventListener('timeupdate', function () { if (active && !video.paused && video.currentTime > 0) hideStill(); });
+      video.addEventListener('timeupdate', function () { if (active && !video.paused && video.currentTime > 0.05) hideStill(); });
     }
     // Poster for the starting clip, then the other three cached for switching.
     if (video.getAttribute('poster') !== posterUrl(clip)) video.poster = posterUrl(clip);

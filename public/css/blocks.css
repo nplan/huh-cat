@@ -27,7 +27,8 @@ a { color: inherit; }
 /* The clip's first frame over the video until the video has really painted a frame (iOS Safari
  * shows a black video layer, not its poster, once it has some data but before the first play). */
 .stage .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; pointer-events: none; }
-.stage .still.off { visibility: hidden; }
+/* fades out over ~2 frames when the video has painted; comes back instantly (no transition on show) */
+.stage .still.off { opacity: 0; visibility: hidden; transition: opacity 60ms linear, visibility 0s linear 60ms; }
 .caption {
   position: absolute; margin: 0; pointer-events: none; white-space: nowrap; z-index: 2;
   font-family: "Anton", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
