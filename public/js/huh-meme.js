@@ -22,15 +22,15 @@
  * before any user play).
  *
  * Every clip has its first frame as a jpg (clips/X.jpg), used twice: as the
- * video poster and as an <img class="still"> laid over the video. iOS Safari
- * does not paint a muted video before the first user play, and once a
- * switched-to clip has some data it drops the native poster and shows its
- * (black, unpainted) video layer. So the still stays on top until the video
- * has presented a frame in a user play (requestVideoFrameCallback; else a
- * timeupdate past 0), and comes back on every clip switch. Warm-up frames do
- * not count: the warm-up's play starts playback, after which iOS never shows
- * the poster again, and its pause + rewind leaves the layer black. All four jpgs
- * are preloaded so a switch never flashes black.
+ * video poster and as an <img class="still"> underneath the video (whose
+ * background is transparent). iOS Safari does not paint a muted video before
+ * the first user play, and its video layer is empty (see-through) for a moment
+ * after a seek; the still underneath shows through then, so nothing is ever
+ * hidden or shown at Play (an overlay hidden on the first frame callback showed
+ * a black frame on iOS; held longer, it read as a frozen start). Play does not
+ * rewind a video that already sits at its first frame, and the load-time
+ * warm-up (muted play, pause, rewind) runs with the video invisible, so its
+ * motion never shows on a clip switch. All posters are preloaded.
  */
 (function (factory) {
   var api = factory();
@@ -59,22 +59,6 @@
   // picture trails slightly, and each rate change can flush its video pipeline.
   // navigator.userAgentData exists only in Blink (not WebKit, nor iOS Chrome).
   var BLINK = typeof navigator !== 'undefined' && !!navigator.userAgentData;
-  // ---- Black-frame-at-Play variants (iOS, clips A/B), dev switch ?bf=0..4, read once ----
-  // 0  still over the video, hidden after 2 moved frames + 60 ms fade (7c6ef80)
-  // 1  still underneath the video (transparent video bg), never hidden
-  // 2  no rewind at Play when parked at 0, no muted warm-up on WebKit, still over, hidden on 1st frame
-  // 3  no rewind at Play when parked at 0 (warm-up kept), still over, hidden on 1st frame
-  // 4  1 + 3: still underneath, no rewind when parked
-  // 5  4 + the muted warm-up runs with the video invisible (the still underneath shows)
-  var BF_DEFAULT = 5;
-  var BF = (function () {
-    var m = typeof location !== 'undefined' && location.hostname !== 'huuuh.meme' && /[?&]bf=([0-5])\b/.exec(location.search);
-    return m ? +m[1] : BF_DEFAULT;
-  })();
-  var STILL_UNDER = BF === 1 || BF >= 4;
-  var HIDE_WARM = BF === 5;
-  var NO_REWIND = BF >= 2;
-  var NO_WK_WARM = BF === 2;
   var VIDEO_MOVED = BLINK ? 0.008 : 0;
   var CATCHUP_FROM = BLINK ? 0.006 : 0.030;
   var CATCHUP_DONE = BLINK ? 0.003 : 0.012;
@@ -201,7 +185,6 @@
     var srcClip = /\/clips\/([A-D])\.mp4/.exec(video.getAttribute('src') || '');
     var clip = srcClip ? srcClip[1] : 'A';
     var still = opts.still || (stage && stage.querySelector('.still'));
-    var frameCb = 0;
     var clipText = {};
     var captionSpans = [];
     var captionTimes = [];
@@ -230,8 +213,6 @@
     var warmed = false;
     var warming = false;
     var parked = true; // the video sits at its first frame (fresh src, or rewound after the warm-up)
-    if (stage) stage.className += STILL_UNDER ? ' bf-under' : (BF ? ' bf-cut' : '');
-    if (typeof document !== 'undefined') document.documentElement.setAttribute('data-bf', BF);
 
     var engineReady = HuhAudio.loadEngine(base + 'vendor/rubberband/rubberband.wasm');
     engineReady.then(function () { engineLoaded = true; }, function () {});
@@ -467,9 +448,9 @@
       audio.currentTime = 0;
       video.pause();
       // Rewind while paused (the clips have one keyframe, at 0). Not when the
-      // video already sits at its first frame (bf 2-4): on iOS that seek leaves
-      // the layer empty for a frame at the start.
-      if (!(NO_REWIND && parked)) { try { video.currentTime = 0; } catch (e0) {} }
+      // video already sits at its first frame: on iOS that seek leaves the
+      // layer empty for a frame at the start.
+      if (!parked) { try { video.currentTime = 0; } catch (e0) {} }
       parked = false;
       video.muted = true;
       applyRate();
@@ -542,7 +523,7 @@
     audio.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
     video.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
 
-    // bf 5: the warm-up's motion and rewind happen with the video invisible
+    // The warm-up's motion and rewind happen with the video invisible
     // (the still underneath shows); it comes back once the rewind has landed
     // plus two animation frames. Play cancels this at once.
     var warmHidden = false, warmToken = 0;
@@ -571,11 +552,10 @@
     // Warm the video decoder once (muted, before any user play).
     function warmVideo() {
       if (warmed || active) return;
-      if (NO_WK_WARM && !BLINK) return;
       warmed = true;
       parked = false;
       warming = true;
-      if (HIDE_WARM) hideForWarm();
+      hideForWarm();
       var r = video.play();
       var stop = function () {
         if (!warming) return;
@@ -584,7 +564,7 @@
         video.pause();
         try { video.currentTime = 0; } catch (e) {}
         parked = true;
-        if (HIDE_WARM) showAfterRewind();
+        showAfterRewind();
       };
       video.addEventListener('playing', function once() {
         video.removeEventListener('playing', once);
@@ -592,47 +572,9 @@
       });
       if (r && r.catch) r.catch(function () { warming = false; showVideo(); });
     }
-    // ---- the still over the video, until the video has painted a frame ----
-    function hideStill() {
-      if (still && still.className.indexOf(' off') < 0) still.className += ' off';
-    }
-    // The still goes after STILL_FRAMES frames of a user play whose media time
-    // has moved past 0, then on the next animation frame. On iOS (A/B, which the
-    // warm-up has played, paused and rewound) the first callback after play()
-    // can come before the restarted video layer is composited: hiding then
-    // showed one black frame. The overlap is the same image as the clip's first
-    // (near-still) frames, so it does not show.
-    var STILL_FRAMES = 2;
+    // ---- the still underneath the video: the clip's first frame ----
     function armStill() {
-      if (!still) return;
-      if (frameCb && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(frameCb);
-      frameCb = 0;
-      if (still.getAttribute('src') !== posterUrl(clip)) still.src = posterUrl(clip);
-      still.className = still.className.replace(/ off/g, '');
-      if (STILL_UNDER) return; // underneath: shows through whenever the video layer is empty
-      // A frame of the current src presented during a real (user) play: the
-      // video shows. Frames of the muted warm-up do not count: it ends with a
-      // pause + rewind, after which iOS shows neither poster nor frame.
-      if (video.requestVideoFrameCallback) {
-        var moving = 0;
-        var onFrame = function (now, meta) {
-          var t = meta && typeof meta.mediaTime === 'number' ? meta.mediaTime : video.currentTime;
-          if (BF !== 0) { // bf 2/3: first frame of a user play (as 242e65b)
-            if (active && !waitingForSound) { frameCb = 0; hideStill(); return; }
-            frameCb = video.requestVideoFrameCallback(onFrame); return;
-          }
-          if (active && !waitingForSound && t > 0.001) moving++;
-          else if (!active) moving = 0;
-          if (moving >= STILL_FRAMES) {
-            frameCb = 0;
-            requestAnimationFrame(hideStill);
-          } else frameCb = video.requestVideoFrameCallback(onFrame);
-        };
-        frameCb = video.requestVideoFrameCallback(onFrame);
-      }
-    }
-    if (!video.requestVideoFrameCallback) {
-      video.addEventListener('timeupdate', function () { if (!STILL_UNDER && active && !video.paused && video.currentTime > (BF ? 0 : 0.05)) hideStill(); });
+      if (still && still.getAttribute('src') !== posterUrl(clip)) still.src = posterUrl(clip);
     }
     // Poster for the starting clip, then the other three cached for switching.
     if (video.getAttribute('poster') !== posterUrl(clip)) video.poster = posterUrl(clip);
@@ -692,7 +634,6 @@
       scheduleRender: scheduleRender,
       prerender: prerender,
       setClip: setClip,
-      stillShown: function () { return !!still && still.className.indexOf(' off') < 0; },
       setClipText: setClipText,
       fitCaption: fitCaption,
       isActive: function () { return active; },

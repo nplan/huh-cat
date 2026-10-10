@@ -24,16 +24,11 @@ a { color: inherit; }
 .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #000; cursor: pointer;
   border-radius: var(--r); box-shadow: 0 0 0 3px var(--b1-ink), 6px 6px 0 3px var(--b1-ink); }
 .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-/* The clip's first frame over the video until the video has really painted a frame (iOS Safari
- * shows a black video layer, not its poster, once it has some data but before the first play). */
-.stage .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 1; pointer-events: none; }
-/* fades out over ~2 frames when the video has painted; comes back instantly (no transition on show) */
-.stage .still.off { opacity: 0; visibility: hidden; transition: opacity 60ms linear, visibility 0s linear 60ms; }
-/* bf variants (see huh-meme.js): cut instead of fade; or the still underneath a transparent video */
-.stage.bf-cut .still.off { transition: none; }
-.stage.bf-under .still { z-index: 0; }
-.stage.bf-under video { z-index: 1; background: transparent; }
-.stage.bf-under video.warmhide { opacity: 0; }
+/* The clip's first frame underneath the (transparent) video: it shows whenever iOS Safari's video
+ * layer is empty (before the first play, right after a seek), and while the warm-up hides the video. */
+.stage .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; z-index: 0; pointer-events: none; }
+.stage video { z-index: 1; background: transparent; }
+.stage video.warmhide { opacity: 0; }
 .caption {
   position: absolute; margin: 0; pointer-events: none; white-space: nowrap; z-index: 2;
   font-family: "Anton", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;

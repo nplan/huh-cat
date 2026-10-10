@@ -258,10 +258,10 @@
   }
   // The address bar stays clean while you play: the share code is only made when Copy link is
   // pressed. An incoming /?h=... link is loaded, then its code is dropped from the address bar.
-  // Dev preview params (?scheme=N, ?bg=N, ?bf=N) are kept.
+  // Dev preview params (?scheme=N, ?bg=N) are kept.
   function cleanUrl() {
     if (!history.replaceState || !/[?&]h=/.test(location.search)) return;
-    var keep = location.search.replace(/^\?/, '').split('&').filter(function (kv) { return /^(scheme|bg|bf)=/.test(kv); });
+    var keep = location.search.replace(/^\?/, '').split('&').filter(function (kv) { return /^(scheme|bg)=/.test(kv); });
     try { history.replaceState(null, '', location.pathname + (keep.length ? '?' + keep.join('&') : '') + location.hash); } catch (e) {}
   }
   function local() {
