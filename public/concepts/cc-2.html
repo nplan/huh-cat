@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <base href="/" />
+  <title>HUUUH? Pad (Claude concept 2)</title>
+  <meta name="theme-color" content="#FFC900" />
+  <meta name="color-scheme" content="light" />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+  <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/cc-base.css?v=1" />
+  <link rel="stylesheet" href="css/cc-2.css?v=1" />
+</head>
+<body class="cc2">
+  <h1 class="sr-only">HUUUH? Ben the Huh? Cat, on demand</h1>
+  <main class="app">
+    <section class="screen" aria-label="The meme">
+      <div class="stage" id="stage" title="Play">
+        <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
+        <script>(function(){var m=/[?&]h=1([A-D])/.exec(location.search);if(m&&m[1]!=="A")document.getElementById("huh").src="/clips/"+m[1]+".mp4";})();</script>
+        <p class="caption meme top right" id="caption" aria-hidden="true"></p>
+      </div>
+      <div class="clips" role="group" aria-label="Cat clip">
+        <button type="button" data-clip="A" aria-pressed="true" aria-label="Cat A"><img src="concepts/r4/cat-A.jpg" alt="" width="320" height="180" /></button>
+        <button type="button" data-clip="B" aria-pressed="false" aria-label="Cat B"><img src="concepts/r4/cat-B.jpg" alt="" width="320" height="180" /></button>
+        <button type="button" data-clip="C" aria-pressed="false" aria-label="Cat C"><img src="concepts/r4/cat-C.jpg" alt="" width="320" height="180" /></button>
+        <button type="button" data-clip="D" aria-pressed="false" aria-label="Cat D"><img src="concepts/r4/cat-D.jpg" alt="" width="320" height="180" /></button>
+      </div>
+      <p id="status" role="alert"></p>
+      <p id="announce" class="sr-only" role="status" aria-live="polite"></p>
+    </section>
+    <section class="pad" aria-label="Sound">
+      <div class="tabs" role="tablist" aria-label="Choose the sound">
+        <button type="button" role="tab" id="tab-presets" aria-controls="panel-presets" aria-selected="true">Moods</button>
+        <button type="button" role="tab" id="tab-sliders" aria-controls="panel-sliders" aria-selected="false" tabindex="-1">Tune</button>
+      </div>
+      <div id="panel-presets" role="tabpanel" aria-labelledby="tab-presets">
+        <div class="presets" id="presets"></div>
+      </div>
+      <div id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden>
+        <div id="slider-list"></div>
+        <div class="slider-foot">
+          <span id="mode">Original huh</span>
+          <button type="button" id="plain">Reset</button>
+        </div>
+      </div>
+    </section>
+    <nav class="dock" aria-label="Play and send">
+      <button id="share" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span class="act-label">Copy link</span></button>
+      <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
+      <button id="download" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span class="act-label">Download</span></button>
+    </nav>
+    <a class="lab" href="lab.html">Lab</a>
+  </main>
+  <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
+  <script src="vendor/rubberband/rubberband.js?v=9"></script>
+  <script src="js/huh-vowel.js?v=1"></script>
+  <script src="js/huh-audio.js?v=20"></script>
+  <script src="js/huh-presets.js?v=3"></script>
+  <script src="js/huh-meme.js?v=1"></script>
+  <script src="js/huh-main.js?v=4"></script>
+</body>
+</html>

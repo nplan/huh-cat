@@ -1,0 +1,99 @@
+/* cc-2 Pad: the whole thing on one phone screen, like a reaction soundboard.
+ * Video edge to edge on top, moods are emoji keys on an even 4-column pad, and Play sits under the thumb
+ * in a dock with Copy link and Download. Palette: yellow #FFC900 page, black, white keys, pink #FF90E8 = selected.
+ * Type: Archivo Black (Play), DM Sans (everything else). Shape: 16px keys, keys have a bottom edge that sinks on press. */
+.cc2 { --yel: #FFC900; --ink: #000; --paper: #fff; --pink: #FF90E8; --mute: #3D3000; --r: 16px; --edge: 4px;
+  background: var(--yel); color: var(--ink); font-family: "DM Sans", system-ui, sans-serif; }
+.cc2 :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.app { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+
+/* ---- screen: full-bleed video, cats right under it */
+.screen { padding-top: env(safe-area-inset-top); background: var(--ink); }
+.stage { border-bottom: 3px solid var(--ink); }
+.clips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 12px 16px; background: var(--yel); }
+.clips button { position: relative; height: 48px; padding: 0; border: 3px solid var(--ink); border-radius: 12px; overflow: hidden; background: var(--ink);
+  transition: transform .12s cubic-bezier(.23,1,.32,1); }
+.clips button:active { transform: scale(.96); }
+.clips img { width: 100%; height: 100%; object-fit: cover; opacity: .45; transition: opacity .2s; }
+.clips button[aria-pressed="true"] img { opacity: 1; }
+.clips button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--yel), 0 0 0 6px var(--ink); }
+#status { margin: 0; padding: 0 16px 8px; background: var(--yel); color: #6E0000; font-weight: 700; font-size: 14px; }
+
+/* ---- view switch: a small segmented control, not a key */
+.pad { padding: 4px 16px 0; }
+.tabs { display: inline-flex; padding: 2px; margin-bottom: 12px; border-radius: 999px; background: rgba(0,0,0,.1); }
+.tabs button { height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: transparent; color: var(--mute); font: 700 15px/1 "DM Sans", sans-serif; transition: background-color .15s, color .15s; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+
+/* ---- the pad: 4 even columns, Original takes two cells (2 + 10 = 12 = 4 x 3) */
+.presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding-bottom: var(--edge); }
+.preset { height: 72px; padding: 0 2px; border: 3px solid var(--ink); border-radius: var(--r); background: var(--paper); color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0;
+  box-shadow: 0 var(--edge) 0 var(--ink); transition: transform .1s cubic-bezier(.23,1,.32,1), box-shadow .1s cubic-bezier(.23,1,.32,1), background-color .15s; }
+.preset:active { transform: translateY(var(--edge)); box-shadow: 0 0 0 var(--ink); }
+.preset .emo { font-size: 28px; line-height: 1; transition: transform .22s cubic-bezier(.23,1,.32,1); }
+.preset .name { font: 700 12px/1 "DM Sans", sans-serif; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.preset[data-preset="original"] { grid-column: span 2; flex-direction: row; gap: 8px; }
+.preset[data-preset="original"] .name { font: 400 14px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+.preset[aria-pressed="true"] { background: var(--pink); }
+.preset[aria-pressed="true"] .emo { transform: scale(1.2); }
+@media (hover: hover) { .preset:hover .emo { transform: scale(1.12); } }
+
+/* ---- sliders */
+.slider { display: block; margin-bottom: 4px; }
+.slider .top { display: flex; justify-content: space-between; align-items: baseline; font: 700 16px/1 "DM Sans", sans-serif; }
+.slider output { font-weight: 700; font-size: 14px; color: var(--mute); font-variant-numeric: tabular-nums; }
+.slider .ends { display: flex; justify-content: space-between; color: var(--mute); font-size: 13px; margin-top: -6px; }
+.slider input[type=range] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 48px; margin: 0; background: transparent; touch-action: pan-y; --fa: 50%; --fb: 50%; }
+.slider input[type=range]::-webkit-slider-runnable-track { height: 16px; border: 3px solid var(--ink); border-radius: 999px;
+  background: linear-gradient(90deg, var(--paper) var(--fa), var(--pink) var(--fa), var(--pink) var(--fb), var(--paper) var(--fb)); }
+.slider input[type=range]::-moz-range-track { height: 10px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); }
+.slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -10px; border-radius: 50%; background: var(--ink); border: 3px solid var(--paper); box-shadow: 0 0 0 3px var(--ink); }
+.slider input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); border: 3px solid var(--paper); }
+.slider input[type=range]:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; border-radius: 12px; }
+.slider-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--mute); font-size: 14px; font-weight: 600; }
+#plain { height: 44px; padding: 0 16px; border: 3px solid var(--ink); border-radius: 999px; background: var(--paper); color: var(--ink); font: 700 14px/1 "DM Sans", sans-serif; }
+#plain:active { transform: scale(.97); }
+
+/* ---- dock: Play under the thumb, send on either side */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 8px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--yel); border-top: 3px solid var(--ink); }
+.dock button { height: 64px; border: 3px solid var(--ink); border-radius: var(--r); min-width: 0; box-shadow: 0 var(--edge) 0 var(--ink);
+  transition: transform .1s cubic-bezier(.23,1,.32,1), box-shadow .1s cubic-bezier(.23,1,.32,1), background-color .15s, color .15s; }
+.dock button:active { transform: translateY(var(--edge)); box-shadow: 0 0 0 var(--ink); }
+#play { background: var(--ink); color: var(--yel); display: flex; align-items: center; justify-content: center; gap: 10px; font: 400 22px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+#play svg { width: 20px; height: 20px; }
+.is-playing #play { background: var(--pink); color: var(--ink); }
+.act { background: var(--paper); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0 4px; }
+.act svg { width: 22px; height: 22px; flex: none; }
+.act-label { font: 700 12px/1 "DM Sans", sans-serif; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.act.done { background: var(--pink); }
+.act.busy { cursor: progress; }
+.lab { display: block; width: max-content; margin: 16px auto 0; padding: 12px 8px; color: var(--mute); font-size: 14px; font-weight: 700; text-decoration: none; }
+.lab:hover { text-decoration: underline; }
+
+/* ---- desktop: a soundboard on a desk. Stage + dock on the left, the pad on the right */
+@media (min-width: 960px) {
+  .app { min-height: 100dvh; padding: 48px; display: grid; gap: 24px 48px; align-content: center;
+    grid-template-columns: minmax(0, 1fr) 440px; grid-template-areas: "screen pad" "dock pad" "dock lab"; max-width: 1440px; margin: 0 auto; }
+  .screen { grid-area: screen; background: none; padding: 0; }
+  .stage { border: 3px solid var(--ink); border-radius: 20px; box-shadow: 0 6px 0 var(--ink); }
+  .clips { padding: 16px 0 0; grid-template-columns: repeat(4, 112px); gap: 12px; }
+  .clips button { height: 63px; }
+  .pad { grid-area: pad; padding: 0; align-self: center; }
+  .tabs { display: none; }
+  #panel-presets[hidden], #panel-sliders[hidden] { display: block !important; }
+  #panel-sliders { margin-top: 24px; }
+  .preset { height: 84px; }
+  .preset .emo { font-size: 32px; }
+  .dock { grid-area: dock; position: static; align-self: start; border: 0; padding: 0; grid-template-columns: 1fr 2fr 1fr; max-width: 640px; }
+  .act { flex-direction: row; gap: 8px; }
+  .act-label { font-size: 15px; }
+  .lab { grid-area: lab; margin: 0; justify-self: end; align-self: end; }
+}
+@media (min-width: 960px) and (max-height: 860px) {
+  .preset { height: 68px; }
+  .preset .emo { font-size: 26px; }
+  .slider .ends { display: none; }
+  .slider input[type=range] { height: 40px; }
+}
