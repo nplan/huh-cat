@@ -65,12 +65,14 @@
   // 2  no rewind at Play when parked at 0, no muted warm-up on WebKit, still over, hidden on 1st frame
   // 3  no rewind at Play when parked at 0 (warm-up kept), still over, hidden on 1st frame
   // 4  1 + 3: still underneath, no rewind when parked
-  var BF_DEFAULT = 4;
+  // 5  4 + the muted warm-up runs with the video invisible (the still underneath shows)
+  var BF_DEFAULT = 5;
   var BF = (function () {
-    var m = typeof location !== 'undefined' && location.hostname !== 'huuuh.meme' && /[?&]bf=([0-4])\b/.exec(location.search);
+    var m = typeof location !== 'undefined' && location.hostname !== 'huuuh.meme' && /[?&]bf=([0-5])\b/.exec(location.search);
     return m ? +m[1] : BF_DEFAULT;
   })();
-  var STILL_UNDER = BF === 1 || BF === 4;
+  var STILL_UNDER = BF === 1 || BF >= 4;
+  var HIDE_WARM = BF === 5;
   var NO_REWIND = BF >= 2;
   var NO_WK_WARM = BF === 2;
   var VIDEO_MOVED = BLINK ? 0.008 : 0;
@@ -449,6 +451,7 @@
       clearTimeout(debounceTimer);
       debounceTimer = 0;
       warming = false;
+      showVideo();
       // A missing render is done right here inside the tap. (Before the
       // engine is up, the raw A.wav plays: the plain huh.)
       renderNow(true);
@@ -539,6 +542,32 @@
     audio.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
     video.addEventListener('loadedmetadata', function () { if (active) applyRate(); });
 
+    // bf 5: the warm-up's motion and rewind happen with the video invisible
+    // (the still underneath shows); it comes back once the rewind has landed
+    // plus two animation frames. Play cancels this at once.
+    var warmHidden = false, warmToken = 0;
+    function hideForWarm() {
+      warmToken++;
+      warmHidden = true;
+      if (video.className.indexOf(' warmhide') < 0) video.className += ' warmhide';
+    }
+    function showVideo() {
+      warmToken++;
+      if (!warmHidden) return;
+      warmHidden = false;
+      video.className = video.className.replace(/ warmhide/g, '');
+    }
+    function showAfterRewind() {
+      var my = ++warmToken;
+      var done = function () {
+        if (my !== warmToken) return;
+        requestAnimationFrame(function () { requestAnimationFrame(function () { if (my === warmToken) showVideo(); }); });
+      };
+      if (video.seeking) video.addEventListener('seeked', function once() { video.removeEventListener('seeked', once); done(); });
+      else done();
+      setTimeout(function () { if (my === warmToken) showVideo(); }, 600); // a rewind that never lands
+    }
+
     // Warm the video decoder once (muted, before any user play).
     function warmVideo() {
       if (warmed || active) return;
@@ -546,6 +575,7 @@
       warmed = true;
       parked = false;
       warming = true;
+      if (HIDE_WARM) hideForWarm();
       var r = video.play();
       var stop = function () {
         if (!warming) return;
@@ -554,12 +584,13 @@
         video.pause();
         try { video.currentTime = 0; } catch (e) {}
         parked = true;
+        if (HIDE_WARM) showAfterRewind();
       };
       video.addEventListener('playing', function once() {
         video.removeEventListener('playing', once);
         setTimeout(stop, 60);
       });
-      if (r && r.catch) r.catch(function () { warming = false; });
+      if (r && r.catch) r.catch(function () { warming = false; showVideo(); });
     }
     // ---- the still over the video, until the video has painted a frame ----
     function hideStill() {

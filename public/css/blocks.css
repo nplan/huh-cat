@@ -33,6 +33,7 @@ a { color: inherit; }
 .stage.bf-cut .still.off { transition: none; }
 .stage.bf-under .still { z-index: 0; }
 .stage.bf-under video { z-index: 1; background: transparent; }
+.stage.bf-under video.warmhide { opacity: 0; }
 .caption {
   position: absolute; margin: 0; pointer-events: none; white-space: nowrap; z-index: 2;
   font-family: "Anton", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
