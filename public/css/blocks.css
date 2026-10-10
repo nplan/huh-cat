@@ -106,23 +106,59 @@ a { color: inherit; }
 .foot a:hover { text-decoration: underline; }
 
 @media (min-width: 960px) {
-  /* Desktop: one centred column, meme on top, then the sound, then send. The bands stay full-bleed. */
-  :root { --col: 840px; }
-  .blk { padding: 40px max(48px, calc((100% - var(--col)) / 2)); }
-  .blk.n { padding-top: 32px; padding-bottom: 36px; }
-  .blk.w { padding-top: 28px; padding-bottom: 40px; }
-  /* moods: Classic spans the row, then two rows of five (gapless) */
-  .presets { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px 12px; }
-  /* larger labels on desktop (Matej) */
-  .preset { height: 56px; font-size: 17px; }
-  .tabs button { height: 44px; padding: 0 28px; font-size: 17px; }
-  .clips button { width: 52px; height: 52px; font-size: 20px; }
-  #play { height: 60px; padding: 0 28px; font-size: 22px; }
-  #play svg { width: 18px; height: 18px; }
-  .act { height: 60px; font-size: 18px; }
-  .act svg { width: 20px; height: 20px; }
-  .slider .top { font-size: 19px; }
-  #plain { height: 44px; font-size: 15px; }
+  /* Desktop: one screen, no scroll. The meme block (video + one control row with cats, Copy link,
+   * Download and Play) sits on top; the sound block below shows Moods and Tune side by side.
+   * The video is sized by the viewport height: its width is the column max or whatever the height
+   * leaves after the fixed rest (--rest), at 16:9. Below ~700px high it stops shrinking and the page scrolls. */
+  :root {
+    --colmax: 1180px;
+    --pad: 20px; --gap: 14px; --ctrl: 56px;
+    --cell: 44px; --cgap: 8px;
+    --sound: calc(4 * var(--cell) + 3 * var(--cgap) + 2 * 22px);
+    --rest: calc(var(--pad) + var(--gap) + var(--ctrl) + var(--pad) + var(--sound) + 10px);
+    --col: max(560px, min(var(--colmax), calc(100vw - 96px), calc((100dvh - var(--rest)) * 16 / 9)));
+    --low: min(calc(100vw - 96px), max(var(--col), 960px));
+    /* the control row never gets narrower than its contents, even under a small video */
+    --ctrlw: max(var(--col), 820px);
+    --side: calc((100vw - var(--ctrlw)) / 2);
+  }
+  .blocks { min-height: 100dvh; display: grid; background: var(--b1);
+    grid-template-columns: minmax(0, 1fr) var(--col) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; }
+  .blk.y, .blk.y .row, .blk.w { display: contents; }
+  .stage { grid-column: 2; grid-row: 1; width: var(--col); margin-top: var(--pad); }
+  .clips { grid-column: 1 / -1; grid-row: 2; justify-self: start; align-self: center; margin: var(--gap) 0 0 var(--side); }
+  .clips button { width: 48px; height: 48px; font-size: 19px; }
+  #play { grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: center; margin: var(--gap) var(--side) 0 0;
+    width: 168px; height: var(--ctrl); padding: 0; justify-content: center; font-size: 21px; }
+  #play svg { width: 17px; height: 17px; }
+  /* Copy link / Download: yellow stickers left of Play (Play stays the big one) */
+  .blk.w .acts { grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: center; margin: var(--gap) calc(var(--side) + 168px + 14px) 0 0; gap: 10px; }
+  .act { --bd: var(--b1-ink); flex: none; height: 48px; padding: 0 16px; background: var(--b3); color: var(--b3-ink); font-size: 15px; }
+  .act.done { background: var(--b1-ink); color: var(--b3); }
+  .blk.w :focus-visible { outline-color: var(--b1-ink); }
+  #status { grid-column: 2; grid-row: 3; margin: 8px 0 0; }
+  /* sound block: Moods | Tune, no switch */
+  .blk.n { grid-column: 1 / -1; grid-row: 4; margin-top: var(--pad); padding: 22px calc((100% - var(--low)) / 2);
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; align-items: start; }
+  .blk.n .tabs { display: none; }
+  .blk.n #panel-sliders[hidden] { display: block !important; }
+  /* moods: 3 equal columns, Classic spans two cells: 2 + 10 = 12, four full rows */
+  .presets { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--cgap) 10px; }
+  .preset { height: var(--cell); font-size: 15px; }
+  .preset[data-preset="original"] { grid-column: span 2; }
+  /* sliders: title and track on one line */
+  .slider { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; column-gap: 12px; margin: 0; height: 40px; }
+  .slider .top { font-size: 16px; }
+  .slider input[type=range] { height: 40px; }
+  .slider-foot { margin-top: 6px; }
+  #plain { height: 36px; font-size: 13px; }
+}
+@media (min-width: 1600px) and (min-height: 1000px) {
+  :root { --cell: 50px; --colmax: 1240px; }
+  .preset { font-size: 17px; }
+  .slider { height: 46px; } .slider input[type=range] { height: 46px; }
+  .slider .top { font-size: 18px; }
+  .act { height: 52px; font-size: 17px; }
 }
 
 /* ---- share player (/p): one meme block, a big Play, a way back */
