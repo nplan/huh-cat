@@ -17,6 +17,9 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') window.HuhPresets = api;
 })(function () {
+  // The name of the plain, unmodified huh (preset id 'original', which share
+  // links carry, never changes). Used by the meme page, /p and the lab.
+  var PLAIN_LABEL = 'Classic';
   var LOCAL_KEY = 'huh-presets';
   var SLIDERS = ['pitch', 'length', 'question', 'vowel'];
   // Decimal places of the lab knob steps.
@@ -117,6 +120,9 @@
     one[key] = value;
     var f = fromSliders(one);
     for (var i = 0; i < keys.length; i++) out[keys[i]] = f[keys[i]];
+    // The Vowel slider is the line through the huh; moving it replaces a
+    // full 2D vowel with that point on the line.
+    if (key === 'vowel') { delete out.vowelX; delete out.vowelY; delete out.vowelStrength; }
     return out;
   }
 
@@ -150,8 +156,10 @@
    */
   function nearest(params) {
     var out = { pitch: 0, length: 0, question: 0, vowel: 0, exact: {} };
+    var H = typeof HuhAudio !== 'undefined' ? HuhAudio : null;
+    var has2D = !!(H && H.vowel2D && H.vowel2D(params || {}));
     var vowel = Number(params && params.vowel);
-    if (!isFinite(vowel) && typeof HuhAudio !== 'undefined' && HuhAudio.legacyVowel) vowel = HuhAudio.legacyVowel(params || {});
+    if ((has2D || !isFinite(vowel)) && H && H.legacyVowel) vowel = H.legacyVowel(params || {});
     if (!isFinite(vowel)) vowel = 0;
     out.vowel = round(num(vowel), 2);
     var pitch = pval(params, 'pitchSemitones', 0);
@@ -175,7 +183,7 @@
     out.exact.pitch = matches(params, 'pitch', out.pitch);
     out.exact.length = matches(params, 'length', out.length);
     out.exact.question = matches(params, 'question', out.question);
-    out.exact.vowel = Math.abs(out.vowel - vowel) < 1e-6;
+    out.exact.vowel = !has2D && Math.abs(out.vowel - vowel) < 1e-6;
     return out;
   }
 
@@ -243,6 +251,7 @@
   }
 
   return {
+    PLAIN_LABEL: PLAIN_LABEL,
     LOCAL_KEY: LOCAL_KEY,
     SLIDERS: SLIDERS,
     CONTROLS: CONTROLS,

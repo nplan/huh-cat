@@ -59,7 +59,7 @@ a { color: inherit; }
 #status:empty { display: none; }
 
 /* ---- tabs: a segmented switch (views), deliberately unlike the sticker chips (content) */
-.tabs { display: inline-flex; gap: 0; padding: 3px; margin-bottom: 20px; border: 2px solid var(--b2-fg); border-radius: 999px; }
+.tabs { display: flex; width: max-content; gap: 0; padding: 3px; margin: 0 auto 20px; border: 2px solid var(--b2-fg); border-radius: 999px; }
 .tabs button { height: 38px; padding: 0 22px; border: 0; border-radius: 999px; background: transparent; color: var(--b2-fg); font: 700 15px/1 "DM Sans", sans-serif; letter-spacing: 0; transition: background-color .15s, color .15s; }
 .tabs button[aria-selected="true"] { background: var(--b2-fg); color: var(--b2); }
 .tabs button:focus-visible { outline-offset: 4px; }
@@ -115,9 +115,7 @@ a { color: inherit; }
   .blk.n #panel-sliders { margin-top: 26px; }
   .slider { margin-bottom: 6px; }
   .slider input[type=range] { height: 40px; }
-  .blk.w { padding: 26px 48px; display: flex; align-items: center; gap: 24px; }
-  .blk.w .acts { flex: 1; }
-  .blk.w .foot { margin-top: 0; }
+  .blk.w { padding: 26px 48px; }
 }
 
 /* ---- share player (/p): one meme block, a big Play, a way back */

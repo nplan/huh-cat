@@ -34,7 +34,7 @@
   // Order of params in a share code. Never reorder; add new keys at the end
   // (older codes then leave them at their defaults).
   var KEYS = ['pitchSemitones', 'durationScale', 'peakAt', 'riseSemitones', 'fallSemitones',
-    'gainDb', 'attackMs', 'accent', 'vowel', 'keepVowel'];
+    'gainDb', 'attackMs', 'accent', 'vowel', 'keepVowel', 'vowelX', 'vowelY', 'vowelStrength'];
   var CODE_VERSION = '1';
 
   // ---- share codes ---------------------------------------------------
@@ -44,7 +44,10 @@
   // preset field: preset id (the sound is that preset's params, snapshot
   // below), "-id" = custom based on that preset, "-" = custom. Numbers are
   // JS shortest round-trip decimals (exact), "0." shortened to ".", and
-  // trailing values equal to the defaults dropped.
+  // trailing values equal to the defaults dropped. The full 2D vowel
+  // (vowelX, vowelY, vowelStrength) is appended only when there is one, so
+  // 1D codes are unchanged; older pages ignore the extra fields and use the
+  // vowel field, which holds the nearest point on the 1D line.
   function numStr(n) {
     if (typeof n === 'boolean') return n ? '1' : '0';
     var s = String(n);
@@ -56,10 +59,11 @@
     var H = HuhAudio;
     var p = H.normalizeParams(state.params || {});
     var d = H.normalizeParams({});
-    var vals = KEYS.map(function (k) { return numStr(p[k]); });
-    var defs = KEYS.map(function (k) { return numStr(d[k]); });
+    var DEF2D = { vowelX: '', vowelY: '', vowelStrength: '1' };
+    var vals = KEYS.map(function (k) { return p[k] === undefined ? '' : numStr(p[k]); });
+    var defs = KEYS.map(function (k) { return k in DEF2D ? DEF2D[k] : numStr(d[k]); });
     var n = vals.length;
-    while (n > 0 && vals[n - 1] === defs[n - 1]) n--;
+    while (n > 0 && (vals[n - 1] === '' || vals[n - 1] === defs[n - 1])) n--;
     var clip = CLIPS.indexOf(state.clip) >= 0 ? state.clip : 'A';
     var id = state.presetId && /^[a-z0-9][a-z0-9-]{0,31}$/.test(state.presetId) ? state.presetId : '';
     var base = !id && state.basedOn && /^[a-z0-9][a-z0-9-]{0,31}$/.test(state.basedOn) ? state.basedOn : '';

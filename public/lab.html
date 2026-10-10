@@ -5,68 +5,82 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HUUUH? lab</title>
   <meta name="robots" content="noindex" />
-  <meta name="theme-color" content="#0A1433" />
+  <meta name="theme-color" content="#FF90E8" />
   <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
-  <link rel="stylesheet" href="css/lab.css?v=2" />
+  <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/theme.css?v=1" />
+  <link rel="stylesheet" href="css/lab.css?v=4" />
+  <script src="js/theme.js?v=1"></script>
 </head>
-<body>
-  <header class="lab-head">
-    <h1><span class="mark">HUUUH?</span> <span class="sub">lab</span></h1>
-    <a class="back" href="/">&larr; meme page</a>
+<body class="lab-page">
+  <header class="lab-top">
+    <h1>HUUUH? <span>lab</span></h1>
+    <button type="button" id="play" class="stk"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg>Play</button>
+    <p id="status" role="status"></p>
+    <a class="back stk" href="/">&larr; Meme page</a>
   </header>
   <main class="lab">
-    <div class="lab-left">
-      <section class="card picker-card">
-    <h2 class="card-title" id="pick-label">Preset</h2>
-    <p class="pick-hint">presets.json, with this browser's saved edits on top</p>
-    <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
+    <div class="col left">
+      <section class="card picker-card" aria-labelledby="pick-label">
+        <div class="card-head"><h2 id="pick-label">Preset</h2></div>
+        <p class="hint">presets.json, with this browser's saved edits on top</p>
+        <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
       </section>
-    <section class="editor card" aria-labelledby="editing-title">
-      <div class="editor-head">
-        <h2 id="editing-title">Editing: <strong id="editing-name">Original huh (plain, fixed)</strong></h2>
-        <span class="dirty" id="dirty" hidden>Unsaved changes</span>
-      </div>
-      <p class="note" id="editing-note"></p>
-      <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel under the pitch knob (preview only, not saved)</label>
-      <div class="group" id="simple-group">
-        <div class="group-title"><h3>Simple</h3><span>same as the meme-page sliders; &asymp; = nearest, knobs differ</span></div>
-        <div id="simple"></div>
-        <p class="vowel-readout" id="vowel-readout"></p>
-      </div>
-      <h3 class="detail-title">Detailed</h3>
-      <div id="params"></div>
-      <div class="edit-actions">
-        <button type="button" id="save" disabled>Save</button>
-        <button type="button" id="revert" disabled>Revert</button>
-        <button type="button" id="reset">Reset to original</button>
-      </div>
-    </section>
-    </div>
-    <div class="lab-right">
-      <section class="card diagram-card">
-        <h2 class="card-title">Sound</h2>
-    <p class="hint">The diagram is the sound Play will use. The filled shape is the waveform, the yellow line is the pitch, the blue line is attack and accent, the dot is the pitch peak.</p>
-    <canvas id="diagram" width="640" height="220" aria-label="waveform and pitch"></canvas>
-    <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
-    <div class="actions">
-      <button type="button" id="play">Play</button>
-    </div>
-    <p id="status"></p>
+      <section class="card file" aria-labelledby="share-title">
+        <div class="card-head"><h2 id="share-title">Presets file</h2></div>
+        <p class="hint" id="share-note">Saved edits live in this browser only. Export writes presets.json with them included; commit that file to share it.</p>
+        <div class="file-actions">
+          <button type="button" class="stk" id="export">Export presets.json</button>
+          <button type="button" class="stk" id="clear-local">Clear local edits</button>
+        </div>
       </section>
-    <section class="share card" aria-labelledby="share-title">
-      <h2 id="share-title" class="card-title">Presets file</h2>
-      <p class="hint" id="share-note">Saved edits live in this browser only (localStorage). Export writes presets.json with them included; commit that file to share it.</p>
-      <div class="share-actions">
-        <button type="button" id="export">Export presets.json</button>
-        <button type="button" id="clear-local">Clear local overrides</button>
-      </div>
-    </section>
+    </div>
+    <div class="col mid">
+      <section class="card editor" aria-labelledby="editing-title">
+        <div class="card-head editor-head">
+          <h2 id="editing-title">Editing: <strong id="editing-name"></strong></h2>
+          <span class="badge dirty" id="dirty" hidden>Unsaved changes</span>
+        </div>
+        <div class="edit-actions">
+          <button type="button" class="stk primary" id="save" disabled>Save</button>
+          <button type="button" class="stk" id="revert" disabled>Revert</button>
+          <button type="button" class="stk" id="reset">Reset to plain</button>
+        </div>
+        <p class="note" id="editing-note"></p>
+        <div class="group" id="simple-group">
+          <div class="group-title"><h3>Simple</h3><span>the meme-page sliders; &asymp; = nearest</span></div>
+          <div id="simple"></div>
+        </div>
+        <div class="group">
+          <div class="group-title"><h3>Detailed</h3><span>exact renderer params</span></div>
+          <div id="params"></div>
+          <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel under the pitch knob (preview only, not saved)</label>
+        </div>
+      </section>
+    </div>
+    <div class="col right">
+      <section class="card diagram-card" aria-labelledby="sound-title">
+        <div class="card-head"><h2 id="sound-title">Sound</h2></div>
+        <canvas id="diagram" width="640" height="190" aria-label="Waveform and pitch"></canvas>
+        <p class="hint" style="margin:8px 0 0">Filled shape: waveform. Solid line: pitch, dot at the peak. Dashed: attack and accent.</p>
+        <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
+      </section>
+      <section class="card vowel-card" id="vowel-card" aria-labelledby="vowel-title">
+        <div class="card-head"><h2 id="vowel-title">Vowel</h2><span class="hint" style="margin:0">clip A</span></div>
+        <div class="vowel-head">
+          <output id="vowel-readout">huh (unchanged)</output>
+          <button type="button" class="stk" id="vowel-reset" disabled>Reset vowel</button>
+        </div>
+        <canvas id="vowel-pad" tabindex="0" aria-label="Vowel chart. Drag or tap the dot: up is close, down is open, left is front, right is back. The ring is the unchanged huh, the dashed line is the Simple Vowel slider. Arrow keys nudge the dot."></canvas>
+        <p class="vowel-warn" id="vowel-warn" hidden>Open front vowels (&#x25B;, &aelig;, a, the shaded zone) come out breathier on this voice. A lower strength softens that.</p>
+        <label class="row" style="margin-top:8px"><span>Strength</span><input type="range" id="vowelStrength" min="0" max="1" step="0.01" value="1" /><output id="vowelStrength-out">1.00</output></label>
+      </section>
     </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
-  <script src="js/huh-audio.js?v=20"></script>
-  <script src="js/huh-presets.js?v=3"></script>
+  <script src="js/huh-audio.js?v=21"></script>
+  <script src="js/huh-presets.js?v=4"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -86,6 +100,12 @@
       // Presets: presets.json (base) with this browser's saved edits
       // (localStorage 'huh-presets') on top. 'default' is the plain huh.
       var DEFAULT_ID = 'default';
+      var PLAIN = HuhPresets.PLAIN_LABEL;
+      // Full 2D vowel (the chart pad). Off: the vowel is the 1D Vowel knob, a
+      // point on the line through the huh. On: vowelX/vowelY/vowelStrength are
+      // rendered and saved, and the Vowel knob shows the nearest 1D value (~).
+      var HOME = HuhAudio.VOWEL_HOME;
+      var v2d = null; // { x, y, s } or null
       var basePresets = null;
       var presetList = [];
       var overrides = HuhPresets.readOverrides();
@@ -105,9 +125,17 @@
           var n = Number(src[field[0]]);
           if (isFinite(n)) params[field[0]] = n;
         });
-        // Older saves had a 2D vowel (vowelX/vowelY/vowelStrength): use the
-        // nearest point on the vowel line. u length is gone.
-        if (!isFinite(Number(src.vowel))) params.vowel = HuhAudio.legacyVowel(src);
+        // A 2D vowel (vowelX/vowelY/vowelStrength, also older saves) is kept;
+        // vowel is then its nearest point on the line. u length is gone.
+        var two = HuhAudio.vowel2D(src);
+        if (two) {
+          params.vowelX = two.x;
+          params.vowelY = two.y;
+          params.vowelStrength = two.s;
+          params.vowel = HuhAudio.legacyVowel(params);
+        } else if (!isFinite(Number(src.vowel))) {
+          params.vowel = 0;
+        }
         return params;
       }
 
@@ -175,6 +203,8 @@
           box.appendChild(row);
         }
         slider.addEventListener('input', function () {
+          // The Vowel knob is the line: moving it puts the 2D dot back on it.
+          if (name === 'vowel') { v2d = null; setStrengthInput(1); }
           out.textContent = format(name, Number(slider.value));
           draw();
           scheduleRender();
@@ -268,6 +298,11 @@
           params[field[0]] = Number(document.getElementById(field[0]).value);
         });
         params.keepVowel = document.getElementById('keepVowel').checked;
+        if (v2d) {
+          params.vowelX = v2d.x;
+          params.vowelY = v2d.y;
+          params.vowelStrength = v2d.s;
+        }
         return params;
       }
 
@@ -344,7 +379,8 @@
         var w = cssW;
         var h = cssH;
         g.clearRect(0, 0, w, h);
-        g.fillStyle = '#07102a';
+        var C = colours();
+        g.fillStyle = C.bg;
         g.fillRect(0, 0, w, h);
 
         var params = readParams();
@@ -376,7 +412,7 @@
 
         if (lastWave && lastWave.length) {
           var n = lastWave.length;
-          g.strokeStyle = '#34416e';
+          g.strokeStyle = C.wave;
           g.lineWidth = 1;
           g.beginPath();
           for (var x = 0; x < plotW; x++) {
@@ -395,21 +431,21 @@
           g.stroke();
         }
 
-        g.strokeStyle = '#1c2852';
+        g.strokeStyle = C.grid;
         g.lineWidth = 1;
         g.beginPath();
         g.moveTo(left, yOf(0));
         g.lineTo(left + plotW, yOf(0));
         g.stroke();
 
-        g.fillStyle = '#8e9ac2';
-        g.font = '11px Inter, system-ui, sans-serif';
+        g.fillStyle = C.mute;
+        g.font = '600 11px "DM Sans", system-ui, sans-serif';
         g.textAlign = 'right';
         g.textBaseline = 'middle';
         g.fillText(yMax.toFixed(1), left - 4, yOf(yMax));
         g.fillText(yMin.toFixed(1), left - 4, yOf(yMin));
 
-        g.strokeStyle = '#FFD400';
+        g.strokeStyle = C.on;
         g.lineWidth = 2;
         g.beginPath();
         for (var k = 0; k <= steps; k++) {
@@ -420,8 +456,9 @@
         }
         g.stroke();
 
-        g.strokeStyle = '#7fb2ff';
-        g.lineWidth = 2;
+        g.strokeStyle = C.fg;
+        g.lineWidth = 1.5;
+        g.setLineDash([5, 4]);
         g.beginPath();
         var dur = Math.max(0.05, (lastWave ? lastWave.length / 44100 : 0.39));
         for (var e = 0; e <= steps; e++) {
@@ -433,11 +470,12 @@
           else g.lineTo(ex, ey);
         }
         g.stroke();
+        g.setLineDash([]);
 
         var vowelName = vowelLabel(params);
         if (vowelName) {
-          g.fillStyle = '#c9d0e6';
-          g.font = '12px Inter, system-ui, sans-serif';
+          g.fillStyle = C.fg;
+          g.font = '600 12px "DM Sans", system-ui, sans-serif';
           g.textAlign = 'left';
           g.textBaseline = 'top';
           g.fillText('vowel ' + vowelName, left + 4, 2);
@@ -445,20 +483,77 @@
 
         var peakX = xOf(params.peakAt);
         var peakY = yOf(params.pitchSemitones + HuhAudio.contourAt(params.peakAt, params));
-        g.fillStyle = '#ffffff';
+        g.fillStyle = C.fg;
         g.beginPath();
         g.arc(peakX, peakY, 3.5, 0, Math.PI * 2);
         g.fill();
-        drawVowelReadout(params);
+        drawVowelPad();
       }
 
-      // ---- Vowel readout: the nearest reference vowel and the formants
-      // the vowel slider moves to (clip A's vowel stage).
+      // ---- Colours: the theme's (css/theme.css), read once per draw.
       var V = window.HuhVowel;
+      function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#000'; }
+      function alpha(hex, a) {
+        var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+        if (!m) return hex;
+        return 'rgba(' + parseInt(m[1], 16) + ',' + parseInt(m[2], 16) + ',' + parseInt(m[3], 16) + ',' + a + ')';
+      }
+      function colours() {
+        var bg = cssVar('--b2'), fg = cssVar('--b2-fg'), mute = cssVar('--b2-mute');
+        return { bg: bg, fg: fg, mute: mute, on: cssVar('--on'), warn: cssVar('--b3'), wave: alpha(mute, 0.55), grid: alpha(mute, 0.3) };
+      }
+      function clamp01(v) { return Math.min(1, Math.max(0, v)); }
+
+      // ---- Vowel: the IPA chart pad (close at the top, open at the bottom,
+      // front left, back right). Pad coordinates are HuhVowel chart points
+      // (x 0 front .. 1 back, y 0 close .. 1 open); the ring is the huh's own
+      // vowel. The dashed line is the 1D Vowel knob (schwa .. huh .. a).
+      var padCanvas = document.getElementById('vowel-pad');
       var vowelReadout = document.getElementById('vowel-readout');
-      function vowelLabel(params) {
-        if (!V) return '';
+      var vowelWarn = document.getElementById('vowel-warn');
+      var vowelResetButton = document.getElementById('vowel-reset');
+      var strengthInput = document.getElementById('vowelStrength');
+      var strengthOut = document.getElementById('vowelStrength-out');
+      var padTimer = 0;
+      var padDrag = false;
+      var SNAP_PX = 12;
+      var WEAK_F1 = 580;
+      var WEAK_F2 = 1500;
+      var OPEN_INSET = 0.5;
+
+      function padSize() {
+        var w = padCanvas.clientWidth || 400;
+        var h = padCanvas.clientHeight || Math.round(w / 1.45);
+        return { w: w, h: h, ml: 28, mr: 24, mt: 18, mb: 24 };
+      }
+      function chartPx(x, y, size) {
+        var pw = size.w - size.ml - size.mr;
+        var ph = size.h - size.mt - size.mb;
+        var left = OPEN_INSET * y;
+        return { x: size.ml + (left + x * (1 - left)) * pw, y: size.mt + y * ph };
+      }
+      function chartOfPx(px, py, size) {
+        var pw = size.w - size.ml - size.mr;
+        var ph = size.h - size.mt - size.mb;
+        var y = clamp01((py - size.mt) / ph);
+        var left = OPEN_INSET * y;
+        var x = clamp01(((px - size.ml) / pw - left) / (1 - left));
+        return { x: x, y: y };
+      }
+      // Where the sound is on the chart: the dot, pulled toward the ring by strength.
+      function heardPoint(params) {
+        if (!V) return null;
         var pt = HuhAudio.vowelPoint(params);
+        if (!pt) return null;
+        if (!(pt.s < 1)) return { x: pt.x, y: pt.y };
+        var f = V.chartAt(pt.x, pt.y);
+        var h = V.chartAt(HOME.x, HOME.y);
+        var q = V.chartPoint(h[0] * Math.pow(f[0] / h[0], pt.s), h[1] * Math.pow(f[1] / h[1], pt.s));
+        return { x: clamp01(q.x), y: clamp01(q.y) };
+      }
+      // Nearest reference vowel to the point that is rendered.
+      function vowelLabel(params) {
+        var pt = heardPoint(params);
         if (!pt) return '';
         var f = V.chartAt(pt.x, pt.y);
         var best = '';
@@ -470,14 +565,265 @@
         }
         return '\u2248 ' + best;
       }
-      function drawVowelReadout(params) {
-        var pt = V ? HuhAudio.vowelPoint(params) : null;
-        if (!pt) {
-          vowelReadout.textContent = 'Vowel: huh (unchanged). -1 = \u0259, +1 = a.';
+      function weakAt(x, y) {
+        var f = V.chartAt(x, y);
+        return f[0] >= WEAK_F1 && f[1] >= WEAK_F2;
+      }
+      // The handle: the 2D point, or the 1D knob's point on the line.
+      function dotPoint() {
+        if (v2d) return { x: v2d.x, y: v2d.y };
+        return HuhAudio.vowelLinePoint(Number(document.getElementById('vowel').value));
+      }
+
+      function drawVowelPad() {
+        if (!V) return;
+        var size = padSize();
+        var dpr = window.devicePixelRatio || 1;
+        padCanvas.width = Math.max(1, Math.round(size.w * dpr));
+        padCanvas.height = Math.max(1, Math.round(size.h * dpr));
+        var g = padCanvas.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var C = colours();
+        g.fillStyle = C.bg;
+        g.fillRect(0, 0, size.w, size.h);
+        var params = readParams();
+
+        // Breathier zone (open front: F1 and F2 both high), shaded.
+        var rows = 48;
+        var edge = [];
+        for (var ry = 0; ry <= rows; ry++) {
+          var yy = ry / rows;
+          var lo = 0;
+          var hi = 1;
+          if (!weakAt(0, yy)) continue;
+          if (weakAt(1, yy)) lo = 1;
+          else {
+            for (var it = 0; it < 20; it++) {
+              var mid = (lo + hi) / 2;
+              if (weakAt(mid, yy)) lo = mid; else hi = mid;
+            }
+          }
+          edge.push([lo, yy]);
+        }
+        if (edge.length > 1) {
+          g.fillStyle = alpha(C.warn, 0.28);
+          g.beginPath();
+          var first = chartPx(0, edge[0][1], size);
+          g.moveTo(first.x, first.y);
+          for (var ei = 0; ei < edge.length; ei++) {
+            var ep = chartPx(edge[ei][0], edge[ei][1], size);
+            g.lineTo(ep.x, ep.y);
+          }
+          var last = chartPx(0, edge[edge.length - 1][1], size);
+          g.lineTo(last.x, last.y);
+          g.closePath();
+          g.fill();
+        }
+
+        function line(x0, y0, x1, y1, color, width) {
+          var p0 = chartPx(x0, y0, size);
+          var p1 = chartPx(x1, y1, size);
+          g.strokeStyle = color;
+          g.lineWidth = width;
+          g.beginPath();
+          g.moveTo(p0.x, p0.y);
+          g.lineTo(p1.x, p1.y);
+          g.stroke();
+        }
+        line(0, 1 / 3, 1, 1 / 3, C.grid, 1);
+        line(0, 2 / 3, 1, 2 / 3, C.grid, 1);
+        line(0.5, 0, 0.5, 1, C.grid, 1);
+        line(0, 0, 1, 0, C.fg, 2);
+        line(1, 0, 1, 1, C.fg, 2);
+        line(1, 1, 0, 1, C.fg, 2);
+        line(0, 1, 0, 0, C.fg, 2);
+
+        g.font = '15px "DM Sans", system-ui, sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillStyle = C.mute;
+        for (var sym in V.VOWELS) {
+          var r = V.VOWELS[sym];
+          var cp = V.chartPoint(r[0], r[1]);
+          var q = chartPx(clamp01(cp.x), clamp01(cp.y), size);
+          var nudge = cp.x < -0.03 ? -11 : cp.x > 1.03 ? 11 : 0;
+          g.fillText(sym, q.x + nudge, q.y);
+        }
+        g.font = '600 10px "DM Sans", system-ui, sans-serif';
+        g.textAlign = 'left';
+        g.fillText('front', size.ml, size.h - 8);
+        g.textAlign = 'right';
+        g.fillText('back', size.w - size.mr, size.h - 8);
+        g.save();
+        g.translate(10, size.h / 2);
+        g.rotate(-Math.PI / 2);
+        g.textAlign = 'center';
+        g.fillText('close \u2014 open', 0, 0);
+        g.restore();
+
+        // The 1D Vowel line: schwa .. huh .. a.
+        g.strokeStyle = alpha(C.fg, 0.45);
+        g.lineWidth = 1.5;
+        g.setLineDash([3, 4]);
+        g.beginPath();
+        for (var li = -20; li <= 20; li++) {
+          var lp = HuhAudio.vowelLinePoint(li / 20);
+          var lq = chartPx(lp.x, lp.y, size);
+          if (li === -20) g.moveTo(lq.x, lq.y); else g.lineTo(lq.x, lq.y);
+        }
+        g.stroke();
+        g.setLineDash([]);
+
+        // The ring: the huh's own vowel (unchanged).
+        var home = chartPx(HOME.x, HOME.y, size);
+        var d = dotPoint();
+        var dot = chartPx(d.x, d.y, size);
+        g.strokeStyle = C.fg;
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(home.x, home.y, 13, 0, Math.PI * 2);
+        g.stroke();
+        g.fillStyle = C.fg;
+        g.font = '700 11px "DM Sans", system-ui, sans-serif';
+        g.textAlign = 'left';
+        g.fillText('huh', home.x + 12, home.y + 17);
+
+        var heard = heardPoint(params);
+        if (heard && v2d && v2d.s < 1) {
+          var hp = chartPx(heard.x, heard.y, size);
+          g.strokeStyle = alpha(C.on, 0.7);
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.moveTo(home.x, home.y);
+          g.lineTo(dot.x, dot.y);
+          g.stroke();
+          g.fillStyle = C.fg;
+          g.beginPath();
+          g.arc(hp.x, hp.y, 4.5, 0, Math.PI * 2);
+          g.fill();
+        }
+        g.fillStyle = C.on;
+        g.strokeStyle = C.bg;
+        g.lineWidth = 3;
+        g.beginPath();
+        g.arc(dot.x, dot.y, padDrag ? 11 : 9, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+
+        var label = vowelLabel(params);
+        if (label) {
+          var fr = V.chartAt(heard.x, heard.y);
+          vowelReadout.textContent = label + '  \u00b7  F1 ' + Math.round(fr[0]) + ' / F2 ' + Math.round(fr[1]) + ' Hz' + (v2d ? '' : '  \u00b7  on the line');
+        } else {
+          vowelReadout.textContent = 'huh (unchanged)';
+        }
+        vowelWarn.hidden = !(heard && weakAt(heard.x, heard.y));
+        vowelResetButton.disabled = !v2d && Number(document.getElementById('vowel').value) === 0 && Number(strengthInput.value) === 1;
+      }
+
+      function setStrengthInput(s) {
+        strengthInput.value = String(s);
+        strengthOut.textContent = Number(strengthInput.value).toFixed(2);
+      }
+      // The Simple Vowel knob: exact on the line, ~ nearest when the 2D dot is off it.
+      function syncVowelKnob() {
+        var out = document.getElementById('vowel-out');
+        var v = Number(document.getElementById('vowel').value);
+        out.textContent = (v2d ? '\u2248 ' : '') + format('vowel', v);
+        out.className = v2d ? 'approx' : '';
+        out.title = v2d ? 'The 2D vowel is off the line; this is the nearest point on it.' : '';
+      }
+      function setVowel2D(x, y) {
+        var two = HuhAudio.vowel2D({ vowelX: x, vowelY: y, vowelStrength: Number(strengthInput.value) });
+        v2d = two ? { x: two.x, y: two.y, s: two.s } : null;
+        var near = two ? HuhAudio.legacyVowel({ vowelX: two.x, vowelY: two.y, vowelStrength: two.s }) : 0;
+        setKnob('vowel', near);
+      }
+      function vowelFromEvent(e) {
+        var rect = padCanvas.getBoundingClientRect();
+        var size = padSize();
+        var px = (e.clientX - rect.left) * (size.w / (rect.width || size.w));
+        var py = (e.clientY - rect.top) * (size.h / (rect.height || size.h));
+        var home = chartPx(HOME.x, HOME.y, size);
+        if (Math.abs(px - home.x) <= SNAP_PX && Math.abs(py - home.y) <= SNAP_PX) {
+          setVowel2D(HOME.x, HOME.y);
           return;
         }
-        var f = V.chartAt(pt.x, pt.y);
-        vowelReadout.textContent = 'Vowel ' + vowelLabel(params) + '  \u00b7  F1 ' + Math.round(f[0]) + ' / F2 ' + Math.round(f[1]) + ' Hz';
+        var pt = chartOfPx(px, py, size);
+        setVowel2D(pt.x, pt.y);
+      }
+      function vowelMoved(final) {
+        draw();
+        updateUi();
+        if (final) {
+          clearTimeout(padTimer);
+          padTimer = 0;
+          scheduleRender();
+          return;
+        }
+        // While dragging, render at most every ~60 ms so the dot keeps up.
+        if (!padTimer) {
+          padTimer = setTimeout(function () {
+            padTimer = 0;
+            scheduleRender();
+          }, 60);
+        }
+      }
+
+      if (V) {
+        padCanvas.addEventListener('pointerdown', function (e) {
+          if (e.button !== undefined && e.button > 0) return;
+          padDrag = true;
+          if (padCanvas.setPointerCapture) {
+            try { padCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+          }
+          if (e.cancelable) e.preventDefault();
+          vowelFromEvent(e);
+          vowelMoved(false);
+        });
+        padCanvas.addEventListener('pointermove', function (e) {
+          if (!padDrag) return;
+          vowelFromEvent(e);
+          vowelMoved(false);
+        });
+        var endPad = function (e) {
+          if (!padDrag) return;
+          padDrag = false;
+          if (e && e.type === 'pointerup') vowelFromEvent(e);
+          vowelMoved(true);
+        };
+        padCanvas.addEventListener('pointerup', endPad);
+        padCanvas.addEventListener('pointercancel', endPad);
+        padCanvas.addEventListener('lostpointercapture', endPad);
+        padCanvas.addEventListener('keydown', function (e) {
+          var dx = 0;
+          var dy = 0;
+          if (e.key === 'ArrowLeft') dx = -0.02;
+          else if (e.key === 'ArrowRight') dx = 0.02;
+          else if (e.key === 'ArrowUp') dy = -0.02;
+          else if (e.key === 'ArrowDown') dy = 0.02;
+          else return;
+          e.preventDefault();
+          var cur = dotPoint();
+          setVowel2D(clamp01(cur.x + dx), clamp01(cur.y + dy));
+          vowelMoved(true);
+        });
+        strengthInput.addEventListener('input', function () {
+          var s = Number(strengthInput.value);
+          strengthOut.textContent = s.toFixed(2);
+          var cur = dotPoint();
+          setVowel2D(cur.x, cur.y);
+          vowelMoved(false);
+        });
+        strengthInput.addEventListener('change', function () { vowelMoved(true); });
+        vowelResetButton.addEventListener('click', function () {
+          v2d = null;
+          setKnob('vowel', 0);
+          setStrengthInput(1);
+          vowelMoved(true);
+        });
+      } else {
+        document.getElementById('vowel-card').hidden = true;
       }
 
       document.getElementById('keepVowel').addEventListener('change', function () {
@@ -567,14 +913,14 @@
       var picker = document.getElementById('picker');
 
       function labelOf(id) {
-        if (id === DEFAULT_ID) return 'Original huh (plain, fixed)';
+        if (id === DEFAULT_ID) return PLAIN + ' (plain, fixed)';
         var p = presetMeta(id);
         return p ? p.label : id;
       }
 
       function buildPicker() {
         picker.innerHTML = '';
-        var list = [{ id: DEFAULT_ID, label: 'Original huh', emoji: '🐱' }].concat(presetList);
+        var list = [{ id: DEFAULT_ID, label: PLAIN }].concat(presetList);
         list.forEach(function (p) {
           var b = document.createElement('button');
           b.type = 'button';
@@ -582,16 +928,22 @@
           b.setAttribute('data-preset', p.id);
           b.setAttribute('aria-pressed', 'false');
           b.innerHTML = '<span class="name"></span><span class="state"></span>';
-          b.querySelector('.name').textContent = (p.emoji ? p.emoji + ' ' : '') + p.label;
+          b.querySelector('.name').textContent = p.label;
           b.addEventListener('click', function () { select(p.id); });
           picker.appendChild(b);
         });
       }
 
+      var V2D_KEYS = ['vowelX', 'vowelY', 'vowelStrength'];
       function sameValues(a, b) {
         for (var i = 0; i < FIELDS.length; i++) {
           var key = FIELDS[i][0];
           if (Math.abs(Number(a[key]) - Number(b[key])) > 1e-9) return false;
+        }
+        for (var j = 0; j < V2D_KEYS.length; j++) {
+          var k2 = V2D_KEYS[j];
+          if ((k2 in a) !== (k2 in b)) return false;
+          if ((k2 in a) && Math.abs(a[k2] - b[k2]) > 1e-9) return false;
         }
         return true;
       }
@@ -602,6 +954,15 @@
         FIELDS.forEach(function (field) {
           out[field[0]] = current[field[0]];
         });
+        // Saved presets store the full 2D vowel when there is one (vowel is
+        // then its nearest 1D value, for readers that only know the line).
+        var two = HuhAudio.vowel2D(current);
+        if (two) {
+          out.vowel = HuhAudio.legacyVowel(current);
+          out.vowelX = two.x;
+          out.vowelY = two.y;
+          out.vowelStrength = two.s;
+        }
         return out;
       }
 
@@ -621,6 +982,9 @@
           document.getElementById(name).value = String(values[name]);
           document.getElementById(name + '-out').textContent = format(name, Number(document.getElementById(name).value));
         });
+        var two = HuhAudio.vowel2D(values);
+        v2d = two ? { x: two.x, y: two.y, s: two.s } : null;
+        setStrengthInput(two ? two.s : 1);
         draw();
         scheduleRender();
       }
@@ -662,12 +1026,13 @@
         dirtyMark.hidden = !dirty;
         dirtyMark.textContent = fixed ? 'Experiment, not saved' : 'Unsaved changes';
         editingNote.textContent = fixed
-          ? 'Original huh is always the plain, unmodified huh (the meme page\'s Original preset). You can move the knobs to experiment, but it cannot be saved.'
+          ? PLAIN + ' is always the plain, unmodified huh (the meme page\'s ' + PLAIN + '). You can move the knobs to experiment, but it cannot be saved.'
           : 'Knob changes are not saved until you press Save. Save keeps them in this browser; Export to share.';
-        saveButton.textContent = fixed ? 'Save (Original is fixed)' : 'Save ' + labelOf(selected);
+        saveButton.textContent = fixed ? 'Save (' + PLAIN + ' is fixed)' : 'Save ' + labelOf(selected);
         saveButton.disabled = fixed || !dirty;
         revertButton.disabled = !dirty;
         syncSimple();
+        syncVowelKnob();
       }
 
       function select(id) {
@@ -716,7 +1081,7 @@
       document.getElementById('reset').addEventListener('click', function () {
         setKnobs(blankCorner());
         updateUi();
-        if (selected !== DEFAULT_ID && isDirty()) status.textContent = 'Plain huh values loaded. Press Save to apply them to ' + labelOf(selected) + '.';
+        if (selected !== DEFAULT_ID && isDirty()) status.textContent = PLAIN + ' values loaded. Press Save to apply them to ' + labelOf(selected) + '.';
       });
 
       document.getElementById('export').addEventListener('click', function () {
@@ -770,6 +1135,8 @@
         status.textContent = 'presets.json did not load: ' + (err && err.message ? err.message : err);
       });
 
+      // Read-only hooks for the lab tests.
+      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty };
       window.addEventListener('resize', draw);
       draw();
     })();

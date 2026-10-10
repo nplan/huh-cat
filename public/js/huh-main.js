@@ -48,11 +48,11 @@
   }
 
   var presetsReady = HuhPresets.load('presets.json').then(function (r) {
-    // Original = plain unmodified huh (same as the lab's fixed Default).
+    // The plain unmodified huh (same as the lab's fixed Default); its name is HuhPresets.PLAIN_LABEL.
     // Not in presets.json, so Export round-trips stay byte-identical.
     presets = [{
       id: 'original',
-      label: 'Original huh',
+      label: HuhPresets.PLAIN_LABEL,
       emoji: '\uD83D\uDC31',
       params: HuhAudio.normalizeParams({}),
       fixed: true
@@ -234,7 +234,7 @@
   function soundName() {
     var p = selected ? presetById(selected) : null;
     if (p) return p.label;
-    return isPlainParams(custom) ? 'Original huh' : 'Custom huh';
+    return isPlainParams(custom) ? HuhPresets.PLAIN_LABEL : 'Custom huh';
   }
 
   function updateUi() {
@@ -244,7 +244,7 @@
     var p = selected ? presetById(selected) : null;
     var from = basedOn ? presetById(basedOn) : null;
     if (p) modeLabel.textContent = 'Preset: ' + p.label;
-    else if (isPlainParams(custom)) modeLabel.textContent = 'Original huh';
+    else if (isPlainParams(custom)) modeLabel.textContent = HuhPresets.PLAIN_LABEL;
     else modeLabel.textContent = from ? 'Custom (from ' + from.label + ')' : 'Custom';
   }
 

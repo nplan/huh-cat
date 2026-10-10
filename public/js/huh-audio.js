@@ -11,6 +11,12 @@
  * vowel (-1 .. +1) moves the vowel before Rubber Band along a straight
  * line in log F1 / log F2: -1 is a schwa, 0 the huh's own vowel (that stage
  * is skipped, bit-identical), +1 toward a (huh-vowel.js, clip A only).
+ * Optional full 2D vowel: vowelX (0 front .. 1 back), vowelY (0 close ..
+ * 1 open), vowelStrength (0 .. 1, default 1) on the HuhVowel chart. When
+ * present it is what is rendered, and vowel is set to the nearest point on
+ * the line (what 1D-only readers, like the meme-page slider, show). Absent
+ * (or at the huh's own vowel / strength 0), the params are exactly the 1D
+ * ones, so 1D presets normalize, render and save exactly as before.
  * Pitch follows the output timeline, so peakAt and the lab diagram match
  * what plays.
  * Leading silence is trimmed first, so attack and accent sit on the voice.
@@ -93,7 +99,39 @@
     if (Math.abs(out.vowel) < 1e-6) out.vowel = 0;
     if (src.keepVowel === undefined || src.keepVowel === null) out.keepVowel = DEFAULTS.keepVowel;
     else out.keepVowel = !!src.keepVowel;
+    var v2 = vowel2D(src);
+    if (v2) {
+      out.vowelX = v2.x;
+      out.vowelY = v2.y;
+      out.vowelStrength = v2.s;
+      out.vowel = legacyVowel(out);
+    }
     return out;
+  }
+
+  function round(v, k) {
+    var m = Math.pow(10, k);
+    var r = Math.round(v * m) / m;
+    return r === 0 ? 0 : r;
+  }
+
+  /**
+   * The 2D vowel of params ({ x, y, s }, chart steps 0.001 / strength 0.01),
+   * or null when there is none or it is the huh's own vowel (no change).
+   */
+  function vowel2D(src) {
+    if (!HuhVowel || !src) return null;
+    var x = Number(src.vowelX);
+    var y = Number(src.vowelY);
+    if (src.vowelX === null || src.vowelY === null || src.vowelX === undefined || src.vowelY === undefined) return null;
+    if (!isFinite(x) || !isFinite(y)) return null;
+    var s = src.vowelStrength === undefined || src.vowelStrength === null ? 1 : Number(src.vowelStrength);
+    if (!isFinite(s)) s = 1;
+    x = round(clamp(x, 0, 1), 3);
+    y = round(clamp(y, 0, 1), 3);
+    s = round(clamp(s, 0, 1), 2);
+    if (s === 0 || (x === VOWEL_HOME.x && y === VOWEL_HOME.y)) return null;
+    return { x: x, y: y, s: s };
   }
 
   // log(F1'/F1), log(F2'/F2) from the huh's own vowel to a target.
@@ -198,12 +236,19 @@
    */
   function vowelPoint(params) {
     var p = normalizeParams(params);
+    if (p.vowelX !== undefined) return { x: p.vowelX, y: p.vowelY, s: p.vowelStrength };
     if (!HuhVowel || p.vowel === 0) return null;
     var e = lineEnd(p.vowel < 0 ? -1 : 1);
     var t = Math.abs(p.vowel);
     var h = homeFormants();
     var pt = HuhVowel.chartPoint(h[0] * Math.exp(t * e[0]), h[1] * Math.exp(t * e[1]));
-    return { x: clamp(pt.x, 0, 1), y: clamp(pt.y, 0, 1) };
+    return { x: clamp(pt.x, 0, 1), y: clamp(pt.y, 0, 1), s: 1 };
+  }
+
+  /** Chart point of 1D vowel v on the line (the huh's own vowel at 0). */
+  function vowelLinePoint(v) {
+    var pt = vowelPoint({ vowel: v });
+    return pt ? { x: pt.x, y: pt.y } : { x: VOWEL_HOME.x, y: VOWEL_HOME.y };
   }
 
   function cosineInterp(a, b, u) {
@@ -620,7 +665,7 @@
     // The vowel stage runs only off the default vowel (and only on clip A,
     // whose formant tracks huh-vowel.js carries; other clips pass through).
     var vp = vowelPoint(p);
-    if (vp) voiced = HuhVowel.shiftVowel(trimmed, sampleRate, vp.x, vp.y, 1);
+    if (vp) voiced = HuhVowel.shiftVowel(trimmed, sampleRate, vp.x, vp.y, vp.s);
     var options = { keepVowel: p.keepVowel };
     var rendered;
     if (p.riseSemitones === 0 && p.fallSemitones === 0) {
@@ -1045,6 +1090,8 @@
     normalizeParams: normalizeParams,
     captionTiming: captionTiming,
     vowelPoint: vowelPoint,
+    vowelLinePoint: vowelLinePoint,
+    vowel2D: vowel2D,
     legacyVowel: legacyVowel,
     warmVowel: warmVowel,
     VOWEL_HOME: VOWEL_HOME,
