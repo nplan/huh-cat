@@ -159,7 +159,7 @@
     wrap.appendChild(input);
     wrap.appendChild(ends);
     sliderList.appendChild(wrap);
-    inputs[s[0]] = { input: input, out: out };
+    inputs[s[0]] = { input: input, out: out, name: s[1], lo: s[2], hi: s[3] };
     input.addEventListener('input', function () {
       sliderMoved(s[0], Number(input.value), false);
     });
@@ -186,6 +186,10 @@
   function showOut(k) {
     inputs[k].out.textContent = (sliderExact[k] ? '' : '\u2248 ') + fmt(sliders[k] || 0);
     inputs[k].out.title = sliderExact[k] ? '' : 'Nearest setting; this sound is tuned beyond the slider.';
+    // The value for screen readers (pages may hide the visible readout).
+    var v = sliders[k] || 0;
+    var where = v === 0 ? 'middle' : (v < 0 ? 'toward ' + inputs[k].lo : 'toward ' + inputs[k].hi);
+    inputs[k].input.setAttribute('aria-valuetext', fmt(v) + ', ' + where + (sliderExact[k] ? '' : ', nearest setting'));
     paintTrack(k);
   }
 

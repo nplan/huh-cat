@@ -87,8 +87,12 @@ a { color: inherit; }
 .slider input[type=range]:focus-visible { outline: 3px solid var(--b2-fg); outline-offset: 2px; border-radius: 10px; }
 .slider input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--b2), 0 0 0 6px var(--b2-fg); }
 .slider input[type=range]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--b2), 0 0 0 6px var(--b2-fg); }
-.slider-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--b2-mute); font-size: 14px; }
+.slider-foot { display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; color: var(--b2-mute); font-size: 14px; }
 #plain { height: 40px; padding: 0 14px; background: var(--b2); color: var(--b2-fg); font: 400 13px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+
+/* Main page sliders: title + track only (values are aria-valuetext on each input). */
+.slider output, .slider .ends, #mode { display: none; }
+.slider { margin-bottom: 6px; }
 
 /* ---- send block */
 .acts { display: flex; gap: 12px; }
@@ -102,20 +106,23 @@ a { color: inherit; }
 .foot a:hover { text-decoration: underline; }
 
 @media (min-width: 960px) {
-  .blocks { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: 1fr auto; }
-  .blk { padding: 48px; }
-  .blk.y { grid-row: 1 / span 2; display: flex; flex-direction: column; justify-content: center; }
-  .blk.w { padding: 32px 48px; }
-  /* desktop has room: Moods and Tune together in the sound block, so the switch is not needed */
-  .blk.n .tabs { display: none; }
-  .blk.n #panel-sliders[hidden] { display: block !important; }
-  .blk.n { padding: 36px 48px 28px; }
-  .presets { gap: 10px 12px; }
-  .preset { height: 46px; font-size: 15px; }
-  .blk.n #panel-sliders { margin-top: 26px; }
-  .slider { margin-bottom: 6px; }
-  .slider input[type=range] { height: 40px; }
-  .blk.w { padding: 26px 48px; }
+  /* Desktop: one centred column, meme on top, then the sound, then send. The bands stay full-bleed. */
+  :root { --col: 840px; }
+  .blk { padding: 40px max(48px, calc((100% - var(--col)) / 2)); }
+  .blk.n { padding-top: 32px; padding-bottom: 36px; }
+  .blk.w { padding-top: 28px; padding-bottom: 40px; }
+  /* moods: Classic spans the row, then two rows of five (gapless) */
+  .presets { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px 12px; }
+  /* larger labels on desktop (Matej) */
+  .preset { height: 56px; font-size: 17px; }
+  .tabs button { height: 44px; padding: 0 28px; font-size: 17px; }
+  .clips button { width: 52px; height: 52px; font-size: 20px; }
+  #play { height: 60px; padding: 0 28px; font-size: 22px; }
+  #play svg { width: 18px; height: 18px; }
+  .act { height: 60px; font-size: 18px; }
+  .act svg { width: 20px; height: 20px; }
+  .slider .top { font-size: 19px; }
+  #plain { height: 44px; font-size: 15px; }
 }
 
 /* ---- share player (/p): one meme block, a big Play, a way back */
