@@ -20,7 +20,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/theme.css?v=1" />
-  <link rel="stylesheet" href="css/blocks.css?v=9" />
+  <link rel="stylesheet" href="css/blocks.css?v=10" />
   <script src="js/theme.js?v=1"></script>
 </head>
 <body class="main-page">
@@ -42,10 +42,6 @@
         </script>
         <p class="caption meme top right" id="caption" aria-hidden="true"></p>
       </div>
-      <div class="acts" role="group" aria-label="Send it">
-        <button id="share" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span class="act-label">Copy link</span></button>
-        <button id="download" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span class="act-label">Download</span></button>
-      </div>
       <div class="row">
         <div class="clips" role="group" aria-label="Cat clip">
           <button type="button" data-clip="A" aria-pressed="true" aria-label="Cat A">A</button>
@@ -54,6 +50,10 @@
           <button type="button" data-clip="D" aria-pressed="false" aria-label="Cat D">D</button>
         </div>
         <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
+      </div>
+      <div class="acts" role="group" aria-label="Send it">
+        <button id="share" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span class="act-label">Copy link</span></button>
+        <button id="download" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span class="act-label">Download</span></button>
       </div>
       <p id="status" role="alert"></p>
       <p id="announce" class="sr-only" role="status" aria-live="polite"></p>

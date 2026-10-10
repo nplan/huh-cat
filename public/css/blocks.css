@@ -52,7 +52,7 @@ a { color: inherit; }
 .clips button, #play, .act, .preset, #plain, .make a { --bd: var(--b1-ink); border: 3px solid var(--bd); border-radius: var(--r); box-shadow: var(--sticker) var(--sticker) 0 var(--bd);
   transition: transform .08s, box-shadow .08s, background-color .12s, color .12s; }
 .clips button:active, #play:active, .act:active, .preset:active, #plain:active, .make a:active { transform: translate(var(--sticker), var(--sticker)); box-shadow: 0 0 0 var(--bd); }
-.row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; }
+.row { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
 .clips { display: flex; gap: 8px; }
 .clips button { width: 44px; height: 44px; padding: 0; background: var(--chip); color: var(--chip-fg); font: 400 17px/1 "Archivo Black", sans-serif; }
 .clips button[aria-pressed="true"] { background: var(--b1-ink); color: var(--b1); }
@@ -98,8 +98,9 @@ a { color: inherit; }
 .slider output, .slider .ends, #mode { display: none; }
 .slider { margin-bottom: 6px; }
 
-/* ---- Copy link / Download: two equal yellow stickers right under the clip */
-.acts { display: flex; gap: 12px; margin-top: 18px; padding: 0 var(--sticker) var(--sticker) 0; }
+/* ---- Copy link / Download: on mobile two equal yellow stickers under the cats | Play row
+ * (in the meme block); on desktop they join that row (see the desktop block). */
+.acts { display: flex; gap: 12px; margin-top: 16px; padding: 0 var(--sticker) var(--sticker) 0; }
 .act { --bd: var(--b1-ink); flex: 1; min-width: 0; height: 46px; padding: 0 8px; background: var(--b3); color: var(--b3-ink); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   font: 400 15px/1 "Archivo Black", sans-serif; text-transform: uppercase; white-space: nowrap; }
 .act svg { width: 18px; height: 18px; flex: none; }
@@ -110,36 +111,39 @@ a { color: inherit; }
 .foot a:hover { text-decoration: underline; }
 
 @media (min-width: 960px) {
-  /* Desktop: one screen, no scroll. The meme block (video, Copy link + Download under it, then
-   * one control row with cats and Play) sits on top; the sound block below shows Moods and Tune side by side.
+  /* Desktop: one screen, no scroll. The meme block (video + one control row with cats, Copy link,
+   * Download and Play) sits on top; the sound block below shows Moods and Tune side by side.
    * The video is sized by the viewport height: its width is the column max or whatever the height
    * leaves after the fixed rest (--rest), at 16:9. Below ~700px high it stops shrinking and the page scrolls. */
   :root {
     --colmax: 1180px;
-    --pad: 18px; --gap: 12px; --ctrl: 56px; --acth: 44px;
+    --pad: 20px; --gap: 14px; --ctrl: 56px;
     --cell: 44px; --cgap: 8px;
     --sound: calc(4 * var(--cell) + 3 * var(--cgap) + 2 * 22px);
-    --rest: calc(var(--pad) + var(--gap) + var(--acth) + var(--sticker) + var(--gap) + var(--ctrl) + var(--pad) + var(--sound) + 10px);
-    --col: max(480px, min(var(--colmax), calc(100vw - 96px), calc((100dvh - var(--rest)) * 16 / 9)));
+    --rest: calc(var(--pad) + var(--gap) + var(--ctrl) + var(--pad) + var(--sound) + 10px);
+    --col: max(560px, min(var(--colmax), calc(100vw - 96px), calc((100dvh - var(--rest)) * 16 / 9)));
     --low: min(calc(100vw - 96px), max(var(--col), 960px));
-    /* the control row (cats | Play) lines up with the video and the buttons above it */
-    --ctrlw: var(--col);
+    /* the control row never gets narrower than its contents, even under a small video */
+    --ctrlw: max(var(--col), 820px);
     --side: calc((100vw - var(--ctrlw)) / 2);
   }
   .blocks { min-height: 100dvh; display: grid; background: var(--b1);
-    grid-template-columns: minmax(0, 1fr) var(--col) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; }
-  .blk.y, .blk.y .row { display: contents; }
+    grid-template-columns: minmax(0, 1fr) var(--col) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; }
+  .blk.y, .blk.y .row, .blk.w { display: contents; }
   .stage { grid-column: 2; grid-row: 1; width: var(--col); margin-top: var(--pad); }
-  .acts { grid-column: 2; grid-row: 2; margin-top: var(--gap); gap: 14px; }
-  .act { height: var(--acth); font-size: 15px; }
-  .clips { grid-column: 1 / -1; grid-row: 3; justify-self: start; align-self: center; margin: var(--gap) 0 0 var(--side); }
+  .clips { grid-column: 1 / -1; grid-row: 2; justify-self: start; align-self: center; margin: var(--gap) 0 0 var(--side); }
   .clips button { width: 48px; height: 48px; font-size: 19px; }
-  #play { grid-column: 1 / -1; grid-row: 3; justify-self: end; align-self: center; margin: var(--gap) var(--side) 0 0;
+  #play { grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: center; margin: var(--gap) var(--side) 0 0;
     width: 168px; height: var(--ctrl); padding: 0; justify-content: center; font-size: 21px; }
   #play svg { width: 17px; height: 17px; }
-  #status { grid-column: 2; grid-row: 4; margin: 8px 0 0; }
+  /* Copy link / Download: yellow stickers left of Play (Play stays the big one) */
+  .acts { grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: center; margin: var(--gap) calc(var(--side) + 168px + 14px) 0 0; padding: 0; gap: 10px; }
+  .act { --bd: var(--b1-ink); flex: none; height: 48px; padding: 0 16px; background: var(--b3); color: var(--b3-ink); font-size: 15px; }
+  .act.done { background: var(--b1-ink); color: var(--b3); }
+  .blk.w :focus-visible { outline-color: var(--b1-ink); }
+  #status { grid-column: 2; grid-row: 3; margin: 8px 0 0; }
   /* sound block: Moods | Tune, no switch */
-  .blk.n { grid-column: 1 / -1; grid-row: 5; margin-top: var(--pad); padding: 22px calc((100% - var(--low)) / 2);
+  .blk.n { grid-column: 1 / -1; grid-row: 4; margin-top: var(--pad); padding: 22px calc((100% - var(--low)) / 2);
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 40px; align-items: start; }
   .blk.n .tabs { display: none; }
   .blk.n #panel-sliders[hidden] { display: block !important; }
@@ -159,7 +163,7 @@ a { color: inherit; }
   .preset { font-size: 17px; }
   .slider { height: 46px; } .slider input[type=range] { height: 46px; }
   .slider .top { font-size: 18px; }
-  :root { --acth: 50px; } .act { font-size: 17px; }
+  .act { height: 52px; font-size: 17px; }
 }
 
 /* ---- share player (/p): one meme block, a big Play, a way back */
