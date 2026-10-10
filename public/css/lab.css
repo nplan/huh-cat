@@ -5,7 +5,8 @@
 @font-face { font-family: "DM Sans"; src: url("../fonts/dm-sans/dm-sans-latin.woff2") format("woff2"); font-weight: 100 1000; font-display: swap; }
 :root { --r: 10px; --stk: 3px; }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; background: var(--b2); }
+/* root = the top bar pink, so iOS Safari's status bar / rubber band match it; the tool (body) stays b2 */
+html { -webkit-text-size-adjust: 100%; background: var(--b1); }
 body { margin: 0; min-height: 100dvh; background: var(--b2); color: var(--b2-fg); font: 400 13px/1.4 "DM Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
