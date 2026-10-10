@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>HUUUH?</title>
   <meta name="description" content="Someone sent you a huh. Tap to play." />
-  <meta name="theme-color" content="#0A1433" />
+  <meta name="theme-color" content="#FF90E8" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="huuuh.meme" />
   <meta property="og:title" content="HUUUH?" />
@@ -15,14 +15,17 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
-  <link rel="stylesheet" href="css/macro.css?v=4" />
+  <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
+  <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/theme.css?v=1" />
+  <link rel="stylesheet" href="css/blocks.css?v=2" />
+  <script src="js/theme.js?v=1"></script>
 </head>
-<body class="player-page">
-  <main class="page">
-    <section class="macro" aria-label="The meme">
-      <h1 class="sr-only">HUUUH? Someone sent you a huh</h1>
+<body class="player">
+  <h1 class="sr-only">HUUUH? Someone sent you a huh</h1>
+  <main class="blk y">
+    <div class="inner">
       <div class="stage" id="stage" title="Play">
         <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
         <script>
@@ -33,11 +36,11 @@
         </script>
         <p class="caption meme top right" id="caption" aria-hidden="true"></p>
       </div>
-    </section>
-    <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
-    <button id="play" class="big-play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
-    <p id="status" role="alert"></p>
-    <p class="make"><a id="make" href="/">Make your own <span aria-hidden="true">&rarr;</span></a></p>
+      <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
+      <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
+      <p id="status" role="alert"></p>
+      <p class="make"><a id="make" href="/">Make your own</a></p>
+    </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
@@ -61,7 +64,9 @@
       });
       player.setClip(state.clip);
       // Back to the full page with the same sound and cat.
-      if (shared) $('make').href = '/?h=' + HuhMeme.encode(state);
+      var sch = /[?&](scheme=\d+)/.exec(location.search);
+      if (shared) $('make').href = '/?h=' + HuhMeme.encode(state) + (sch ? '&' + sch[1] : '');
+      else if (sch) $('make').href = '/?' + sch[1];
       window.HuhPage = { player: player, state: function () { return state; } };
 
       function nameFor(presets) {

@@ -60,6 +60,7 @@
     player.setClipText((r.data && r.data.clips) || {});
     buildPresets();
     applyIncoming();
+    cleanUrl();
     showNearest(currentParams());
     updateUi();
     return r.data;
@@ -236,7 +237,6 @@
     return isPlainParams(custom) ? 'Original huh' : 'Custom huh';
   }
 
-  var urlTimer = 0;
   function updateUi() {
     [].forEach.call(presetBox.querySelectorAll('.preset'), function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-preset') === selected ? 'true' : 'false');
@@ -246,25 +246,19 @@
     if (p) modeLabel.textContent = 'Preset: ' + p.label;
     else if (isPlainParams(custom)) modeLabel.textContent = 'Original huh';
     else modeLabel.textContent = from ? 'Custom (from ' + from.label + ')' : 'Custom';
-    clearTimeout(urlTimer);
-    urlTimer = setTimeout(syncUrl, 400);
   }
 
   // ---- share codes
   function shareState() {
     return { clip: player.clip(), presetId: selected, basedOn: basedOn, params: HuhAudio.normalizeParams(currentParams()) };
   }
-  function isDefaultState() {
-    return selected === 'original' && player.clip() === 'A';
-  }
-  // The address bar follows the state, so a reload keeps it.
-  function syncUrl() {
-    if (!presets.length || !history.replaceState) return;
-    var bg = /[?&](bg=[1-5])\b/.exec(location.search); // dev background trials survive state changes
-    var want = isDefaultState() ? location.pathname : location.pathname + '?h=' + HuhMeme.encode(shareState());
-    if (bg) want += (want.indexOf('?') < 0 ? '?' : '&') + bg[1];
-    if (location.pathname + location.search === want) return;
-    try { history.replaceState(null, '', want); } catch (e) {}
+  // The address bar stays clean while you play: the share code is only made when Copy link is
+  // pressed. An incoming /?h=... link is loaded, then its code is dropped from the address bar.
+  // Dev preview params (?scheme=N, ?bg=N) are kept.
+  function cleanUrl() {
+    if (!history.replaceState || !/[?&]h=/.test(location.search)) return;
+    var keep = location.search.replace(/^\?/, '').split('&').filter(function (kv) { return /^(scheme|bg)=/.test(kv); });
+    try { history.replaceState(null, '', location.pathname + (keep.length ? '?' + keep.join('&') : '') + location.hash); } catch (e) {}
   }
   function local() {
     return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === 'file:';
@@ -315,7 +309,6 @@
 
   shareBtn.addEventListener('click', function () {
     var url = shareUrl();
-    syncUrl();
     if (useSheet) {
       navigator.share({ title: 'HUUUH? \u2014 ' + soundName(), url: url }).catch(function (err) {
         if (err && err.name === 'AbortError') return;
@@ -332,7 +325,7 @@
     if (exportReady) return exportReady;
     exportReady = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'js/huh-export.js?v=2';
+      s.src = '/js/huh-export.js?v=2';
       s.onload = function () { resolve(window.HuhExport); };
       s.onerror = function () { exportReady = null; reject(new Error('Could not load the exporter')); };
       document.head.appendChild(s);

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>HUUUH?</title>
   <meta name="description" content="Ben the Huh? Cat, on demand. Pick a mood or tune the huh, then send it." />
-  <meta name="theme-color" content="#0A1433" />
+  <meta name="theme-color" content="#FF90E8" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="huuuh.meme" />
   <meta property="og:title" content="HUUUH?" />
@@ -16,15 +16,17 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
-  <script>(function(){var m=/[?&]bg=([1-5])\b/.exec(location.search);if(m)document.documentElement.setAttribute("data-bg",m[1]);})();</script>
-  <link rel="stylesheet" href="css/macro.css?v=4" />
+  <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
+  <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/theme.css?v=1" />
+  <link rel="stylesheet" href="css/blocks.css?v=2" />
+  <script src="js/theme.js?v=1"></script>
 </head>
 <body class="main-page">
-  <main class="page">
-    <section class="macro" aria-label="The meme">
-      <h1 class="sr-only">HUUUH? Ben the Huh? Cat, on demand</h1>
+  <h1 class="sr-only">HUUUH? Ben the Huh? Cat, on demand</h1>
+  <main class="blocks">
+    <section class="blk y" aria-label="The meme">
       <div class="stage" id="stage" title="Play">
         <video id="huh" src="/clips/A.mp4" width="1280" height="720" playsinline muted preload="auto"></video>
         <script>
@@ -35,28 +37,22 @@
         </script>
         <p class="caption meme top right" id="caption" aria-hidden="true"></p>
       </div>
+      <div class="row">
+        <div class="clips" role="group" aria-label="Cat clip">
+          <button type="button" data-clip="A" aria-pressed="true" aria-label="Cat A">A</button>
+          <button type="button" data-clip="B" aria-pressed="false" aria-label="Cat B">B</button>
+          <button type="button" data-clip="C" aria-pressed="false" aria-label="Cat C">C</button>
+          <button type="button" data-clip="D" aria-pressed="false" aria-label="Cat D">D</button>
+        </div>
+        <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
+      </div>
+      <p id="status" role="alert"></p>
+      <p id="announce" class="sr-only" role="status" aria-live="polite"></p>
     </section>
-    <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
-    <div class="deck">
-      <div class="clips" role="group" aria-label="Cat clip">
-        <span class="lbl" aria-hidden="true">Cat</span>
-        <button type="button" data-clip="A" aria-pressed="true" aria-label="Cat A">A</button>
-        <button type="button" data-clip="B" aria-pressed="false" aria-label="Cat B">B</button>
-        <button type="button" data-clip="C" aria-pressed="false" aria-label="Cat C">C</button>
-        <button type="button" data-clip="D" aria-pressed="false" aria-label="Cat D">D</button>
-      </div>
-      <div class="acts">
-        <button id="share" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span class="act-label">Copy link</span></button>
-        <button id="download" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span class="act-label">Download</span></button>
-      </div>
-      <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
-    </div>
-    <p id="status" role="alert"></p>
-    <p id="announce" class="sr-only" role="status" aria-live="polite"></p>
-    <section class="panel" aria-label="Sound">
+    <section class="blk n" aria-label="Sound">
       <div class="tabs" role="tablist" aria-label="Choose the sound">
-        <button type="button" role="tab" id="tab-presets" aria-controls="panel-presets" aria-selected="true">Presets</button>
-        <button type="button" role="tab" id="tab-sliders" aria-controls="panel-sliders" aria-selected="false" tabindex="-1">Sliders</button>
+        <button type="button" role="tab" id="tab-presets" aria-controls="panel-presets" aria-selected="true">Moods</button>
+        <button type="button" role="tab" id="tab-sliders" aria-controls="panel-sliders" aria-selected="false" tabindex="-1">Tune</button>
       </div>
       <div id="panel-presets" role="tabpanel" aria-labelledby="tab-presets">
         <div class="presets" id="presets"></div>
@@ -64,18 +60,25 @@
       <div id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden>
         <div id="slider-list"></div>
         <div class="slider-foot">
-          <span id="mode">Preset: Original huh</span>
-          <button type="button" id="plain">Reset to original</button>
+          <span id="mode">Original huh</span>
+          <button type="button" id="plain">Reset</button>
         </div>
       </div>
     </section>
-    <footer class="foot"><a href="lab.html">lab</a></footer>
+    <section class="blk w" aria-label="Send it">
+      <div class="acts">
+        <button id="share" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span class="act-label">Copy link</span></button>
+        <button id="download" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span class="act-label">Download</span></button>
+      </div>
+      <footer class="foot"><a href="lab.html">Lab</a></footer>
+    </section>
   </main>
+  <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
   <script src="vendor/rubberband/rubberband.js?v=9"></script>
   <script src="js/huh-vowel.js?v=1"></script>
   <script src="js/huh-audio.js?v=20"></script>
   <script src="js/huh-presets.js?v=3"></script>
   <script src="js/huh-meme.js?v=1"></script>
-  <script src="js/huh-main.js?v=3"></script>
+  <script src="js/huh-main.js?v=4"></script>
 </body>
 </html>

@@ -1,0 +1,130 @@
+/* HUUUH? "Blocks" design (main page + /p player). Layout and type only: every colour is a variable
+ * from css/theme.css (scheme picked in js/theme.js). Three flat blocks carry the structure:
+ * b1 = the meme, b2 = the sound, b3 = send it. Sticker buttons: thick outline + hard shadow that collapses on press.
+ * Fonts (SIL OFL 1.1, Basic Latin subsets): Anton (caption), Archivo Black (labels), DM Sans (UI text). */
+@font-face { font-family: "Anton"; src: url("../fonts/anton/anton-latin.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Archivo Black"; src: url("../fonts/archivo-black/archivo-black-latin.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "DM Sans"; src: url("../fonts/dm-sans/dm-sans-latin.woff2") format("woff2"); font-weight: 100 1000; font-display: swap; }
+:root { --r: 14px; --sticker: 4px; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; background: var(--b2); }
+body { margin: 0; min-height: 100dvh; background: var(--b2); color: var(--b1-ink); font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+a { color: inherit; }
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:focus-visible { outline: 3px solid var(--b1-ink); outline-offset: 3px; }
+.blk.n :focus-visible { outline-color: var(--b2-fg); }
+.blk.w :focus-visible { outline-color: var(--b3-ink); }
+
+/* ---- the meme: video with the in-video caption (the only HUUUH?) */
+.stage { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #000; cursor: pointer;
+  border-radius: var(--r); box-shadow: 0 0 0 3px var(--b1-ink), 6px 6px 0 3px var(--b1-ink); }
+.stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.caption {
+  position: absolute; margin: 0; pointer-events: none; white-space: nowrap; z-index: 2;
+  font-family: "Anton", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-weight: 400; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; color: #fff; font-size: 48px;
+  text-shadow:
+    0.065em 0 0 #000, -0.065em 0 0 #000, 0 0.065em 0 #000, 0 -0.065em 0 #000,
+    0.046em 0.046em 0 #000, -0.046em 0.046em 0 #000, 0.046em -0.046em 0 #000, -0.046em -0.046em 0 #000,
+    0.06em 0.025em 0 #000, -0.06em 0.025em 0 #000, 0.06em -0.025em 0 #000, -0.06em -0.025em 0 #000,
+    0.025em 0.06em 0 #000, -0.025em 0.06em 0 #000, 0.025em -0.06em 0 #000, -0.025em -0.06em 0 #000, 0 0 0.04em #000;
+}
+.caption.top { top: 7%; } .caption.bottom { bottom: 7%; }
+.caption.left { left: 5%; text-align: left; } .caption.right { right: 5%; text-align: right; }
+.caption.center { left: 0; right: 0; text-align: center; }
+.caption span { opacity: 0; } .caption span.on { opacity: 1; }
+#voice { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* ---- blocks */
+.blk { padding: 20px 16px; }
+.blk.y { background: var(--b1); color: var(--b1-ink); }
+.blk.n { background: var(--b2); color: var(--b2-fg); }
+.blk.w { background: var(--b3); color: var(--b3-ink); }
+
+/* ---- sticker buttons (content and actions) */
+.clips button, #play, .act, .preset, #plain, .make a { --bd: var(--b1-ink); border: 3px solid var(--bd); border-radius: var(--r); box-shadow: var(--sticker) var(--sticker) 0 var(--bd);
+  transition: transform .08s, box-shadow .08s, background-color .12s, color .12s; }
+.clips button:active, #play:active, .act:active, .preset:active, #plain:active, .make a:active { transform: translate(var(--sticker), var(--sticker)); box-shadow: 0 0 0 var(--bd); }
+.row { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+.clips { display: flex; gap: 8px; }
+.clips button { width: 44px; height: 44px; padding: 0; background: var(--chip); color: var(--chip-fg); font: 400 17px/1 "Archivo Black", sans-serif; }
+.clips button[aria-pressed="true"] { background: var(--b1-ink); color: var(--b1); }
+#play { height: 52px; padding: 0 22px; background: var(--chip); color: var(--chip-fg); display: inline-flex; align-items: center; gap: 10px; font: 400 18px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+#play svg { width: 16px; height: 16px; }
+.is-playing #play { background: var(--b1-ink); color: var(--b1); }
+#status { margin: 12px 0 0; color: var(--err); font-weight: 600; font-size: 14px; }
+#status:empty { display: none; }
+
+/* ---- tabs: a segmented switch (views), deliberately unlike the sticker chips (content) */
+.tabs { display: inline-flex; gap: 0; padding: 3px; margin-bottom: 20px; border: 2px solid var(--b2-fg); border-radius: 999px; }
+.tabs button { height: 38px; padding: 0 22px; border: 0; border-radius: 999px; background: transparent; color: var(--b2-fg); font: 700 15px/1 "DM Sans", sans-serif; letter-spacing: 0; transition: background-color .15s, color .15s; }
+.tabs button[aria-selected="true"] { background: var(--b2-fg); color: var(--b2); }
+.tabs button:focus-visible { outline-offset: 4px; }
+
+/* ---- moods: a perfect grid (equal cells, fixed columns, Original spans the row) */
+.blk.n .preset, .blk.n #plain { --bd: var(--b2-fg); }
+.presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; padding: 0 var(--sticker) var(--sticker) 0; }
+.preset { width: 100%; height: 52px; padding: 0 8px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; overflow: hidden;
+  background: var(--b2); color: var(--b2-fg); font: 400 15px/1 "Archivo Black", sans-serif; text-transform: uppercase; letter-spacing: 0.01em; }
+.preset .emo { display: none; }
+.preset[data-preset="original"] { grid-column: 1 / -1; }
+.preset[aria-pressed="true"] { background: var(--on); color: var(--on-fg); }
+
+/* ---- sliders */
+.slider { display: block; margin-bottom: 12px; color: var(--b2-fg); }
+.slider .top { display: flex; justify-content: space-between; align-items: baseline; font: 400 16px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+.slider output { font: 600 14px/1 "DM Sans", sans-serif; color: var(--b2-mute); font-variant-numeric: tabular-nums; }
+.slider .ends { display: flex; justify-content: space-between; color: var(--b2-mute); font-size: 13px; margin-top: -4px; }
+.slider input[type=range] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 48px; margin: 0; background: transparent; touch-action: pan-y; --fa: 50%; --fb: 50%; }
+.slider input[type=range]::-webkit-slider-runnable-track { height: 14px; border: 3px solid var(--b2-fg); border-radius: 999px; background: linear-gradient(90deg, var(--b2) var(--fa), var(--on) var(--fa), var(--on) var(--fb), var(--b2) var(--fb)); }
+.slider input[type=range]::-moz-range-track { height: 8px; border: 3px solid var(--b2-fg); border-radius: 999px; background: var(--b2); }
+.slider input[type=range]::-moz-range-progress { background: transparent; }
+.slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -10px; border-radius: 50%; background: var(--b2-fg); border: 3px solid var(--b2); box-shadow: 0 0 0 2px var(--b2-fg); }
+.slider input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--b2-fg); border: 3px solid var(--b2); }
+.slider input[type=range]:focus-visible { outline: 3px solid var(--b2-fg); outline-offset: 2px; border-radius: 10px; }
+.slider input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--b2), 0 0 0 6px var(--b2-fg); }
+.slider input[type=range]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--b2), 0 0 0 6px var(--b2-fg); }
+.slider-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--b2-mute); font-size: 14px; }
+#plain { height: 40px; padding: 0 14px; background: var(--b2); color: var(--b2-fg); font: 400 13px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+
+/* ---- send block */
+.acts { display: flex; gap: 12px; }
+.act { --bd: var(--b3-ink); flex: 1; min-width: 0; height: 52px; padding: 0 8px; background: var(--act); color: var(--act-fg); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: 400 15px/1 "Archivo Black", sans-serif; text-transform: uppercase; white-space: nowrap; }
+.act svg { width: 18px; height: 18px; flex: none; }
+.act.done { background: var(--b3-ink); color: var(--b3); }
+.act.busy { cursor: progress; }
+.foot { display: flex; justify-content: center; gap: 24px; margin-top: 24px; font-size: 14px; font-weight: 600; }
+.foot a { color: var(--b3-mute); text-decoration: none; padding: 8px; }
+.foot a:hover { text-decoration: underline; }
+
+@media (min-width: 960px) {
+  .blocks { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: 1fr auto; }
+  .blk { padding: 48px; }
+  .blk.y { grid-row: 1 / span 2; display: flex; flex-direction: column; justify-content: center; }
+  .blk.w { padding: 32px 48px; }
+  /* desktop has room: Moods and Tune together in the sound block, so the switch is not needed */
+  .blk.n .tabs { display: none; }
+  .blk.n #panel-sliders[hidden] { display: block !important; }
+  .blk.n { padding: 36px 48px 28px; }
+  .presets { gap: 10px 12px; }
+  .preset { height: 46px; font-size: 15px; }
+  .blk.n #panel-sliders { margin-top: 26px; }
+  .slider { margin-bottom: 6px; }
+  .slider input[type=range] { height: 40px; }
+  .blk.w { padding: 26px 48px; display: flex; align-items: center; gap: 24px; }
+  .blk.w .acts { flex: 1; }
+  .blk.w .foot { margin-top: 0; }
+}
+
+/* ---- share player (/p): one meme block, a big Play, a way back */
+.player .blk.y { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.player .inner { width: 100%; max-width: 860px; margin: 0 auto; }
+.player #play { display: flex; width: 100%; max-width: 420px; height: 64px; margin: 32px auto 0; justify-content: center; font-size: 22px; }
+.player #play svg { width: 20px; height: 20px; }
+.make { margin: 28px 0 0; text-align: center; }
+.make a { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: var(--b2); color: var(--b2-fg); text-decoration: none; font: 400 14px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

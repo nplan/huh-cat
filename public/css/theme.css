@@ -1,0 +1,192 @@
+/* HUUUH? colour schemes: the ONLY place site colours live.
+ * Pick the default in js/theme.js (one line: HUH_SCHEME = N). Dev preview: add ?scheme=N to any page URL.
+ * Roles: b1 = meme block (+ ink: its text, outlines, hard shadows), chip = buttons on b1, b2 = sound block (+ fg / mute),
+ * b3 = send block (+ ink / mute), on = the selected mood + slider fill (+ on-fg), act = Copy link / Download, err = error text on b1.
+ * Every pair is checked >= 4.5:1 by huh-design/round4/blocks-schemes.py. */
+html[data-scheme="0"] { /* #0 Original */
+  --b1: #FFD400;
+  --b1-ink: #0A1433;
+  --chip: #FFFFFF;
+  --chip-fg: #0A1433;
+  --b2: #0A1433;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #A3ADD0;
+  --b3: #FFFFFF;
+  --b3-ink: #0A1433;
+  --b3-mute: #4B5576;
+  --on: #FFD400;
+  --on-fg: #0A1433;
+  --act: #FFD400;
+  --act-fg: #0A1433;
+  --err: #7A0014;
+}
+html[data-scheme="1"] { /* #1 Impact */
+  --b1: #FFFFFF;
+  --b1-ink: #000000;
+  --chip: #FFFFFF;
+  --chip-fg: #000000;
+  --b2: #000000;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #B3B3B3;
+  --b3: #FF2A1F;
+  --b3-ink: #000000;
+  --b3-mute: #000000;
+  --on: #E10600;
+  --on-fg: #FFFFFF;
+  --act: #FFFFFF;
+  --act-fg: #000000;
+  --err: #B00000;
+}
+html[data-scheme="2"] { /* #2 9GAG */
+  --b1: #000000;
+  --b1-ink: #FFFFFF;
+  --chip: #000000;
+  --chip-fg: #FFFFFF;
+  --b2: #FFFFFF;
+  --b2-fg: #000000;
+  --b2-mute: #555555;
+  --b3: #00C2A8;
+  --b3-ink: #000000;
+  --b3-mute: #000000;
+  --on: #00A08A;
+  --on-fg: #000000;
+  --act: #FFFFFF;
+  --act-fg: #000000;
+  --err: #FF8A8A;
+}
+html[data-scheme="3"] { /* #3 Gumroad */
+  --b1: #FF90E8;
+  --b1-ink: #000000;
+  --chip: #FFFFFF;
+  --chip-fg: #000000;
+  --b2: #000000;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #B3B3B3;
+  --b3: #FFC900;
+  --b3-ink: #000000;
+  --b3-mute: #3D3000;
+  --on: #FF90E8;
+  --on-fg: #000000;
+  --act: #FF90E8;
+  --act-fg: #000000;
+  --err: #6E0000;
+}
+html[data-scheme="4"] { /* #4 Lime */
+  --b1: #C6FF00;
+  --b1-ink: #000000;
+  --chip: #FFFFFF;
+  --chip-fg: #000000;
+  --b2: #000000;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #B3B3B3;
+  --b3: #FFFFFF;
+  --b3-ink: #000000;
+  --b3-mute: #555555;
+  --on: #C6FF00;
+  --on-fg: #000000;
+  --act: #C6FF00;
+  --act-fg: #000000;
+  --err: #7A0014;
+}
+html[data-scheme="5"] { /* #5 Orange cobalt */
+  --b1: #FF6B00;
+  --b1-ink: #0A1240;
+  --chip: #FFFFFF;
+  --chip-fg: #0A1240;
+  --b2: #1A33E6;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #DDE3FF;
+  --b3: #FFFFFF;
+  --b3-ink: #0A1240;
+  --b3-mute: #3A4170;
+  --on: #FF9A2E;
+  --on-fg: #0A1240;
+  --act: #1F3BFF;
+  --act-fg: #FFFFFF;
+  --err: #4A0000;
+}
+html[data-scheme="6"] { /* #6 Mint purple */
+  --b1: #7CF5C4;
+  --b1-ink: #250A55;
+  --chip: #FFFFFF;
+  --chip-fg: #250A55;
+  --b2: #4B1FA8;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #DCCEFF;
+  --b3: #F1FFF9;
+  --b3-ink: #250A55;
+  --b3-mute: #4E3D74;
+  --on: #7CF5C4;
+  --on-fg: #250A55;
+  --act: #7CF5C4;
+  --act-fg: #250A55;
+  --err: #8A0030;
+}
+html[data-scheme="7"] { /* #7 Red cream */
+  --b1: #F6EBD9;
+  --b1-ink: #2A0A0A;
+  --chip: #FFFFFF;
+  --chip-fg: #2A0A0A;
+  --b2: #C40F19;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #FFE3E0;
+  --b3: #2A0A0A;
+  --b3-ink: #F6EBD9;
+  --b3-mute: #D9C7B0;
+  --on: #F6EBD9;
+  --on-fg: #2A0A0A;
+  --act: #C40F19;
+  --act-fg: #FFFFFF;
+  --err: #A0000F;
+}
+html[data-scheme="8"] { /* #8 Mono */
+  --b1: #FFFFFF;
+  --b1-ink: #000000;
+  --chip: #FFFFFF;
+  --chip-fg: #000000;
+  --b2: #000000;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #ADADAD;
+  --b3: #D4D4D4;
+  --b3-ink: #000000;
+  --b3-mute: #3A3A3A;
+  --on: #FFFFFF;
+  --on-fg: #000000;
+  --act: #FFFFFF;
+  --act-fg: #000000;
+  --err: #000000;
+}
+html[data-scheme="9"] { /* #9 Night */
+  --b1: #16181F;
+  --b1-ink: #F2F2F5;
+  --chip: #262A35;
+  --chip-fg: #FFFFFF;
+  --b2: #0C0D12;
+  --b2-fg: #F2F2F5;
+  --b2-mute: #9EA3B5;
+  --b3: #1E2129;
+  --b3-ink: #F2F2F5;
+  --b3-mute: #A9AEBF;
+  --on: #FF4D8D;
+  --on-fg: #0C0D12;
+  --act: #FF4D8D;
+  --act-fg: #0C0D12;
+  --err: #FF9AB8;
+}
+html[data-scheme="10"] { /* #10 Swamp */
+  --b1: #A8D84E;
+  --b1-ink: #2B1A0E;
+  --chip: #FFF4D6;
+  --chip-fg: #2B1A0E;
+  --b2: #5B3A1E;
+  --b2-fg: #FFF4D6;
+  --b2-mute: #E3CFA8;
+  --b3: #FFF4D6;
+  --b3-ink: #2B1A0E;
+  --b3-mute: #5B4A33;
+  --on: #FF5FA8;
+  --on-fg: #2B1A0E;
+  --act: #FF5FA8;
+  --act-fg: #2B1A0E;
+  --err: #8A0020;
+}
