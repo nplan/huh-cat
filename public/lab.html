@@ -26,7 +26,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/theme.css?v=7" />
-  <link rel="stylesheet" href="css/lab.css?v=8" />
+  <link rel="stylesheet" href="css/lab.css?v=9" />
 </head>
 <body class="lab-page">
   <header class="lab-top">
@@ -44,10 +44,26 @@
       </section>
       <section class="card file" aria-labelledby="share-title">
         <div class="card-head"><h2 id="share-title">Presets file</h2></div>
-        <p class="hint" id="share-note">Saved edits live in this browser only. Export writes presets.json with them included; commit that file to share it.</p>
+        <p class="hint" id="share-note">Saved edits live in this browser only. Export writes presets.json with them included; commit that file as public/presets.json to make them the defaults. Import loads a presets.json-format file (pick, drop here, or paste) as local edits.</p>
         <div class="file-actions">
           <button type="button" class="stk" id="export">Export presets.json</button>
+          <button type="button" class="stk" id="import">Import&hellip;</button>
           <button type="button" class="stk" id="clear-local">Clear local edits</button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden />
+        </div>
+        <details class="paste">
+          <summary>Paste JSON</summary>
+          <textarea id="import-text" rows="5" spellcheck="false" aria-label="Paste presets JSON"></textarea>
+          <button type="button" class="stk" id="import-paste">Check pasted JSON</button>
+        </details>
+        <div class="import-preview" id="import-preview" hidden>
+          <p class="import-msg" id="import-msg" role="alert"></p>
+          <ul class="import-list" id="import-list"></ul>
+          <div class="import-actions" id="import-actions">
+            <button type="button" class="stk" id="import-merge">Merge into local edits</button>
+            <button type="button" class="stk" id="import-replace">Replace all local edits</button>
+            <button type="button" class="stk" id="import-cancel">Cancel</button>
+          </div>
         </div>
       </section>
     </div>
@@ -64,9 +80,8 @@
           <button type="button" class="stk" id="reset">Reset to plain</button>
           <div class="tuning" role="group" aria-label="Tuning set">
             <span class="tuning-label">Tuning</span>
-            <button type="button" class="stk seg" id="tune-new" aria-pressed="false" title="Load this mood from presets.json (current tuning, 88beedb)">New</button>
-            <button type="button" class="stk seg" id="tune-old" aria-pressed="false" title="Load this mood from presets-v1.json (the tuning before 88beedb)">Old</button>
-            <button type="button" class="stk" id="ab" title="Play the old tuning, then the new one">A/B</button>
+            <span class="tuning-sets" id="tuning-sets"></span>
+            <button type="button" class="stk" id="ab" title="Play Old (presets-v1.json), then New (presets.json)">A/B</button>
           </div>
         </div>
         <p class="note" id="editing-note"></p>
@@ -103,7 +118,7 @@
   <script src="vendor/rubberband/rubberband.js?v=10"></script>
   <script src="js/huh-vowel.js?v=3"></script>
   <script src="js/huh-audio.js?v=24"></script>
-  <script src="js/huh-presets.js?v=5"></script>
+  <script src="js/huh-presets.js?v=6"></script>
   <script>
     (function () {
       var FIELDS = [
@@ -186,13 +201,25 @@
         return p ? copyCorner(p.params) : blankCorner();
       }
 
-      // The tuning before 88beedb (presets-v1.json), to load into the knobs.
-      var OLD_FILE = 'presets-v1.json';
-      var oldList = [];
-      function oldParams(id) {
-        for (var i = 0; i < oldList.length; i++) if (oldList[i].id === id) return copyCorner(oldList[i].params);
+      // Tuning sets to load into the knobs, each a file in the presets.json
+      // format. New is presets.json itself (what the meme page plays).
+      var SETS = [
+        { id: 'new', label: 'New', file: 'presets.json', title: 'presets.json: the current defaults' },
+        { id: 'old', label: 'Old', file: 'presets-v1.json', title: 'presets-v1.json: the tuning before 88beedb' },
+        { id: 'v2', label: 'v2', file: 'presets-v2.json', title: 'presets-v2.json: the 88beedb tuning' },
+        { id: 'c1', label: 'C1', file: 'presets-c1.json', title: 'presets-c1.json: candidate 1 (Annoyed, Amused, Scared)' },
+        { id: 'c2', label: 'C2', file: 'presets-c2.json', title: 'presets-c2.json: candidate 2 (Annoyed, Amused, Scared)' },
+        { id: 'c3', label: 'C3', file: 'presets-c3.json', title: 'presets-c3.json: candidate 3 (Annoyed, Amused, Scared)' }
+      ];
+      var setLists = {};
+      function setParams(setId, id) {
+        if (setId === 'new') return presetMeta(id) ? baseParams(id) : null;
+        var list = setLists[setId] || [];
+        for (var i = 0; i < list.length; i++) if (list[i].id === id) return copyCorner(list[i].params);
         return null;
       }
+      function setOf(setId) { for (var i = 0; i < SETS.length; i++) if (SETS[i].id === setId) return SETS[i]; return null; }
+      function oldParams(id) { return setParams('old', id); }
 
       var box = document.getElementById('params');
       var simpleBox = document.getElementById('simple');
@@ -939,19 +966,7 @@
         onPlayClick();
       });
 
-      window.addEventListener('keydown', function (e) {
-        if (e.key !== ' ' && e.code !== 'Space') return;
-        if (e.repeat) return;
-        var t = e.target;
-        if (t) {
-          var tag = (t.tagName || '').toLowerCase();
-          var typ = (t.type || '').toLowerCase();
-          if (tag === 'input' && typ !== 'range') return;
-          if (tag === 'textarea' || tag === 'select' || t.isContentEditable) return;
-        }
-        e.preventDefault();
-        onPlayClick();
-      }, true);
+      HuhPresets.spaceToPlay(onPlayClick);
 
       var SELECT_KEY = 'huh-lab-preset';
       var selected = DEFAULT_ID;
@@ -962,13 +977,22 @@
       var editingName = document.getElementById('editing-name');
       var editingNote = document.getElementById('editing-note');
       var picker = document.getElementById('picker');
-      var tuneNew = document.getElementById('tune-new');
-      var tuneOld = document.getElementById('tune-old');
+      var setBox = document.getElementById('tuning-sets');
+      SETS.forEach(function (set) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'stk seg';
+        b.id = 'tune-' + set.id;
+        b.setAttribute('data-set', set.id);
+        b.setAttribute('aria-pressed', 'false');
+        b.title = 'Load this mood from ' + set.title;
+        b.textContent = set.label;
+        b.addEventListener('click', function () { loadSet(set.id); });
+        setBox.appendChild(b);
+      });
       var abButton = document.getElementById('ab');
       var tuningBadge = document.getElementById('tuning-badge');
       var abAudio = new Audio();
-      tuneNew.addEventListener('click', function () { loadSet('new'); });
-      tuneOld.addEventListener('click', function () { loadSet('old'); });
       abButton.addEventListener('click', playAB);
 
       function labelOf(id) {
@@ -1073,8 +1097,8 @@
             text = 'plain huh, fixed';
             state.className = 'state';
           } else if (overrides[id]) {
-            var o = oldParams(id);
-            text = o && sameValues(copyCorner(overrides[id]), o) && !sameValues(o, baseParams(id)) ? 'local edit \u00b7 old tuning' : 'local edit';
+            var hit = matchingSets(id, copyCorner(overrides[id])).filter(function (sid) { return sid !== 'new'; });
+            text = hit.length ? 'local edit \u00b7 ' + hit.map(function (sid) { return setOf(sid).label; }).join('/') : 'local edit';
             state.className = 'state tuned';
           } else {
             text = 'presets.json';
@@ -1097,31 +1121,49 @@
         syncTuning();
       }
 
-      // Which set the knobs hold right now (compared live, so it is always true).
-      function syncTuning() {
-        var oldP = selected === DEFAULT_ID ? null : oldParams(selected);
-        var newP = selected === DEFAULT_ID ? null : baseParams(selected);
-        var k = knobValues();
-        var isNew = !!newP && sameValues(k, newP);
-        var isOld = !!oldP && sameValues(k, oldP);
-        tuneNew.disabled = !newP;
-        tuneOld.disabled = !oldP;
-        abButton.disabled = !oldP || !newP;
-        tuneNew.setAttribute('aria-pressed', isNew ? 'true' : 'false');
-        tuneOld.setAttribute('aria-pressed', isOld ? 'true' : 'false');
-        if (!newP) { tuningBadge.hidden = true; return; }
-        tuningBadge.hidden = false;
-        tuningBadge.textContent = isNew && isOld ? 'same in both sets' : isNew ? 'new tuning' : isOld ? 'old tuning (pre-88beedb)' : (overrides[selected] && sameValues(k, copyCorner(overrides[selected])) ? 'local edit' : 'custom');
-        tuningBadge.className = 'badge set' + (isOld && !isNew ? ' old' : '');
+      // The sets whose values for this mood equal values (ids).
+      function matchingSets(id, values) {
+        var out = [];
+        SETS.forEach(function (set) {
+          var v = setParams(set.id, id);
+          if (v && sameValues(values, v)) out.push(set.id);
+        });
+        return out;
       }
 
-      function loadSet(which) {
+      // Which sets the knobs hold right now (compared live, so it is always true).
+      function syncTuning() {
+        var fixed = selected === DEFAULT_ID;
+        var k = knobValues();
+        var hit = fixed ? [] : matchingSets(selected, k);
+        [].forEach.call(setBox.querySelectorAll('button'), function (b) {
+          var sid = b.getAttribute('data-set');
+          b.disabled = fixed || !setParams(sid, selected);
+          b.setAttribute('aria-pressed', hit.indexOf(sid) >= 0 ? 'true' : 'false');
+        });
+        abButton.disabled = fixed || !setParams('old', selected) || !setParams('new', selected);
+        if (fixed) { tuningBadge.hidden = true; return; }
+        tuningBadge.hidden = false;
+        var isNew = hit.indexOf('new') >= 0;
+        var text;
+        if (hit.length) {
+          var names = hit.map(function (sid) { return setOf(sid).label; });
+          text = isNew ? (hit.length > 1 ? 'new tuning (= ' + names.slice(1).join(', ') + ')' : 'new tuning') : names.join(' = ') + ' tuning';
+        } else {
+          text = overrides[selected] && sameValues(k, copyCorner(overrides[selected])) ? 'local edit' : 'custom';
+        }
+        tuningBadge.textContent = text;
+        tuningBadge.className = 'badge set' + (hit.length && !isNew ? ' old' : '');
+      }
+
+      function loadSet(setId) {
         if (selected === DEFAULT_ID) return;
-        var values = which === 'old' ? oldParams(selected) : baseParams(selected);
+        var values = setParams(setId, selected);
         if (!values) return;
         setKnobs(values);
         updateUi();
-        status.textContent = 'Loaded ' + (which === 'old' ? 'old tuning (' + OLD_FILE + ')' : 'new tuning (presets.json)') + ' for ' + labelOf(selected) + (isDirty() ? '. Press Save to keep it as the local edit.' : '');
+        var set = setOf(setId);
+        status.textContent = 'Loaded ' + set.label + ' (' + set.file + ') for ' + labelOf(selected) + (isDirty() ? '. Press Save to keep it as the local edit.' : '');
       }
 
       // A/B: old, a short gap, then new, in one buffer (one play in the tap).
@@ -1218,6 +1260,103 @@
         }
       });
 
+      // ---- Import: a presets.json-format file becomes local edits ----
+      var importPreview = document.getElementById('import-preview');
+      var importMsg = document.getElementById('import-msg');
+      var importList = document.getElementById('import-list');
+      var importActions = document.getElementById('import-actions');
+      var importFile = document.getElementById('import-file');
+      var fileCard = document.querySelector('.card.file');
+      var pendingImport = null;
+
+      function effectiveParams(id) { return storedValues(id); }
+
+      function showImport(text, source) {
+        pendingImport = null;
+        importPreview.hidden = false;
+        importList.innerHTML = '';
+        importActions.hidden = true;
+        importPreview.className = 'import-preview';
+        if (!basePresets) { importMsg.textContent = 'presets.json has not loaded yet; try again in a moment.'; importPreview.className += ' bad'; return; }
+        var data;
+        try { data = JSON.parse(text); } catch (err) {
+          importMsg.textContent = 'Could not import ' + source + ': not valid JSON (' + (err && err.message ? err.message : err) + ').';
+          importPreview.className += ' bad';
+          return;
+        }
+        var r = HuhPresets.validate(data, basePresets);
+        if (!r.ok) {
+          importMsg.textContent = 'Could not import ' + source + ':';
+          importPreview.className += ' bad';
+          r.errors.slice(0, 12).forEach(function (e) { var li = document.createElement('li'); li.textContent = e; importList.appendChild(li); });
+          if (r.errors.length > 12) { var more = document.createElement('li'); more.textContent = '\u2026 and ' + (r.errors.length - 12) + ' more'; importList.appendChild(more); }
+          return;
+        }
+        var changed = [];
+        Object.keys(r.params).forEach(function (id) {
+          if (!sameValues(copyCorner(r.params[id]), effectiveParams(id))) changed.push(id);
+        });
+        pendingImport = r.params;
+        importMsg.textContent = source + ': valid. ' + (changed.length ? changed.length + ' mood(s) would change:' : 'No mood differs from what this lab has now.');
+        changed.forEach(function (id) {
+          var li = document.createElement('li');
+          var now = effectiveParams(id);
+          var next = copyCorner(r.params[id]);
+          var diffs = FIELDS.map(function (f) { return f[0]; }).filter(function (k) { return Math.abs(now[k] - next[k]) > 1e-9; })
+            .map(function (k) { return k + ' ' + now[k] + '\u2192' + next[k]; });
+          li.innerHTML = '<strong></strong> <span></span>';
+          li.firstChild.textContent = labelOf(id);
+          li.lastChild.textContent = diffs.length ? diffs.join(', ') : '2D vowel';
+          importList.appendChild(li);
+        });
+        r.warnings.forEach(function (w) { var li = document.createElement('li'); li.className = 'warn'; li.textContent = w; importList.appendChild(li); });
+        importActions.hidden = false;
+      }
+
+      // Merge: moods in the file take its values (a mood equal to presets.json
+      // drops its local edit); other local edits stay. Replace: other local
+      // edits are cleared too. Params are stored exactly as in the file, so
+      // Export gives the same bytes back.
+      function applyImport(replace) {
+        if (!pendingImport) return;
+        if (isDirty() && !window.confirm('Discard unsaved changes to ' + labelOf(selected) + ' and import?')) return;
+        var next = replace ? {} : HuhPresets.readOverrides();
+        var n = 0;
+        Object.keys(pendingImport).forEach(function (id) {
+          if (sameValues(copyCorner(pendingImport[id]), baseParams(id)) && JSON.stringify(pendingImport[id]) === JSON.stringify(presetMeta(id).params)) delete next[id];
+          else { next[id] = JSON.parse(JSON.stringify(pendingImport[id])); n++; }
+        });
+        try { HuhPresets.writeOverrides(next); } catch (err) { status.textContent = 'Could not save the import'; return; }
+        overrides = HuhPresets.readOverrides();
+        pendingImport = null;
+        importPreview.hidden = true;
+        loadStored();
+        status.textContent = (replace ? 'Replaced all local edits: ' : 'Merged: ') + n + ' mood(s) now differ from presets.json';
+      }
+
+      function readFile(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () { showImport(String(reader.result), file.name); };
+        reader.onerror = function () { showImport('', file.name); };
+        reader.readAsText(file);
+      }
+
+      document.getElementById('import').addEventListener('click', function () { importFile.value = ''; importFile.click(); });
+      importFile.addEventListener('change', function () { readFile(importFile.files && importFile.files[0]); });
+      document.getElementById('import-paste').addEventListener('click', function () { showImport(document.getElementById('import-text').value, 'Pasted JSON'); });
+      document.getElementById('import-merge').addEventListener('click', function () { applyImport(false); });
+      document.getElementById('import-replace').addEventListener('click', function () { applyImport(true); });
+      document.getElementById('import-cancel').addEventListener('click', function () { pendingImport = null; importPreview.hidden = true; });
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        fileCard.addEventListener(ev, function (e) { e.preventDefault(); fileCard.classList.add('drop'); });
+      });
+      ['dragleave', 'drop'].forEach(function (ev) {
+        fileCard.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'dragleave' && fileCard.contains(e.relatedTarget)) return; fileCard.classList.remove('drop'); });
+      });
+      fileCard.addEventListener('drop', function (e) { readFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]); });
+      window.HuhLabImport = { text: function (t, name) { showImport(t, name || 'test'); }, merge: function () { applyImport(false); }, replace: function () { applyImport(true); }, pending: function () { return pendingImport; } };
+
       document.getElementById('clear-local').addEventListener('click', function () {
         var n = Object.keys(HuhPresets.readOverrides()).length;
         if (!window.confirm(n ? 'Clear the ' + n + ' local preset edit(s) in this browser and use presets.json?' : 'There are no local edits. Reload presets.json?')) return;
@@ -1249,13 +1388,16 @@
         status.textContent = 'presets.json did not load: ' + (err && err.message ? err.message : err);
       });
 
-      HuhPresets.load(OLD_FILE).then(function (r) {
-        oldList = (r.base && r.base.presets) || [];
-        updateUi();
-      }, function (err) { console.warn(OLD_FILE + ' did not load', err); });
+      SETS.forEach(function (set) {
+        if (set.id === 'new') return;
+        HuhPresets.load(set.file).then(function (r) {
+          setLists[set.id] = (r.base && r.base.presets) || [];
+          updateUi();
+        }, function (err) { console.warn(set.file + ' did not load', err); });
+      });
 
       // Read-only hooks for the lab tests.
-      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty, oldParams: oldParams, newParams: baseParams };
+      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty, oldParams: oldParams, newParams: baseParams, setParams: setParams, sets: function () { return SETS.map(function (x) { return x.id + ':' + x.file; }); } };
       window.addEventListener('resize', draw);
       draw();
     })();

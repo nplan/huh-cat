@@ -58,7 +58,7 @@
   <script src="vendor/rubberband/rubberband.js?v=10"></script>
   <script src="js/huh-vowel.js?v=3"></script>
   <script src="js/huh-audio.js?v=24"></script>
-  <script src="js/huh-presets.js?v=5"></script>
+  <script src="js/huh-presets.js?v=6"></script>
   <script src="js/huh-meme.js?v=14"></script>
   <script>
     (function () {
@@ -110,16 +110,7 @@
       btn.addEventListener('click', play);
       btn.addEventListener('touchend', function (e) { if (e.cancelable) e.preventDefault(); play(); });
       $('stage').addEventListener('click', play);
-      window.addEventListener('keydown', function (e) {
-        if (e.key !== ' ' && e.code !== 'Space') return;
-        if (e.repeat) return;
-        var t = e.target;
-        var kb = false;
-        try { kb = t && t.matches && t.matches(':focus-visible'); } catch (err) {}
-        if (t && t.tagName === 'A' && kb) return;
-        e.preventDefault();
-        play();
-      }, true);
+      HuhPresets.spaceToPlay(play);
     })();
   </script>
 </body>

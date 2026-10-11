@@ -250,7 +250,105 @@
     return JSON.stringify(data, null, 2) + '\n';
   }
 
+  // ---- import validation (lab Import): the presets.json format exactly ----
+  var FILE_KEYS = ['version', 'note', 'presets', 'clips'];
+  var PARAM_KEYS = ['pitchSemitones', 'durationScale', 'peakAt', 'riseSemitones', 'fallSemitones', 'gainDb', 'attackMs', 'accent', 'vowel'];
+  var V2D_RANGES = { vowelX: [0, 1], vowelY: [0, 1], vowelStrength: [0, 1] };
+  function audioRanges() {
+    var H = (typeof window !== 'undefined' && window.HuhAudio) || null;
+    if (!H && typeof require === 'function') { try { H = require('./huh-audio.js'); } catch (e) { H = null; } }
+    return H ? H.RANGES : null;
+  }
+
+  /**
+   * Check a parsed presets file against base (the loaded presets.json).
+   * Returns { ok, errors: [..], warnings: [..], params: { id: params } }.
+   * Accepts exactly the presets.json format: version 1, presets[] with
+   * known ids, every param present, numeric and inside the engine's ranges
+   * (2D vowel keys optional). Only params are imported; label/emoji/clip
+   * text that differs from base is reported as a warning.
+   */
+  function validate(data, base) {
+    var errors = [];
+    var warnings = [];
+    var out = {};
+    var ranges = audioRanges();
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return { ok: false, errors: ['Not a presets file: expected a JSON object like presets.json.'], warnings: warnings, params: out };
+    if (data.version !== 1) errors.push('version must be 1 (got ' + JSON.stringify(data.version) + ').');
+    Object.keys(data).forEach(function (k) { if (FILE_KEYS.indexOf(k) < 0) errors.push('Unknown top-level key "' + k + '".'); });
+    if (!Array.isArray(data.presets) || !data.presets.length) {
+      errors.push('presets must be a non-empty array.');
+      return { ok: false, errors: errors, warnings: warnings, params: out };
+    }
+    var known = {};
+    ((base && base.presets) || []).forEach(function (p) { known[p.id] = p; });
+    var seen = {};
+    data.presets.forEach(function (p, i) {
+      var where = 'presets[' + i + ']';
+      if (!p || typeof p !== 'object') { errors.push(where + ' is not an object.'); return; }
+      var id = p.id;
+      if (typeof id !== 'string' || !known[id]) { errors.push(where + ': unknown mood id ' + JSON.stringify(id) + ' (known: ' + Object.keys(known).join(', ') + ').'); return; }
+      where = id;
+      if (seen[id]) { errors.push(id + ' appears twice.'); return; }
+      seen[id] = true;
+      if (typeof p.label !== 'string') errors.push(where + ': label must be a string.');
+      else if (p.label !== known[id].label) warnings.push(where + ': label "' + p.label + '" differs from presets.json ("' + known[id].label + '"); only params are imported.');
+      var params = p.params;
+      if (!params || typeof params !== 'object' || Array.isArray(params)) { errors.push(where + ': params must be an object.'); return; }
+      var bad = false;
+      Object.keys(params).forEach(function (k) {
+        if (PARAM_KEYS.indexOf(k) < 0 && !V2D_RANGES[k]) { errors.push(where + ': unknown param "' + k + '".'); bad = true; }
+      });
+      PARAM_KEYS.concat(Object.keys(V2D_RANGES)).forEach(function (k) {
+        if (!(k in params)) {
+          if (!V2D_RANGES[k]) { errors.push(where + ': missing param ' + k + '.'); bad = true; }
+          return;
+        }
+        var v = params[k];
+        var r = V2D_RANGES[k] || (ranges && ranges[k]);
+        if (typeof v !== 'number' || !isFinite(v)) { errors.push(where + ': ' + k + ' must be a number (got ' + JSON.stringify(v) + ').'); bad = true; return; }
+        if (r && (v < r[0] || v > r[1])) { errors.push(where + ': ' + k + ' = ' + v + ' is outside ' + r[0] + ' .. ' + r[1] + '.'); bad = true; }
+      });
+      var v2 = ['vowelX', 'vowelY'].filter(function (k) { return k in params; }).length;
+      if (v2 === 1) { errors.push(where + ': vowelX and vowelY go together.'); bad = true; }
+      if (!bad) out[id] = params;
+    });
+    if (base && data.clips && JSON.stringify(data.clips) !== JSON.stringify(base.clips)) warnings.push('clips (caption settings) differ from presets.json; only mood params are imported.');
+    return { ok: errors.length === 0, errors: errors, warnings: warnings, params: errors.length ? {} : out };
+  }
+
+  // ---- Space plays (meme page, /p, lab) ---------------------------------
+  // Space always means Play, also on a focused button (a mood, a cat, a
+  // tab), whose own Space activation (it fires on keyup) is cancelled; Enter
+  // still activates the focused button and Tab still moves focus. Text
+  // fields, selects and editable text keep Space, and so do checkboxes and
+  // radios (Space is their only toggle key). Sliders have no Space action,
+  // so Space plays there too.
+  var NATIVE_INPUTS = ['range', 'button', 'submit', 'reset', 'color', 'file', 'image'];
+  function keepsSpace(t) {
+    if (!t || !t.tagName) return false;
+    var tag = t.tagName.toLowerCase();
+    if (tag === 'input') return NATIVE_INPUTS.indexOf((t.type || '').toLowerCase()) < 0;
+    return tag === 'textarea' || tag === 'select' || !!t.isContentEditable;
+  }
+  function isSpace(e) { return e.key === ' ' || e.code === 'Space'; }
+  function spaceToPlay(play, win) {
+    var w = win || window;
+    w.addEventListener('keydown', function (e) {
+      if (!isSpace(e) || e.ctrlKey || e.metaKey || e.altKey || keepsSpace(e.target)) return;
+      e.preventDefault();
+      if (!e.repeat) play(e);
+    }, true);
+    w.addEventListener('keyup', function (e) {
+      if (!isSpace(e) || keepsSpace(e.target)) return;
+      e.preventDefault();
+    }, true);
+  }
+
   return {
+    spaceToPlay: spaceToPlay,
+    keepsSpace: keepsSpace,
+    validate: validate,
     PLAIN_LABEL: PLAIN_LABEL,
     LOCAL_KEY: LOCAL_KEY,
     SLIDERS: SLIDERS,

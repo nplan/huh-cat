@@ -517,23 +517,8 @@
   });
   $('stage').addEventListener('click', play);
 
-  // Space plays, unless a keyboard-focused control should get it.
-  window.addEventListener('keydown', function (e) {
-    if (e.key !== ' ' && e.code !== 'Space') return;
-    if (e.repeat) return;
-    var t = e.target;
-    if (t && t !== document.body) {
-      var tag = (t.tagName || '').toLowerCase();
-      var typ = (t.type || '').toLowerCase();
-      if (tag === 'input' && typ !== 'range') return;
-      if (tag === 'textarea' || tag === 'select' || t.isContentEditable) return;
-      var kb = false;
-      try { kb = t.matches(':focus-visible'); } catch (err) {}
-      if ((tag === 'button' || tag === 'a') && t.id !== 'play' && kb) return;
-    }
-    e.preventDefault();
-    play();
-  }, true);
+  // Space plays everywhere except text fields (HuhPresets.spaceToPlay).
+  HuhPresets.spaceToPlay(play);
 
   Promise.all([player.rawReady, presetsReady]).then(function () {
     player.renderNow(false);
