@@ -81,15 +81,15 @@
       "label": "Annoyed",
       "emoji": "😒",
       "params": {
-        "pitchSemitones": -0.5,
-        "durationScale": 0.7,
-        "peakAt": 0.2,
-        "riseSemitones": 1.5,
-        "fallSemitones": 12,
+        "pitchSemitones": -1.5,
+        "durationScale": 0.72,
+        "peakAt": 0.45,
+        "riseSemitones": 0.5,
+        "fallSemitones": 5.5,
         "gainDb": 2.5,
         "attackMs": 0,
-        "accent": 0.4,
-        "vowel": 0.4
+        "accent": 0.35,
+        "vowel": 0.45
       }
     },
     {
@@ -135,18 +135,15 @@
       "label": "Amused",
       "emoji": "😏",
       "params": {
-        "pitchSemitones": 4,
-        "durationScale": 0.8,
-        "peakAt": 0.4,
-        "riseSemitones": 4,
-        "fallSemitones": 6,
-        "gainDb": -1,
-        "attackMs": 8,
-        "accent": 0.15,
-        "vowel": 0.74,
-        "vowelX": 0.25,
-        "vowelY": 0.9,
-        "vowelStrength": 0.7
+        "pitchSemitones": 2.4,
+        "durationScale": 0.86,
+        "peakAt": 0.66,
+        "riseSemitones": 2.6,
+        "fallSemitones": 1.4,
+        "gainDb": 0.8,
+        "attackMs": 0,
+        "accent": 0.12,
+        "vowel": 0.7
       }
     },
     {
@@ -154,18 +151,15 @@
       "label": "Scared",
       "emoji": "😨",
       "params": {
-        "pitchSemitones": 8,
-        "durationScale": 0.68,
-        "peakAt": 0.5,
-        "riseSemitones": 0.5,
-        "fallSemitones": 2.5,
-        "gainDb": -3,
-        "attackMs": 12,
-        "accent": 0,
-        "vowel": -1,
-        "vowelX": 0.15,
-        "vowelY": 0.35,
-        "vowelStrength": 0.6
+        "pitchSemitones": 6.8,
+        "durationScale": 0.74,
+        "peakAt": 0.81,
+        "riseSemitones": 2.6,
+        "fallSemitones": 0.8,
+        "gainDb": 0.6,
+        "attackMs": 0,
+        "accent": 0.18,
+        "vowel": 0.2
       }
     },
     {

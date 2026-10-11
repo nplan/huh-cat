@@ -1,0 +1,244 @@
+{
+  "version": 1,
+  "note": "Shared huh presets. Edit in /lab (saved locally), then Export and commit this file.",
+  "clips": {
+    "A": {
+      "note": "cat left of center, head top-left; door/wall free on the right",
+      "text": {
+        "y": "top",
+        "align": "right",
+        "width": 0.42
+      }
+    },
+    "B": {
+      "note": "same framing as A",
+      "text": {
+        "y": "top",
+        "align": "right",
+        "width": 0.42
+      }
+    },
+    "C": {
+      "note": "cat on the left, ears at the top; blanket free bottom-right",
+      "text": {
+        "y": "bottom",
+        "align": "right",
+        "width": 0.42
+      }
+    },
+    "D": {
+      "note": "cat left of center, reaches ~58% across; blanket bottom-right",
+      "text": {
+        "y": "bottom",
+        "align": "right",
+        "width": 0.36
+      }
+    },
+    "G": {
+      "note": "sour-cream gag (blaaah easter egg): 720x720 crop of the portrait source, centred, blurred sides; caption top-right over the blanket/blur, clear of the head",
+      "text": {
+        "y": "top",
+        "align": "right",
+        "width": 0.3
+      }
+    }
+  },
+  "presets": [
+    {
+      "id": "confused",
+      "label": "Confused",
+      "emoji": "😕",
+      "params": {
+        "pitchSemitones": -0.5,
+        "durationScale": 1.4,
+        "peakAt": 0.97,
+        "riseSemitones": 8,
+        "fallSemitones": 0.5,
+        "gainDb": 0,
+        "attackMs": 0,
+        "accent": 0.1,
+        "vowel": -0.45
+      }
+    },
+    {
+      "id": "shocked",
+      "label": "Shocked",
+      "emoji": "😱",
+      "params": {
+        "pitchSemitones": 5,
+        "durationScale": 0.85,
+        "peakAt": 0.75,
+        "riseSemitones": 9,
+        "fallSemitones": 2,
+        "gainDb": 3,
+        "attackMs": 0,
+        "accent": 0.5,
+        "vowel": 0.9
+      }
+    },
+    {
+      "id": "annoyed",
+      "label": "Annoyed",
+      "emoji": "😒",
+      "params": {
+        "pitchSemitones": -1.5,
+        "durationScale": 0.72,
+        "peakAt": 0.45,
+        "riseSemitones": 0.5,
+        "fallSemitones": 5.5,
+        "gainDb": 2.5,
+        "attackMs": 0,
+        "accent": 0.35,
+        "vowel": 0.45
+      }
+    },
+    {
+      "id": "disgusted",
+      "label": "Disgusted",
+      "emoji": "🤢",
+      "params": {
+        "pitchSemitones": -3,
+        "durationScale": 1.3,
+        "peakAt": 0.28,
+        "riseSemitones": 3,
+        "fallSemitones": 11,
+        "gainDb": 0.5,
+        "attackMs": 0,
+        "accent": 0.3,
+        "vowel": 0.31,
+        "vowelX": 0.95,
+        "vowelY": 0.95,
+        "vowelStrength": 0.8
+      }
+    },
+    {
+      "id": "suspicious",
+      "label": "Suspicious",
+      "emoji": "🤨",
+      "params": {
+        "pitchSemitones": -3.5,
+        "durationScale": 1.55,
+        "peakAt": 0.97,
+        "riseSemitones": 5,
+        "fallSemitones": 0,
+        "gainDb": -3,
+        "attackMs": 25,
+        "accent": 0,
+        "vowel": -0.5,
+        "vowelX": 0.55,
+        "vowelY": 0.45,
+        "vowelStrength": 0.8
+      }
+    },
+    {
+      "id": "amused",
+      "label": "Amused",
+      "emoji": "😏",
+      "params": {
+        "pitchSemitones": 2.8,
+        "durationScale": 0.84,
+        "peakAt": 0.55,
+        "riseSemitones": 3,
+        "fallSemitones": 2.5,
+        "gainDb": 0.3,
+        "attackMs": 0,
+        "accent": 0.15,
+        "vowel": 0.29,
+        "vowelX": 0.4,
+        "vowelY": 0.85,
+        "vowelStrength": 0.35
+      }
+    },
+    {
+      "id": "scared",
+      "label": "Scared",
+      "emoji": "😨",
+      "params": {
+        "pitchSemitones": 7,
+        "durationScale": 0.72,
+        "peakAt": 0.6,
+        "riseSemitones": 1.2,
+        "fallSemitones": 1.6,
+        "gainDb": -1,
+        "attackMs": 10,
+        "accent": 0.08,
+        "vowel": 0.1
+      }
+    },
+    {
+      "id": "bored",
+      "label": "Bored",
+      "emoji": "🥱",
+      "params": {
+        "pitchSemitones": -4.5,
+        "durationScale": 1.45,
+        "peakAt": 0.3,
+        "riseSemitones": 0.5,
+        "fallSemitones": 4.5,
+        "gainDb": -6,
+        "attackMs": 80,
+        "accent": 0,
+        "vowel": -0.8
+      }
+    },
+    {
+      "id": "offended",
+      "label": "Offended",
+      "emoji": "😤",
+      "params": {
+        "pitchSemitones": 0,
+        "durationScale": 1.3,
+        "peakAt": 0.6,
+        "riseSemitones": 9,
+        "fallSemitones": 8,
+        "gainDb": 3,
+        "attackMs": 0,
+        "accent": 0.6,
+        "vowel": 0.43,
+        "vowelX": 0.8,
+        "vowelY": 0.95,
+        "vowelStrength": 0.8
+      }
+    },
+    {
+      "id": "curious",
+      "label": "Curious",
+      "emoji": "🧐",
+      "params": {
+        "pitchSemitones": 2.5,
+        "durationScale": 1.05,
+        "peakAt": 0.9,
+        "riseSemitones": 4.5,
+        "fallSemitones": 1,
+        "gainDb": -3,
+        "attackMs": 30,
+        "accent": 0,
+        "vowel": -0.79,
+        "vowelX": 0.3,
+        "vowelY": 0.55,
+        "vowelStrength": 0.7
+      }
+    },
+    {
+      "id": "blaaah",
+      "label": "Blaaah",
+      "emoji": "🤮",
+      "egg": {
+        "from": "disgusted",
+        "clip": "G",
+        "note": "Tap Disgusted twice: the BLAH.wav voice on the gag clip G"
+      },
+      "params": {
+        "pitchSemitones": 0,
+        "durationScale": 1,
+        "peakAt": 0.7,
+        "riseSemitones": 0,
+        "fallSemitones": 0,
+        "gainDb": 0,
+        "attackMs": 0,
+        "accent": 0,
+        "vowel": 0
+      }
+    }
+  ]
+}
