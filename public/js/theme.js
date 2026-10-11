@@ -4,11 +4,13 @@
  * 11 Whiskas Purple, 12 Ginger Tabby, 13 Sheba Velvet, 14 Tiki Lagoon, 15 Hill's Clinic, 16 Neko Atsume,
  * 17 Maneki-neko, 18 Catnip, 19 Black Cat, 20 Felix Tuxedo, 21 Gumroad fixed, 22 Whiskas,
  * 23 Ben, 24 Rug, 25 Tangerine Grape, 26 Walnut Sky, 27 Peach Static,
- * 28 Black Peach, 29 Night Forest, 30 Sunset Clash, 31 Walnut Night, 32 Oxblood Ice). */
+ * 28 Black Peach, 29 Night Forest, 30 Sunset Clash, 31 Walnut Night, 32 Oxblood Ice,
+ * Black Cat accents: 33 Amber Copper, 34 Gold Teal, 35 Moonstone, 36 Emerald Gold, 37 Hazel,
+ * 38 Odd-Eyed, 39 Neon Alley, 40 Streetlight, 41 Violet Hour, 42 Red Eye). */
 var HUH_SCHEME = 3;
 (function () {
   // Dev preview: ?scheme=N (ignored on the production domain).
-  var m = location.hostname !== 'huuuh.meme' && /[?&]scheme=(3[0-2]|2[0-9]|1[0-9]|[0-9])\b/.exec(location.search);
+  var m = location.hostname !== 'huuuh.meme' && /[?&]scheme=(4[0-2]|3[0-9]|2[0-9]|1[0-9]|[0-9])\b/.exec(location.search);
   var n = m ? m[1] : String(HUH_SCHEME);
   var root = document.documentElement;
   root.setAttribute('data-scheme', n);
