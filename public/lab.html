@@ -26,7 +26,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/theme.css?v=7" />
-  <link rel="stylesheet" href="css/lab.css?v=7" />
+  <link rel="stylesheet" href="css/lab.css?v=8" />
 </head>
 <body class="lab-page">
   <header class="lab-top">
@@ -39,7 +39,7 @@
     <div class="col left">
       <section class="card picker-card" aria-labelledby="pick-label">
         <div class="card-head"><h2 id="pick-label">Preset</h2></div>
-        <p class="hint">presets.json, with this browser's saved edits on top</p>
+        <p class="hint">presets.json (new tuning), with this browser's saved edits on top</p>
         <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
       </section>
       <section class="card file" aria-labelledby="share-title">
@@ -55,12 +55,19 @@
       <section class="card editor" aria-labelledby="editing-title">
         <div class="card-head editor-head">
           <h2 id="editing-title">Editing: <strong id="editing-name"></strong></h2>
+          <span class="badge set" id="tuning-badge" hidden></span>
           <span class="badge dirty" id="dirty" hidden>Unsaved changes</span>
         </div>
         <div class="edit-actions">
           <button type="button" class="stk primary" id="save" disabled>Save</button>
           <button type="button" class="stk" id="revert" disabled>Revert</button>
           <button type="button" class="stk" id="reset">Reset to plain</button>
+          <div class="tuning" role="group" aria-label="Tuning set">
+            <span class="tuning-label">Tuning</span>
+            <button type="button" class="stk seg" id="tune-new" aria-pressed="false" title="Load this mood from presets.json (current tuning, 88beedb)">New</button>
+            <button type="button" class="stk seg" id="tune-old" aria-pressed="false" title="Load this mood from presets-v1.json (the tuning before 88beedb)">Old</button>
+            <button type="button" class="stk" id="ab" title="Play the old tuning, then the new one">A/B</button>
+          </div>
         </div>
         <p class="note" id="editing-note"></p>
         <div class="group" id="simple-group">
@@ -177,6 +184,14 @@
       function baseParams(id) {
         var p = presetMeta(id);
         return p ? copyCorner(p.params) : blankCorner();
+      }
+
+      // The tuning before 88beedb (presets-v1.json), to load into the knobs.
+      var OLD_FILE = 'presets-v1.json';
+      var oldList = [];
+      function oldParams(id) {
+        for (var i = 0; i < oldList.length; i++) if (oldList[i].id === id) return copyCorner(oldList[i].params);
+        return null;
       }
 
       var box = document.getElementById('params');
@@ -947,6 +962,14 @@
       var editingName = document.getElementById('editing-name');
       var editingNote = document.getElementById('editing-note');
       var picker = document.getElementById('picker');
+      var tuneNew = document.getElementById('tune-new');
+      var tuneOld = document.getElementById('tune-old');
+      var abButton = document.getElementById('ab');
+      var tuningBadge = document.getElementById('tuning-badge');
+      var abAudio = new Audio();
+      tuneNew.addEventListener('click', function () { loadSet('new'); });
+      tuneOld.addEventListener('click', function () { loadSet('old'); });
+      abButton.addEventListener('click', playAB);
 
       function labelOf(id) {
         if (id === DEFAULT_ID) return PLAIN + ' (plain, fixed)';
@@ -1050,7 +1073,8 @@
             text = 'plain huh, fixed';
             state.className = 'state';
           } else if (overrides[id]) {
-            text = 'local edit';
+            var o = oldParams(id);
+            text = o && sameValues(copyCorner(overrides[id]), o) && !sameValues(o, baseParams(id)) ? 'local edit \u00b7 old tuning' : 'local edit';
             state.className = 'state tuned';
           } else {
             text = 'presets.json';
@@ -1070,6 +1094,59 @@
         revertButton.disabled = !dirty;
         syncSimple();
         syncVowelKnob();
+        syncTuning();
+      }
+
+      // Which set the knobs hold right now (compared live, so it is always true).
+      function syncTuning() {
+        var oldP = selected === DEFAULT_ID ? null : oldParams(selected);
+        var newP = selected === DEFAULT_ID ? null : baseParams(selected);
+        var k = knobValues();
+        var isNew = !!newP && sameValues(k, newP);
+        var isOld = !!oldP && sameValues(k, oldP);
+        tuneNew.disabled = !newP;
+        tuneOld.disabled = !oldP;
+        abButton.disabled = !oldP || !newP;
+        tuneNew.setAttribute('aria-pressed', isNew ? 'true' : 'false');
+        tuneOld.setAttribute('aria-pressed', isOld ? 'true' : 'false');
+        if (!newP) { tuningBadge.hidden = true; return; }
+        tuningBadge.hidden = false;
+        tuningBadge.textContent = isNew && isOld ? 'same in both sets' : isNew ? 'new tuning' : isOld ? 'old tuning (pre-88beedb)' : (overrides[selected] && sameValues(k, copyCorner(overrides[selected])) ? 'local edit' : 'custom');
+        tuningBadge.className = 'badge set' + (isOld && !isNew ? ' old' : '');
+      }
+
+      function loadSet(which) {
+        if (selected === DEFAULT_ID) return;
+        var values = which === 'old' ? oldParams(selected) : baseParams(selected);
+        if (!values) return;
+        setKnobs(values);
+        updateUi();
+        status.textContent = 'Loaded ' + (which === 'old' ? 'old tuning (' + OLD_FILE + ')' : 'new tuning (presets.json)') + ' for ' + labelOf(selected) + (isDirty() ? '. Press Save to keep it as the local edit.' : '');
+      }
+
+      // A/B: old, a short gap, then new, in one buffer (one play in the tap).
+      function playAB() {
+        var raw = rawNow();
+        var oldP = oldParams(selected);
+        if (!raw || !engineReadyFlag || !oldP) return;
+        var a, b;
+        try {
+          a = HuhAudio.renderHuh(raw, oldP).getChannelData(0);
+          b = HuhAudio.renderHuh(raw, baseParams(selected)).getChannelData(0);
+        } catch (err) { status.textContent = err && err.message ? err.message : String(err); return; }
+        var rate = raw.sampleRate;
+        var gap = Math.round(0.45 * rate);
+        var mono = new Float32Array(a.length + gap + b.length);
+        mono.set(a, 0);
+        mono.set(b, a.length + gap);
+        var url = URL.createObjectURL(HuhAudio.encodeWav({ numberOfChannels: 1, sampleRate: rate, length: mono.length, getChannelData: function () { return mono; } }));
+        abAudio.pause();
+        if (abAudio.src) URL.revokeObjectURL(abAudio.src);
+        abAudio.src = url;
+        audio.pause();
+        var p = abAudio.play();
+        status.textContent = 'A/B ' + labelOf(selected) + ': old, then new';
+        if (p && typeof p.catch === 'function') p.catch(function (err) { status.textContent = err && err.message ? err.message : String(err); });
       }
 
       function select(id) {
@@ -1147,7 +1224,7 @@
         HuhPresets.clearOverrides();
         overrides = {};
         loadStored();
-        status.textContent = 'Local overrides cleared; using presets.json';
+        status.textContent = 'Local overrides cleared; using presets.json (new tuning)';
       });
 
       buildPicker();
@@ -1172,8 +1249,13 @@
         status.textContent = 'presets.json did not load: ' + (err && err.message ? err.message : err);
       });
 
+      HuhPresets.load(OLD_FILE).then(function (r) {
+        oldList = (r.base && r.base.presets) || [];
+        updateUi();
+      }, function (err) { console.warn(OLD_FILE + ' did not load', err); });
+
       // Read-only hooks for the lab tests.
-      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty };
+      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty, oldParams: oldParams, newParams: baseParams };
       window.addEventListener('resize', draw);
       draw();
     })();
