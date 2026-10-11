@@ -522,3 +522,33 @@ html[data-scheme="21"] { /* #21 Gumroad fixed */
   --act: #FFFFFF;
   --act-fg: #000000;
 }
+html[data-scheme="22"] { /* #22 Whiskas */
+  --b1: #A6288C;
+  --b1-ink: #1A0017;
+  --chip: #FFFFFF;
+  --chip-fg: #1A0017;
+  --chip-on: #FFB700;
+  --chip-on-fg: #780068;
+  --play: #FFB700;
+  --play-fg: #780068;
+  --play-on: #F094BC;
+  --play-on-fg: #780068;
+  --b2: #780068;
+  --b2-fg: #FFFFFF;
+  --b2-mute: #F094BC;
+  --mood: #B8329C;
+  --mood-fg: #FFFFFF;
+  --mood-bd: #F094BC;
+  --on: #FFB700;
+  --on-fg: #780068;
+  --b3: #FFFFFF;
+  --b3-ink: #780068;
+  --act-done: #F094BC;
+  --act-done-fg: #780068;
+  --make: #FFB700;
+  --make-fg: #780068;
+  --err: #FFFFFF;
+  --b3-mute: #780068;
+  --act: #FFFFFF;
+  --act-fg: #780068;
+}
