@@ -46,8 +46,10 @@
   var SAMPLES = { A: 'audio/A.wav', BLAH: 'audio/BLAH.wav' };
   var WORDS = { A: 'huh', BLAH: 'blah' };
   function sampleOf(c) { return c === EGG_CLIP ? 'BLAH' : 'A'; }
-  var POSTER_V = 1;
-  function posterUrl(c) { return '/clips/' + c + '.jpg?v=' + POSTER_V; }
+  // Per-clip cache-bust for the mp4 + jpg (bump a clip's number when re-encoding it).
+  var CLIP_V = { A: 1, B: 1, C: 1, D: 1, G: 2 };
+  function posterUrl(c) { return '/clips/' + c + '.jpg?v=' + (CLIP_V[c] || 1); }
+  function clipUrl(c) { return '/clips/' + c + '.mp4' + (CLIP_V[c] > 1 ? '?v=' + CLIP_V[c] : ''); }
   // The video starts once the sound clock has passed this (s). Chrome reports
   // a few ms (0.009...) while its output is still starting and then holds it;
   // 15 ms is past that stutter and still well inside the first video frame.
@@ -624,7 +626,7 @@
       video.pause();
       video.poster = posterUrl(clip);
       armStill();
-      video.src = '/clips/' + clip + '.mp4';
+      video.src = clipUrl(clip);
       video.load();
       parked = true;
       armStill(); // re-arm on the new src (a callback can belong to the old one)
@@ -692,6 +694,8 @@
   }
 
   return {
+    clipUrl: clipUrl,
+    posterUrl: posterUrl,
     CLIPS: CLIPS,
     EGG_CLIP: EGG_CLIP,
     ALL_CLIPS: ALL_CLIPS,

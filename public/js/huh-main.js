@@ -433,7 +433,7 @@
     loadExport().then(function (X) {
       return X.render({
         clip: state.clip,
-        clipUrl: '/clips/' + state.clip + '.mp4',
+        clipUrl: HuhMeme.clipUrl(state.clip),
         entry: entry,
         clipConfig: player.clipConfig(),
         clipDuration: video.duration,

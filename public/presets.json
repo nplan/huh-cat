@@ -35,11 +35,11 @@
       }
     },
     "G": {
-      "note": "sour-cream gag (blaaah easter egg): cat in the left half, face upper-left; blanket free on the right",
+      "note": "sour-cream gag (blaaah easter egg): 720x720 crop of the portrait source, centred, blurred sides; caption top-right over the blanket/blur, clear of the head",
       "text": {
         "y": "top",
         "align": "right",
-        "width": 0.36
+        "width": 0.3
       }
     }
   },

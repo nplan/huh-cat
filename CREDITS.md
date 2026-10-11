@@ -7,8 +7,9 @@
 - **G** (the blaaah easter egg): "Cat Gags Smelling Sour Cream" (Belyash, Moscow,
   filmed 14 Nov 2020), ViralHog, https://www.youtube.com/watch?v=BCAhp-kpYqs
   (also https://viralhog.com/watch/file/232337040). Trimmed to 4.50–5.30 s
-  (24 frames at 30 fps), the 720x1280 portrait frame cropped to a 720x405 band
-  (y = 180) and scaled to 1280x720, H.264 High (x264 CRF 20, like A–D), no audio
+  (24 frames at 30 fps), a 720x720 square of the 720x1280 portrait frame
+  (y = 20, the whole cat in every frame) centred in 1280x720, the sides filled
+  with a blurred, darkened, scaled-up copy of the same footage; H.264 High (x264 CRF 20, like A–D), no audio
   track, faststart; poster `G.jpg` is its first frame.
   **License:** ViralHog footage, all rights reserved; ViralHog licenses it
   (licensing@viralhog.com). Like A–D it is used here as a meme; clear it with

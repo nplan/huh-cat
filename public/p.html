@@ -42,8 +42,9 @@
             var m = /[?&]h=1([A-DG])/.exec(location.search);
             if (m && m[1] !== 'A') {
               var v = document.getElementById('huh');
-              v.src = '/clips/' + m[1] + '.mp4';
-              v.poster = document.getElementById('still').src = '/clips/' + m[1] + '.jpg?v=1';
+              var cv = m[1] === 'G' ? 2 : 1; // per-clip cache-bust, = CLIP_V in huh-meme.js
+              v.src = '/clips/' + m[1] + '.mp4' + (cv > 1 ? '?v=' + cv : '');
+              v.poster = document.getElementById('still').src = '/clips/' + m[1] + '.jpg?v=' + cv;
             }
           })();
         </script>
@@ -59,7 +60,7 @@
   <script src="js/huh-vowel.js?v=2"></script>
   <script src="js/huh-audio.js?v=23"></script>
   <script src="js/huh-presets.js?v=4"></script>
-  <script src="js/huh-meme.js?v=12"></script>
+  <script src="js/huh-meme.js?v=13"></script>
   <script>
     (function () {
       var $ = function (id) { return document.getElementById(id); };
