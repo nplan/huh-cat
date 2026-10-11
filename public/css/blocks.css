@@ -200,16 +200,18 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ---- phones: the main page fits Safari's visible area (100svh = with the toolbars shown), Moods and
- * Tune alike, no scroll. Same order and look, squeezed: 3-column mood grid (Classic spans two), slider
- * title beside its track, tighter gaps; tap targets 44px (40px on short screens, <= 620px high).
- * The video is the column width, or what the height leaves after the fixed rest (--rest) at 16:9,
- * centred with side margins; never under 56vw. --rest = meme block (padding, cats+Play row,
- * Copy link/Download row, shadows) + sound block (padding, switch, the Tune panel, the taller of the two). */
+ * Tune alike, no scroll. Same order, look and 2-column mood grid (Classic on top, full width); room
+ * comes from tighter gaps first (a tighter tier at <= 700px high), then the video, which is the column
+ * width or what the height leaves after the fixed rest (--rest) at 16:9, centred with side margins,
+ * never under 56vw; tap targets stay 44px (40px only at <= 620px high). Slider title beside its track.
+ * --rest = meme block (padding, cats+Play row, Copy link/Download row, shadows) + sound block (padding,
+ * switch, the taller of the Moods grid and the Tune panel). */
 @media (max-width: 599px) {
   .main-page { --pt: 12px; --g: 10px; --tap: 44px; --cg: 8px; --sl: 44px;
     --rest: calc(4 * var(--pt) + env(safe-area-inset-top) + env(safe-area-inset-bottom)
       + (var(--g) + 2px) + var(--tap) + var(--g) + var(--tap) + 4px + 9px
-      + (var(--tap) + 2px) + var(--g) + 4 * (var(--sl) + 2px) + 4px + 36px); }
+      + (var(--tap) + 2px) + var(--g)
+      + max(6 * var(--tap) + 5 * var(--cg) + 4px, 4 * (var(--sl) + 2px) + 40px)); }
   .main-page .blk { padding-top: var(--pt); padding-bottom: var(--pt); }
   .main-page .blk.y { padding-top: max(var(--pt), env(safe-area-inset-top)); }
   .main-page .blk.n { padding-bottom: max(var(--pt), env(safe-area-inset-bottom)); }
@@ -220,15 +222,17 @@ a { color: inherit; }
   .main-page .act { height: var(--tap); }
   .main-page .tabs { margin-bottom: var(--g); padding: 1px; }
   .main-page .tabs button { height: calc(var(--tap) - 4px); }
-  .main-page .presets { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--cg); }
-  .main-page .preset { height: var(--tap); padding: 0 4px; font-size: min(13px, 3.2vw); }
-  .main-page .preset[data-preset="original"] { grid-column: span 2; }
+  .main-page .presets { gap: var(--cg) 12px; }
+  .main-page .preset { height: var(--tap); }
   .main-page .slider { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; column-gap: 10px; height: var(--sl); margin: 0 0 2px; }
   .main-page .slider input[type=range] { height: var(--sl); }
   .main-page .slider .top { font-size: 14px; }
   .main-page .slider-foot { margin-top: 4px; }
   .main-page #plain { height: 36px; }
 }
+@media (max-width: 599px) and (max-height: 700px) {
+  .main-page { --pt: 10px; --g: 8px; --cg: 6px; }
+}
 @media (max-width: 599px) and (max-height: 620px) {
-  .main-page { --pt: 10px; --g: 8px; --tap: 40px; --sl: 40px; }
+  .main-page { --tap: 40px; --sl: 40px; }
 }
