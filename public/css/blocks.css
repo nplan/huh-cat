@@ -198,31 +198,3 @@ a { color: inherit; }
 .make { margin: 28px 0 0; text-align: center; }
 .make a { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: var(--make, var(--b2)); color: var(--make-fg, var(--b2-fg)); text-decoration: none; font: 400 14px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
-
-/* ---- phones: full-width 16:9 video, 12px between all button rows, 44px tap targets, 2-column moods
- * (Classic on top); the page may scroll a little on short screens (accepted). Kept tight where it costs
- * nothing: block padding 12px (8px at <= 760px high), slider title beside its track. */
-@media (max-width: 599px) {
-  .main-page { --pt: 12px; --g: 12px; --tap: 44px; --cg: 12px; --sl: 44px;
-}
-  .main-page .blk { padding-top: var(--pt); padding-bottom: var(--pt); }
-  .main-page .blk.y { padding-top: max(var(--pt), env(safe-area-inset-top)); }
-  .main-page .blk.n { padding-bottom: max(var(--pt), env(safe-area-inset-bottom)); }
-  .main-page .stage { width: 100%; } /* always the full column at 16:9; the page may scroll a little */
-  .main-page .row { margin-top: var(--g); row-gap: var(--g); }
-  .main-page .clips button { width: var(--tap); height: var(--tap); }
-  .main-page #play { height: var(--tap); }
-  .main-page .act { height: var(--tap); }
-  .main-page .tabs { margin-bottom: var(--g); padding: 1px; }
-  .main-page .tabs button { height: calc(var(--tap) - 4px); }
-  .main-page .presets { gap: var(--cg); }
-  .main-page .preset { height: var(--tap); }
-  .main-page .slider { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; column-gap: 10px; height: var(--sl); margin: 0 0 2px; }
-  .main-page .slider input[type=range] { height: var(--sl); }
-  .main-page .slider .top { font-size: 14px; }
-  .main-page .slider-foot { margin-top: 4px; }
-  .main-page #plain { height: 36px; }
-}
-@media (max-width: 599px) and (max-height: 760px) {
-  .main-page { --pt: 8px; }
-}
