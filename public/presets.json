@@ -49,15 +49,15 @@
       "label": "Confused",
       "emoji": "😕",
       "params": {
-        "pitchSemitones": 0.7,
-        "durationScale": 1.19,
-        "peakAt": 0.85,
-        "riseSemitones": 5.6,
-        "fallSemitones": 1,
+        "pitchSemitones": -0.5,
+        "durationScale": 1.4,
+        "peakAt": 0.97,
+        "riseSemitones": 8,
+        "fallSemitones": 0.5,
         "gainDb": 0,
         "attackMs": 0,
-        "accent": 0,
-        "vowel": -0.3
+        "accent": 0.1,
+        "vowel": -0.45
       }
     },
     {
@@ -65,15 +65,15 @@
       "label": "Shocked",
       "emoji": "😱",
       "params": {
-        "pitchSemitones": 3.9,
-        "durationScale": 0.89,
-        "peakAt": 0.9,
-        "riseSemitones": 7.2,
-        "fallSemitones": 1.4,
-        "gainDb": 2.8,
+        "pitchSemitones": 5,
+        "durationScale": 0.85,
+        "peakAt": 0.75,
+        "riseSemitones": 9,
+        "fallSemitones": 2,
+        "gainDb": 3,
         "attackMs": 0,
-        "accent": 0.42,
-        "vowel": 0.6
+        "accent": 0.5,
+        "vowel": 0.9
       }
     },
     {
@@ -81,15 +81,15 @@
       "label": "Annoyed",
       "emoji": "😒",
       "params": {
-        "pitchSemitones": -0.6,
-        "durationScale": 0.79,
-        "peakAt": 0.43,
-        "riseSemitones": 0.6,
-        "fallSemitones": 5.4,
-        "gainDb": 1.6,
+        "pitchSemitones": -0.5,
+        "durationScale": 0.7,
+        "peakAt": 0.2,
+        "riseSemitones": 1.5,
+        "fallSemitones": 12,
+        "gainDb": 2.5,
         "attackMs": 0,
-        "accent": 0.24,
-        "vowel": 0.3
+        "accent": 0.4,
+        "vowel": 0.4
       }
     },
     {
@@ -97,15 +97,18 @@
       "label": "Disgusted",
       "emoji": "🤢",
       "params": {
-        "pitchSemitones": -2.7,
-        "durationScale": 1.27,
-        "peakAt": 0.52,
-        "riseSemitones": 0.4,
-        "fallSemitones": 3.6,
-        "gainDb": 0.8,
+        "pitchSemitones": -3,
+        "durationScale": 1.3,
+        "peakAt": 0.28,
+        "riseSemitones": 3,
+        "fallSemitones": 11,
+        "gainDb": 0.5,
         "attackMs": 0,
-        "accent": 0.12,
-        "vowel": 0.5
+        "accent": 0.3,
+        "vowel": 0.31,
+        "vowelX": 0.95,
+        "vowelY": 0.95,
+        "vowelStrength": 0.8
       }
     },
     {
@@ -113,15 +116,18 @@
       "label": "Suspicious",
       "emoji": "🤨",
       "params": {
-        "pitchSemitones": -2.2,
-        "durationScale": 1.6,
-        "peakAt": 0.79,
-        "riseSemitones": 3.2,
-        "fallSemitones": 0.6,
+        "pitchSemitones": -3.5,
+        "durationScale": 1.55,
+        "peakAt": 0.97,
+        "riseSemitones": 5,
+        "fallSemitones": 0,
         "gainDb": -3,
-        "attackMs": 27,
+        "attackMs": 25,
         "accent": 0,
-        "vowel": -0.5
+        "vowel": -0.5,
+        "vowelX": 0.55,
+        "vowelY": 0.45,
+        "vowelStrength": 0.8
       }
     },
     {
@@ -129,15 +135,18 @@
       "label": "Amused",
       "emoji": "😏",
       "params": {
-        "pitchSemitones": 2.4,
-        "durationScale": 0.94,
-        "peakAt": 0.77,
-        "riseSemitones": 2.4,
-        "fallSemitones": 0.5,
-        "gainDb": 0.8,
-        "attackMs": 0,
-        "accent": 0.12,
-        "vowel": 0.7
+        "pitchSemitones": 4,
+        "durationScale": 0.8,
+        "peakAt": 0.4,
+        "riseSemitones": 4,
+        "fallSemitones": 6,
+        "gainDb": -1,
+        "attackMs": 8,
+        "accent": 0.15,
+        "vowel": 0.74,
+        "vowelX": 0.25,
+        "vowelY": 0.9,
+        "vowelStrength": 0.7
       }
     },
     {
@@ -145,15 +154,18 @@
       "label": "Scared",
       "emoji": "😨",
       "params": {
-        "pitchSemitones": 6.8,
-        "durationScale": 0.74,
-        "peakAt": 0.81,
-        "riseSemitones": 4,
-        "fallSemitones": 0.8,
-        "gainDb": 1.2,
-        "attackMs": 0,
-        "accent": 0.18,
-        "vowel": 0.2
+        "pitchSemitones": 8,
+        "durationScale": 0.68,
+        "peakAt": 0.5,
+        "riseSemitones": 0.5,
+        "fallSemitones": 2.5,
+        "gainDb": -3,
+        "attackMs": 12,
+        "accent": 0,
+        "vowel": -1,
+        "vowelX": 0.15,
+        "vowelY": 0.35,
+        "vowelStrength": 0.6
       }
     },
     {
@@ -161,13 +173,13 @@
       "label": "Bored",
       "emoji": "🥱",
       "params": {
-        "pitchSemitones": -4.8,
-        "durationScale": 1.42,
-        "peakAt": 0.34,
-        "riseSemitones": 0.8,
-        "fallSemitones": 7.2,
-        "gainDb": -8,
-        "attackMs": 72,
+        "pitchSemitones": -4.5,
+        "durationScale": 1.45,
+        "peakAt": 0.3,
+        "riseSemitones": 0.5,
+        "fallSemitones": 4.5,
+        "gainDb": -6,
+        "attackMs": 80,
         "accent": 0,
         "vowel": -0.8
       }
@@ -177,15 +189,18 @@
       "label": "Offended",
       "emoji": "😤",
       "params": {
-        "pitchSemitones": 2.8,
-        "durationScale": 1.12,
-        "peakAt": 0.83,
-        "riseSemitones": 4.8,
-        "fallSemitones": 0.9,
-        "gainDb": 3.6,
+        "pitchSemitones": 0,
+        "durationScale": 1.3,
+        "peakAt": 0.6,
+        "riseSemitones": 9,
+        "fallSemitones": 8,
+        "gainDb": 3,
         "attackMs": 0,
-        "accent": 0.54,
-        "vowel": 0.4
+        "accent": 0.6,
+        "vowel": 0.43,
+        "vowelX": 0.8,
+        "vowelY": 0.95,
+        "vowelStrength": 0.8
       }
     },
     {
@@ -193,15 +208,18 @@
       "label": "Curious",
       "emoji": "🧐",
       "params": {
-        "pitchSemitones": 1,
-        "durationScale": 1.06,
-        "peakAt": 0.83,
-        "riseSemitones": 4.8,
-        "fallSemitones": 0.9,
+        "pitchSemitones": 2.5,
+        "durationScale": 1.05,
+        "peakAt": 0.9,
+        "riseSemitones": 4.5,
+        "fallSemitones": 1,
         "gainDb": -3,
-        "attackMs": 27,
+        "attackMs": 30,
         "accent": 0,
-        "vowel": -0.2
+        "vowel": -0.79,
+        "vowelX": 0.3,
+        "vowelY": 0.55,
+        "vowelStrength": 0.7
       }
     },
     {
