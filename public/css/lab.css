@@ -30,7 +30,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 .lab-top h1 { font: 400 20px/1 "Archivo Black", sans-serif; text-transform: uppercase; white-space: nowrap; }
 .lab-top h1 span { font: 700 14px/1 "DM Sans", sans-serif; text-transform: none; margin-left: 4px; }
 .lab-top .stk { --bd: var(--b1-ink); background: var(--chip); color: var(--chip-fg); }
-.lab-top #play { height: 40px; padding: 0 16px; font-size: 14px; }
+.lab-top #play { height: 40px; padding: 0 16px; font-size: 14px; background: var(--play); color: var(--play-fg); } /* Play is hot pink on every page */
 .lab-top #play svg { width: 12px; height: 12px; }
 .lab-top #status { flex: 1; min-width: 0; margin: 0; font-weight: 600; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lab-top .back { margin-left: auto; }
