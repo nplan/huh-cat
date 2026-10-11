@@ -1,5 +1,5 @@
 /* HUUUH? "Blocks" design (main page + /p player). Layout and type only: every colour is a variable
- * from css/theme.css (scheme picked in js/theme.js). Three flat blocks carry the structure:
+ * from css/theme.css (the Neon Alley palette). Three flat blocks carry the structure:
  * b1 = the meme, b2 = the sound, b3 = send it. Sticker buttons: thick outline + hard shadow that collapses on press.
  * Fonts (SIL OFL 1.1, Basic Latin subsets): Anton (caption), Archivo Black (labels), DM Sans (UI text). */
 @font-face { font-family: "Anton"; src: url("../fonts/anton/anton-latin.woff2") format("woff2"); font-display: swap; }
@@ -8,7 +8,7 @@
 :root { --r: 14px; --sticker: 4px; }
 * { box-sizing: border-box; }
 /* The root is the meme pink: iOS Safari tints the status bar / top toolbar and the rubber-band
- * areas from it (theme.js also puts --b1 in <meta name=theme-color>). */
+ * areas from it (and from <meta name=theme-color>, which repeats --b1). */
 html { -webkit-text-size-adjust: 100%; background: var(--b1); }
 body { margin: 0; min-height: 100dvh; background: transparent; color: var(--b1-ink); font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
 button, input { font: inherit; color: inherit; }
@@ -63,11 +63,10 @@ a { color: inherit; }
 .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; row-gap: 16px; margin-top: 24px; reading-flow: flex-visual; }
 .clips { display: flex; gap: 8px; }
 .clips button { width: 44px; height: 44px; padding: 0; background: var(--chip); color: var(--chip-fg); font: 400 17px/1 "Archivo Black", sans-serif; }
-/* state tokens (theme.css) fall back to the original mapping, so older schemes render as before */
-.clips button[aria-pressed="true"] { background: var(--chip-on, var(--b1-ink)); color: var(--chip-on-fg, var(--b1)); }
-#play { height: 52px; padding: 0 22px; background: var(--play, var(--chip)); color: var(--play-fg, var(--chip-fg)); display: inline-flex; align-items: center; gap: 10px; font: 400 18px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+.clips button[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-fg); }
+#play { height: 52px; padding: 0 22px; background: var(--play); color: var(--play-fg); display: inline-flex; align-items: center; gap: 10px; font: 400 18px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
 #play svg { width: 16px; height: 16px; }
-.is-playing #play { background: var(--play-on, var(--b1-ink)); color: var(--play-on-fg, var(--b1)); }
+.is-playing #play { background: var(--play-on); color: var(--play-on-fg); }
 #status { margin: 12px 0 0; color: var(--err); font-weight: 600; font-size: 14px; }
 #status:empty { display: none; }
 
@@ -78,10 +77,10 @@ a { color: inherit; }
 .tabs button:focus-visible { outline-offset: 4px; }
 
 /* ---- moods: a perfect grid (equal cells, fixed columns, Original spans the row) */
-.blk.n .preset, .blk.n #plain { --bd: var(--mood-bd, var(--b2-fg)); }
+.blk.n .preset, .blk.n #plain { --bd: var(--mood-bd); }
 .presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; padding: 0 var(--sticker) var(--sticker) 0; }
 .preset { width: 100%; height: 52px; padding: 0 8px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; overflow: hidden;
-  background: var(--mood, var(--b2)); color: var(--mood-fg, var(--b2-fg)); font: 400 15px/1 "Archivo Black", sans-serif; text-transform: uppercase; letter-spacing: 0.01em; }
+  background: var(--mood); color: var(--mood-fg); font: 400 15px/1 "Archivo Black", sans-serif; text-transform: uppercase; letter-spacing: 0.01em; }
 .preset .emo { display: none; }
 .preset[data-preset="original"] { grid-column: 1 / -1; }
 .preset[aria-pressed="true"] { background: var(--on); color: var(--on-fg); }
@@ -105,7 +104,7 @@ a { color: inherit; }
 .slider input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--b2), 0 0 0 6px var(--b2-fg); }
 .slider input[type=range]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--b2), 0 0 0 6px var(--b2-fg); }
 .slider-foot { display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; color: var(--b2-mute); font-size: 14px; }
-#plain { height: 40px; padding: 0 14px; background: var(--mood, var(--b2)); color: var(--mood-fg, var(--b2-fg)); font: 400 13px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+#plain { height: 40px; padding: 0 14px; background: var(--mood); color: var(--mood-fg); font: 400 13px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
 
 /* Main page sliders: title + track only (values are aria-valuetext on each input). */
 .slider output, .slider .ends, #mode { display: none; }
@@ -119,7 +118,7 @@ a { color: inherit; }
 .act { --bd: var(--b1-ink); flex: 1; min-width: 0; height: 46px; padding: 0 8px; background: var(--b3); color: var(--b3-ink); display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   font: 400 15px/1 "Archivo Black", sans-serif; text-transform: uppercase; white-space: nowrap; }
 .act svg { width: 18px; height: 18px; flex: none; }
-.act.done { background: var(--act-done, var(--b1-ink)); color: var(--act-done-fg, var(--b3)); }
+.act.done { background: var(--act-done); color: var(--act-done-fg); }
 .act.busy { cursor: progress; }
 .foot { display: flex; justify-content: center; gap: 24px; margin-top: 24px; font-size: 14px; font-weight: 600; }
 .foot a { color: var(--b3-mute); text-decoration: none; padding: 8px; }
@@ -154,7 +153,7 @@ a { color: inherit; }
   /* Copy link / Download: yellow stickers left of Play (Play stays the big one) */
   .row .acts { order: 0; flex: none; grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: center; margin: var(--gap) calc(var(--side) + 168px + 14px) 0 0; padding: 0; gap: 10px; }
   .act { --bd: var(--b1-ink); flex: none; height: 48px; padding: 0 16px; background: var(--b3); color: var(--b3-ink); font-size: 15px; }
-  .act.done { background: var(--act-done, var(--b1-ink)); color: var(--act-done-fg, var(--b3)); }
+  .act.done { background: var(--act-done); color: var(--act-done-fg); }
   .blk.w :focus-visible { outline-color: var(--b1-ink); }
   #status { grid-column: 2; grid-row: 3; margin: 8px 0 0; }
   /* sound block: Moods | Tune, no switch */
@@ -196,5 +195,5 @@ a { color: inherit; }
 .player #play { display: flex; width: min(420px, var(--pw)); max-width: none; height: 64px; margin: 32px auto 0; justify-content: center; font-size: 22px; }
 .player #play svg { width: 20px; height: 20px; }
 .make { margin: 28px 0 0; text-align: center; }
-.make a { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: var(--make, var(--b2)); color: var(--make-fg, var(--b2-fg)); text-decoration: none; font: 400 14px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
+.make a { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: var(--make); color: var(--make-fg); text-decoration: none; font: 400 14px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

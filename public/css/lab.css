@@ -1,5 +1,5 @@
 /* HUUUH? lab: the meme page's Blocks language at tool density. Colours are theme.css variables only
- * (scheme picked in js/theme.js), fonts are the main page's (Archivo Black labels, DM Sans UI).
+ * (the Neon Alley palette), fonts are the main page's (Archivo Black labels, DM Sans UI).
  * b1 = top bar (Play, back to the meme), b2 = the tool, b3 = the presets file. */
 @font-face { font-family: "Archivo Black"; src: url("../fonts/archivo-black/archivo-black-latin.woff2") format("woff2"); font-display: swap; }
 @font-face { font-family: "DM Sans"; src: url("../fonts/dm-sans/dm-sans-latin.woff2") format("woff2"); font-weight: 100 1000; font-display: swap; }

@@ -93,21 +93,29 @@
   function drawWatermark(ctx) {
     ctx.save();
     var size = Math.round(H * 0.032);
-    ctx.font = '600 ' + size + 'px "Inter", system-ui, sans-serif';
+    ctx.font = '600 ' + size + 'px "DM Sans", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.shadowColor = 'rgba(0,0,0,0.35)';
     ctx.shadowBlur = 4;
-    ctx.fillStyle = 'rgba(255,255,255,0.42)';
+    ctx.fillStyle = watermarkColour();
     ctx.fillText('huuuh.meme', W / 2, H - Math.round(H * 0.03));
     ctx.restore();
+  }
+
+  // The brand accent (--brand in css/theme.css), faint: the page's lime on the clip.
+  function watermarkColour() {
+    var h = '';
+    try { h = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim(); } catch (e) {}
+    var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h) || [0, 'c6', 'ff', '3d'];
+    return 'rgba(' + parseInt(m[1], 16) + ',' + parseInt(m[2], 16) + ',' + parseInt(m[3], 16) + ',0.55)';
   }
 
   function fontsReady() {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
     return Promise.all([
       document.fonts.load('100px "Anton"'),
-      document.fonts.load('600 24px "Inter"')
+      document.fonts.load('600 24px "DM Sans"')
     ]).catch(function () {});
   }
 
