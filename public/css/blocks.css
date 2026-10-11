@@ -129,14 +129,14 @@ a { color: inherit; }
   /* Desktop: one screen, no scroll. The meme block (video + one control row with cats, Copy link,
    * Download and Play) sits on top; the sound block below shows Moods and Tune side by side.
    * The video is sized by the viewport height: its width is the column max or whatever the height
-   * leaves after the fixed rest (--rest), at 16:9. Below ~700px high it stops shrinking and the page scrolls. */
+   * leaves after the fixed rest (--rest), at 16:9. Below ~600px high it stops shrinking (400px) and the page scrolls. */
   :root {
     --colmax: 1180px;
     --pad: 20px; --gap: 14px; --ctrl: 56px;
     --cell: 44px; --cgap: 8px;
     --sound: calc(4 * var(--cell) + 3 * var(--cgap) + 2 * 22px);
     --rest: calc(var(--pad) + var(--gap) + var(--ctrl) + var(--pad) + var(--sound) + 10px);
-    --col: max(560px, min(var(--colmax), calc(100vw - 96px), calc((100dvh - var(--rest)) * 16 / 9)));
+    --col: max(400px, min(var(--colmax), calc(100vw - 96px), calc((100dvh - var(--rest)) * 16 / 9)));
     --low: min(calc(100vw - 96px), max(var(--col), 960px));
     /* the control row never gets narrower than its contents, even under a small video */
     --ctrlw: max(var(--col), 820px);
@@ -182,9 +182,18 @@ a { color: inherit; }
 }
 
 /* ---- share player (/p): one meme block, a big Play, a way back */
+/* narrow phones (< 360px): cats + Play do not fit one line; Play wraps and spans the row */
+@media (max-width: 359px) { .row #play { flex: 1 0 100%; justify-content: center; }
+  .row .acts { gap: 10px; } .row .act { padding: 0 8px; gap: 6px; font-size: 13px; min-width: 0; } }
 .player .blk.y { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
-.player .inner { width: 100%; max-width: 860px; margin: 0 auto; }
-.player #play { display: flex; width: 100%; max-width: 420px; height: 64px; margin: 32px auto 0; justify-content: center; font-size: 22px; }
+.player .inner { width: 100%; max-width: 860px; margin: 0 auto;
+  /* one centred column: the video is the column width, or what the height leaves at 16:9 (no scroll),
+   * never under 320px; Play is 420px or the video width if that is narrower; Make your own centred.
+   * --prest: everything but the video (block padding, Play + gap, Make your own + gap, shadow). */
+  --prest: calc(max(24px, env(safe-area-inset-top)) + 24px + env(safe-area-inset-bottom) + 32px + 64px + 28px + 44px + 12px);
+  --pw: min(100%, max(320px, calc((100dvh - var(--prest)) * 16 / 9))); }
+.player .stage { width: var(--pw); margin: 0 auto; }
+.player #play { display: flex; width: min(420px, var(--pw)); max-width: none; height: 64px; margin: 32px auto 0; justify-content: center; font-size: 22px; }
 .player #play svg { width: 20px; height: 20px; }
 .make { margin: 28px 0 0; text-align: center; }
 .make a { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: var(--make, var(--b2)); color: var(--make-fg, var(--b2-fg)); text-decoration: none; font: 400 14px/1 "Archivo Black", sans-serif; text-transform: uppercase; }
