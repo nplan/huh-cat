@@ -12,6 +12,10 @@ Four standalone huhs in `public/clips/` (`huh-07a`, `huh-07b`, `huh-08a`, `huh-0
 G, the sour-cream gag for the blaaah easter egg (tap Disgusted twice), with its own voice
 `public/audio/BLAH.wav`. Sources and licenses: [CREDITS.md](CREDITS.md).
 
+## Colours
+One palette, Neon Alley, all in `public/css/theme.css` (CSS custom properties). `<meta name="theme-color">`
+in the three pages repeats `--b1`; `favicon.ico`, `apple-touch-icon.png` and `og.jpg` are generated images in the same colours.
+
 ## Local
 ```bash
 npx --yes serve public

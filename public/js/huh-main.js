@@ -394,7 +394,7 @@
     if (exportReady) return exportReady;
     exportReady = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
-      s.src = '/js/huh-export.js?v=2';
+      s.src = '/js/huh-export.js?v=3';
       s.onload = function () { resolve(window.HuhExport); };
       s.onerror = function () { exportReady = null; reject(new Error('Could not load the exporter')); };
       document.head.appendChild(s);

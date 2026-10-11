@@ -28,4 +28,5 @@
 ## Code and fonts
 - Rubber Band (rubberband-wasm 3.3.0, GPL): `public/vendor/rubberband/LICENSE`.
 - Mediabunny: `public/vendor/mediabunny/`.
-- Fonts (OFL): `public/fonts/*/`.
+- Fonts (SIL OFL 1.1, licence next to each): Anton (the HUUUH? caption), Archivo Black (labels),
+  DM Sans (UI, download watermark) in `public/fonts/*/`.
