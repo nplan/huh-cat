@@ -1,0 +1,45 @@
+/* HUUUH? colours: Neon Alley, the one production palette. Every site colour lives here (main page, /p, /lab).
+ * Black Cat base (charcoal blocks, cream outlines, grey fills) with lime and hot-pink "eyes".
+ * Rule-checked (huh-design/schemes.py: selected fill != outline/block, fills != block, text >= 4.5:1, Play primary).
+ * Also hard-coded outside CSS (keep in sync when tweaking): <meta name="theme-color"> in index/p/lab.html (= --b1),
+ * favicon.ico / apple-touch-icon.png / og.jpg (generated, huh-design/final/), the export watermark reads --brand. */
+:root {
+  /* Meme block (top): background, and its text/outlines/hard shadows */
+  --b1: #17161C;
+  --b1-ink: #EDEAE3;
+  /* Clip chips A-D on the meme block (unselected / selected) */
+  --chip: #4E4A5C;
+  --chip-fg: #FFFFFF;
+  --chip-on: #C6FF3D;
+  --chip-on-fg: #17161C;
+  /* Play (the primary action) and Play while playing */
+  --play: #FF4FA3;
+  --play-fg: #17161C;
+  --play-on: #C6FF3D;
+  --play-on-fg: #17161C;
+  /* Copy link / Download (unselected, and the "copied" state) */
+  --act: #4E4A5C;
+  --act-fg: #FFFFFF;
+  --b3: #4E4A5C;
+  --b3-ink: #FFFFFF;
+  --b3-mute: #FFFFFF;
+  --act-done: #C6FF3D;
+  --act-done-fg: #17161C;
+  /* Sound block (bottom): background, text, muted text */
+  --b2: #0B0A0E;
+  --b2-fg: #EDEAE3;
+  --b2-mute: #A9A6B4;
+  /* Moods: unselected fill / text / outline; selected mood + slider fill */
+  --mood: #403C4C;
+  --mood-fg: #FFFFFF;
+  --mood-bd: #EDEAE3;
+  --on: #C6FF3D;
+  --on-fg: #17161C;
+  /* /p "Make your own"; error text on the meme block */
+  --make: #C6FF3D;
+  --make-fg: #17161C;
+  --err: #FF9A9A;
+  /* the signature accent (favicon, og chip, download watermark) */
+  --brand: var(--on);
+  --brand-fg: var(--on-fg);
+}

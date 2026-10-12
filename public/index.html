@@ -2,74 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Huuuh?</title>
-  <style>
-    body {
-      margin: 0; min-height: 100vh; display: grid; place-items: center;
-      background: linear-gradient(160deg, #1a0533 0%, #0b1b3a 45%, #062018 100%);
-      color: #fff;
-      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-    }
-    main { text-align: center; padding: 1.5rem; }
-    h1 {
-      margin: 0 0 1rem;
-      font-size: clamp(3.2rem, 13vw, 7.5rem); line-height: 0.9;
-      letter-spacing: -0.03em; font-weight: 900;
-      color: #fff;
-      -webkit-text-stroke: 8px #000;
-      paint-order: stroke fill;
-    }
-    video { width: min(92vw, 720px); border-radius: 12px; background: #000; display: block; margin: 0 auto; }
-    .row { display: flex; gap: 0.6rem; justify-content: center; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
-    .clips { display: flex; gap: 0.45rem; }
-    .clips button, #play {
-      color: #111; background: #fff; border: 3px solid #000; cursor: pointer;
-    }
-    .clips button {
-      width: 3.1rem; height: 3.1rem; border-radius: 10px;
-      font: 900 1.35rem Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-    }
-    .clips button[aria-pressed="true"], .clips button:hover, #play:hover { background: #ffe566; }
-    #play {
-      width: 4.2rem; height: 4.2rem; border-radius: 50%;
-      display: inline-grid; place-items: center;
-    }
-    #play svg { width: 1.7rem; height: 1.7rem; margin-left: 0.15rem; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>HUUUH?</title>
+  <meta name="description" content="Ben the Huh? Cat, on demand. Pick a mood or tune the huh, then send it." />
+  <meta name="theme-color" content="#17161C" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="huuuh.meme" />
+  <meta property="og:title" content="HUUUH?" />
+  <meta property="og:description" content="Ben the Huh? Cat, on demand. Pick a mood or tune the huh, then send it." />
+  <meta property="og:url" content="https://huuuh.meme/" />
+  <meta property="og:image" content="https://huuuh.meme/og.jpg?v=3" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Ben the Huh? Cat with a big HUUUH? caption" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HUUUH?" />
+  <meta name="twitter:description" content="Ben the Huh? Cat, on demand. Pick a mood or tune the huh, then send it." />
+  <meta name="twitter:image" content="https://huuuh.meme/og.jpg?v=3" />
+  <meta name="twitter:image:alt" content="Ben the Huh? Cat with a big HUUUH? caption" />
+  <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="/favicon.ico?v=4" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
+  <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/theme.css?v=7" />
+  <link rel="stylesheet" href="css/blocks.css?v=26" />
+  <!-- Cloudflare Web Analytics --><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "6153ab5b58da4225b85b1e126b4b4ebd"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
-<body>
-  <main>
-    <h1>HUUUH?</h1>
-    <video id="huh" src="/clips/A.mp4" playsinline controls></video>
-    <div class="row">
-      <div class="clips" role="group" aria-label="Clip">
-        <button type="button" data-clip="A" aria-pressed="true">A</button>
-        <button type="button" data-clip="B" aria-pressed="false">B</button>
-        <button type="button" data-clip="C" aria-pressed="false">C</button>
-        <button type="button" data-clip="D" aria-pressed="false">D</button>
+<body class="main-page">
+  <h1 class="sr-only">HUUUH? Ben the Huh? Cat, on demand</h1>
+  <main class="blocks">
+    <section class="blk y" aria-label="The meme">
+      <div class="stage" id="stage" title="Play">
+        <video id="huh" src="/clips/A.mp4" poster="/clips/A.jpg?v=1" width="1280" height="720" playsinline muted preload="auto"></video>
+        <img class="still" id="still" src="/clips/A.jpg?v=1" width="1280" height="720" alt="" aria-hidden="true">
+        <script>
+          (function () {
+            var m = /[?&]h=1([A-DG])/.exec(location.search);
+            if (m && m[1] !== 'A') {
+              var v = document.getElementById('huh');
+              var cv = m[1] === 'G' ? 2 : 1; // per-clip cache-bust, = CLIP_V in huh-meme.js
+              v.src = '/clips/' + m[1] + '.mp4' + (cv > 1 ? '?v=' + cv : '');
+              v.poster = document.getElementById('still').src = '/clips/' + m[1] + '.jpg?v=' + cv;
+            }
+          })();
+        </script>
+        <p class="caption meme top right" id="caption" aria-hidden="true"></p>
       </div>
-      <button id="play" type="button" aria-label="Play">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
-      </button>
-    </div>
+      <div class="row">
+        <div class="clips" role="group" aria-label="Cat clip">
+          <button type="button" data-clip="A" aria-pressed="true" aria-label="Cat A">A</button>
+          <button type="button" data-clip="B" aria-pressed="false" aria-label="Cat B">B</button>
+          <button type="button" data-clip="C" aria-pressed="false" aria-label="Cat C">C</button>
+          <button type="button" data-clip="D" aria-pressed="false" aria-label="Cat D">D</button>
+        </div>
+        <div class="acts" role="group" aria-label="Send it">
+          <button id="share" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg><span class="act-label">Copy link</span></button>
+          <button id="download" type="button" class="act"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span class="act-label">Download</span></button>
+        </div>
+        <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
+      </div>
+      <p id="status" role="alert"></p>
+      <p id="announce" class="sr-only" role="status" aria-live="polite"></p>
+    </section>
+    <section class="blk n" aria-label="Sound">
+      <div class="tabs" role="tablist" aria-label="Choose the sound">
+        <button type="button" role="tab" id="tab-presets" aria-controls="panel-presets" aria-selected="true">Moods</button>
+        <button type="button" role="tab" id="tab-sliders" aria-controls="panel-sliders" aria-selected="false" tabindex="-1">Tune</button>
+      </div>
+      <div id="panel-presets" role="tabpanel" aria-labelledby="tab-presets">
+        <div class="presets" id="presets"></div>
+      </div>
+      <div id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden>
+        <div id="slider-list"></div>
+        <div class="slider-foot">
+          <span id="mode"></span>
+          <button type="button" id="plain">Reset</button>
+        </div>
+      </div>
+    </section>
   </main>
-  <script>
-    const v = document.getElementById("huh");
-    const picks = [...document.querySelectorAll(".clips button")];
-    let clip = "A";
-    picks.forEach((b) => b.addEventListener("click", () => {
-      clip = b.dataset.clip;
-      picks.forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
-      v.pause();
-      v.src = "/clips/" + clip + ".mp4";
-      v.load();
-    }));
-    document.getElementById("play").addEventListener("click", () => {
-      v.muted = false;
-      v.currentTime = 0;
-      v.play();
-    });
-  </script>
+  <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
+  <script src="vendor/rubberband/rubberband.js?v=10"></script>
+  <script src="js/huh-vowel.js?v=3"></script>
+  <script src="js/huh-audio.js?v=24"></script>
+  <script src="js/huh-presets.js?v=6"></script>
+  <script src="js/huh-meme.js?v=14"></script>
+  <script src="js/huh-main.js?v=12"></script>
 </body>
 </html>

@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HUUUH? lab</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#17161C" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="huuuh.meme" />
+  <meta property="og:title" content="HUUUH? lab" />
+  <meta property="og:description" content="Tuning lab for the huh presets." />
+  <meta property="og:url" content="https://huuuh.meme/lab" />
+  <meta property="og:image" content="https://huuuh.meme/og.jpg?v=3" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Ben the Huh? Cat with a big HUUUH? caption" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HUUUH? lab" />
+  <meta name="twitter:description" content="Tuning lab for the huh presets." />
+  <meta name="twitter:image" content="https://huuuh.meme/og.jpg?v=3" />
+  <meta name="twitter:image:alt" content="Ben the Huh? Cat with a big HUUUH? caption" />
+  <link rel="icon" href="/favicon.ico?v=4" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
+  <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/theme.css?v=7" />
+  <link rel="stylesheet" href="css/lab.css?v=11" />
+  <!-- Cloudflare Web Analytics --><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "6153ab5b58da4225b85b1e126b4b4ebd"}'></script><!-- End Cloudflare Web Analytics -->
+</head>
+<body class="lab-page">
+  <header class="lab-top">
+    <h1>HUUUH? <span>lab</span></h1>
+    <button type="button" id="play" class="stk"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg>Play</button>
+    <p id="status" role="status"></p>
+    <a class="back stk" href="/">&larr; Meme page</a>
+  </header>
+  <main class="lab">
+    <div class="col left">
+      <section class="card picker-card" aria-labelledby="pick-label">
+        <div class="card-head"><h2 id="pick-label">Preset</h2></div>
+        <p class="hint" id="picker-hint">presets.json, with this browser's saved edits on top</p>
+        <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
+      </section>
+      <section class="card file" aria-labelledby="share-title">
+        <div class="card-head"><h2 id="share-title">Presets file</h2></div>
+        <p class="hint" id="share-note">Local edits live in this browser only (the meme page here plays them too). Export writes presets.json with the Local edits included; commit that file as public/presets.json to make them the defaults. Import (pick, drop here, or paste) keeps the file as the Imported source to compare by ear, and can merge it into Local.</p>
+        <div class="file-actions">
+          <button type="button" class="stk" id="export">Export presets.json</button>
+          <button type="button" class="stk" id="import">Import&hellip;</button>
+          <button type="button" class="stk" id="use-imported" disabled>Use imported as local</button>
+          <button type="button" class="stk" id="clear-local">Reset local to default</button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden />
+        </div>
+        <details class="paste">
+          <summary>Paste JSON</summary>
+          <textarea id="import-text" rows="5" spellcheck="false" aria-label="Paste presets JSON"></textarea>
+          <button type="button" class="stk" id="import-paste">Check pasted JSON</button>
+        </details>
+        <div class="import-preview" id="import-preview" hidden>
+          <p class="import-msg" id="import-msg" role="alert"></p>
+          <ul class="import-list" id="import-list"></ul>
+          <div class="import-actions" id="import-actions">
+            <button type="button" class="stk" id="import-merge">Merge into local edits</button>
+            <button type="button" class="stk" id="import-replace">Replace all local edits</button>
+            <button type="button" class="stk" id="import-cancel">Cancel</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="col mid">
+      <section class="card editor" aria-labelledby="editing-title">
+        <div class="card-head editor-head">
+          <h2 id="editing-title">Editing: <strong id="editing-name"></strong></h2>
+          <span class="badge set" id="tuning-badge" hidden></span>
+          <span class="badge dirty" id="dirty" hidden>Unsaved changes</span>
+        </div>
+        <div class="edit-actions">
+          <button type="button" class="stk primary" id="save" disabled>Save</button>
+          <button type="button" class="stk" id="revert" disabled>Revert</button>
+          <button type="button" class="stk" id="reset">Reset to plain</button>
+          <div class="compare" role="group" aria-label="Compare source">
+            <span class="compare-label">Compare</span>
+            <span class="compare-seg" id="compare">
+              <button type="button" class="stk seg" id="src-default" data-src="default" aria-pressed="false" title="presets.json, the deployed defaults (read-only)">Default</button>
+              <button type="button" class="stk seg" id="src-local" data-src="local" aria-pressed="false" title="Your saved edits in this browser">Local</button>
+              <button type="button" class="stk seg" id="src-imported" data-src="imported" aria-pressed="false" title="The last imported file (read-only)">Imported</button>
+            </span>
+          </div>
+        </div>
+        <p class="note" id="editing-note"></p>
+        <div class="group" id="simple-group">
+          <div class="group-title"><h3>Simple</h3><span>the meme-page sliders; &asymp; = nearest</span></div>
+          <div id="simple"></div>
+        </div>
+        <div class="group">
+          <div class="group-title"><h3>Detailed</h3><span>exact renderer params</span></div>
+          <div id="params"></div>
+          <label class="check"><input type="checkbox" id="keepVowel" /> Keep vowel under the pitch knob (preview only, not saved)</label>
+        </div>
+      </section>
+    </div>
+    <div class="col right">
+      <section class="card diagram-card" aria-labelledby="sound-title">
+        <div class="card-head"><h2 id="sound-title">Sound</h2></div>
+        <canvas id="diagram" width="640" height="190" aria-label="Waveform and pitch"></canvas>
+        <p class="hint" style="margin:8px 0 0">Filled shape: waveform. Solid line: pitch, dot at the peak. Dashed: attack and accent.</p>
+        <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
+      </section>
+      <section class="card vowel-card" id="vowel-card" aria-labelledby="vowel-title">
+        <div class="card-head"><h2 id="vowel-title">Vowel</h2><span class="hint" id="vowel-sample" style="margin:0">A.wav</span></div>
+        <div class="vowel-head">
+          <output id="vowel-readout">huh (unchanged)</output>
+          <button type="button" class="stk" id="vowel-reset" disabled>Reset vowel</button>
+        </div>
+        <canvas id="vowel-pad" tabindex="0" aria-label="Vowel chart. Drag or tap the dot: up is close, down is open, left is front, right is back. The ring is the unchanged huh, the dashed line is the Simple Vowel slider. Arrow keys nudge the dot."></canvas>
+        <p class="vowel-warn" id="vowel-warn" hidden>Open front vowels (&#x25B;, &aelig;, a, the shaded zone) come out breathier on this voice. A lower strength softens that.</p>
+        <label class="row" style="margin-top:8px"><span>Strength</span><input type="range" id="vowelStrength" min="0" max="1" step="0.01" value="1" /><output id="vowelStrength-out">1.00</output></label>
+      </section>
+    </div>
+  </main>
+  <script src="vendor/rubberband/rubberband.js?v=10"></script>
+  <script src="js/huh-vowel.js?v=3"></script>
+  <script src="js/huh-audio.js?v=24"></script>
+  <script src="js/huh-presets.js?v=6"></script>
+  <script>
+    (function () {
+      var FIELDS = [
+        ['pitchSemitones', 1, 'pitchSemitones', '0.1'],
+        ['durationScale', 2, 'durationScale', '0.01'],
+        ['peakAt', 2, 'peakAt', '0.01'],
+        ['riseSemitones', 1, 'riseSemitones', '0.1'],
+        ['fallSemitones', 1, 'fallSemitones', '0.1'],
+        ['gainDb', 1, 'gainDb', '0.1'],
+        ['attackMs', 0, 'Attack', '1'],
+        ['accent', 2, 'Accent', '0.01'],
+        ['vowel', 2, 'Vowel (\u0259 \u2194 a)', '0.01']
+      ];
+      // Base samples: the huh (A.wav) and, for easter-egg presets (an "egg" in
+      // presets.json, e.g. blaaah), their own voice (BLAH.wav).
+      var raws = {};
+      var SAMPLE_URL = { A: 'audio/A.wav', BLAH: 'audio/BLAH.wav' };
+      function sampleNow() {
+        var p = selected && selected !== DEFAULT_ID ? presetMeta(selected) : null;
+        return p && p.egg && p.egg.clip && window.HuhMeme ? HuhMeme.sampleOf(p.egg.clip) : (p && p.egg ? 'BLAH' : 'A');
+      }
+      function rawNow() { return raws[sampleNow()] || null; }
+      var decoding = null;
+      var engineReadyFlag = false;
+      // Presets: presets.json (base) with this browser's saved edits
+      // (localStorage 'huh-presets') on top. 'default' is the plain huh.
+      var DEFAULT_ID = 'default';
+      var PLAIN = HuhPresets.PLAIN_LABEL;
+      // Full 2D vowel (the chart pad). Off: the vowel is the 1D Vowel knob, a
+      // point on the line through the huh. On: vowelX/vowelY/vowelStrength are
+      // rendered and saved, and the Vowel knob shows the nearest 1D value (~).
+      // The ring: the selected sample's own vowel (the huh's, or the blaaah's).
+      var HOME = HuhAudio.VOWEL_HOME;
+      function syncHome() {
+        var vs = document.getElementById('vowel-sample');
+        if (vs) vs.textContent = sampleNow() === 'BLAH' ? 'BLAH.wav' : 'A.wav';
+        HOME = sampleNow() === 'BLAH' && window.HuhVowel && HuhVowel.BLAH_HOME ? HuhVowel.BLAH_HOME : HuhAudio.VOWEL_HOME;
+      }
+      var v2d = null; // { x, y, s } or null
+      var basePresets = null;
+      var presetList = [];
+      var overrides = HuhPresets.readOverrides();
+
+      function blankCorner() {
+        var params = {};
+        FIELDS.forEach(function (field) {
+          params[field[0]] = HuhAudio.DEFAULTS[field[0]];
+        });
+        return params;
+      }
+
+      function copyCorner(src) {
+        var params = blankCorner();
+        if (!src) return params;
+        FIELDS.forEach(function (field) {
+          var n = Number(src[field[0]]);
+          if (isFinite(n)) params[field[0]] = n;
+        });
+        // A 2D vowel (vowelX/vowelY/vowelStrength, also older saves) is kept;
+        // vowel is then its nearest point on the line. u length is gone.
+        var two = HuhAudio.vowel2D(src);
+        if (two) {
+          params.vowelX = two.x;
+          params.vowelY = two.y;
+          params.vowelStrength = two.s;
+          params.vowel = HuhAudio.legacyVowel(params);
+        } else if (!isFinite(Number(src.vowel))) {
+          params.vowel = 0;
+        }
+        return params;
+      }
+
+      function presetMeta(id) {
+        for (var i = 0; i < presetList.length; i++) if (presetList[i].id === id) return presetList[i];
+        return null;
+      }
+
+      function baseParams(id) {
+        var p = presetMeta(id);
+        return p ? copyCorner(p.params) : blankCorner();
+      }
+
+      // ---- Compare sources: Default (presets.json), Local (this browser's
+      // saved edits, localStorage 'huh-presets', what the meme page plays
+      // here) and Imported (the last imported file, kept in localStorage
+      // 'huh-lab-imported'). Default and Imported are read-only views: Save
+      // while viewing them writes the mood into Local and switches to Local.
+      var SOURCE_KEY = 'huh-lab-source';
+      var IMPORTED_KEY = 'huh-lab-imported';
+      var SOURCES = { default: 'Default', local: 'Local', imported: 'Imported' };
+      function readImported() {
+        try {
+          var d = JSON.parse(localStorage.getItem(IMPORTED_KEY) || 'null');
+          return d && d.params && typeof d.params === 'object' ? d : null;
+        } catch (e) { return null; }
+      }
+      var imported = readImported();
+      var source = 'local';
+      try { var s0 = localStorage.getItem(SOURCE_KEY); if (SOURCES[s0]) source = s0; } catch (e) {}
+      function hasLocal() { return Object.keys(overrides).length > 0; }
+      function hasSource(s) { return s === 'default' || (s === 'local' ? hasLocal() : !!imported); }
+      // The source on show: a chosen source that has nothing yet shows Default.
+      function view() { return hasSource(source) ? source : 'default'; }
+      function sourceValues(s, id) {
+        if (id === DEFAULT_ID) return blankCorner();
+        if (s === 'local' && overrides[id]) return copyCorner(overrides[id]);
+        if (s === 'imported' && imported && imported.params[id]) return copyCorner(imported.params[id]);
+        return baseParams(id);
+      }
+
+      var box = document.getElementById('params');
+      var simpleBox = document.getElementById('simple');
+      var status = document.getElementById('status');
+      var audio = document.getElementById('voice');
+      var blobUrl = '';
+      var queuedUrl = '';
+      var playStamp = 0;
+      if (!audio.getAttribute('src')) audio.src = 'audio/A.wav';
+      var engineReady = HuhAudio.loadEngine('vendor/rubberband/rubberband.wasm');
+      var bytesReady = HuhAudio.fetchWavBytes('audio/A.wav');
+      // BLAH.wav after A (only egg presets use it).
+      engineReady.then(function () { return HuhAudio.fetchWavBytes(SAMPLE_URL.BLAH); }).then(function (b) {
+        return HuhAudio.decodeWavOffline(b);
+      }).then(function (buf) { raws.BLAH = buf; if (sampleNow() === 'BLAH') scheduleRender(); }, function (err) { console.warn(err); });
+      Promise.all([bytesReady, engineReady]).then(function (parts) {
+        engineReadyFlag = true;
+        if (!status.textContent) status.textContent = 'ready';
+        return HuhAudio.decodeWavOffline(parts[0]);
+      }).then(function (buf) {
+        raws.A = buf;
+        scheduleRender();
+        // Warm the vowel engine after the first render, off the Play path.
+        setTimeout(function () {
+          try { HuhAudio.warmVowel(buf); } catch (e) {}
+        }, 300);
+      }).catch(function (err) {
+        status.textContent = err && err.message ? err.message : 'Rubber Band failed to load';
+      });
+
+      FIELDS.forEach(function (field) {
+        var name = field[0];
+        var range = HuhAudio.RANGES[name];
+        var row = document.createElement('label');
+        row.className = 'row';
+        var title = document.createElement('span');
+        title.textContent = field[2];
+        var slider = document.createElement('input');
+        slider.type = 'range';
+        slider.id = name;
+        slider.min = String(range[0]);
+        slider.max = String(range[1]);
+        slider.step = field[3];
+        slider.value = String(HuhAudio.DEFAULTS[name]);
+        var out = document.createElement('output');
+        out.id = name + '-out';
+        out.textContent = format(name, HuhAudio.DEFAULTS[name]);
+        row.appendChild(title);
+        row.appendChild(slider);
+        row.appendChild(out);
+        // Vowel is already a simple control: it lives in the Simple group.
+        if (name === 'vowel') {
+          row.className = 'row simple';
+          title.textContent = 'Vowel (\u0259 \u2194 a)';
+          simpleBox.appendChild(row);
+        } else {
+          box.appendChild(row);
+        }
+        slider.addEventListener('input', function () {
+          // The Vowel knob is the line: moving it puts the 2D dot back on it.
+          if (name === 'vowel') { v2d = null; setStrengthInput(1); }
+          out.textContent = format(name, Number(slider.value));
+          draw();
+          scheduleRender();
+          updateUi();
+        });
+      });
+
+      // ---- Simple sliders: Pitch, Length, Question (the meme-page
+      // mappings, HuhPresets) plus the Vowel knob itself. Dragging one
+      // writes only its own detailed knobs; moving a detailed knob only
+      // moves these to the nearest value (never back into the knob), with
+      // \u2248 when the knobs are not exactly on the slider's mapping.
+      var SIMPLE = [
+        ['pitch', 'Pitch', 'low (\u22126 st)', 'high (+7 st)'],
+        ['length', 'Length', 'short (0.55\u00d7)', 'long (1.8\u00d7)'],
+        ['question', 'Question', 'statement', 'question?']
+      ];
+      var simpleInputs = {};
+      var activeSimple = null;
+      SIMPLE.forEach(function (sdef, idx) {
+        var key = sdef[0];
+        var row = document.createElement('label');
+        row.className = 'row simple';
+        var title = document.createElement('span');
+        title.textContent = sdef[1];
+        title.title = sdef[2] + ' \u2194 ' + sdef[3];
+        var slider = document.createElement('input');
+        slider.type = 'range';
+        slider.id = 'simple-' + key;
+        slider.min = '-1';
+        slider.max = '1';
+        slider.step = '0.01';
+        slider.value = '0';
+        slider.setAttribute('aria-label', sdef[1] + ': ' + sdef[2] + ' to ' + sdef[3]);
+        var out = document.createElement('output');
+        out.id = 'simple-' + key + '-out';
+        out.textContent = '0.00';
+        row.appendChild(title);
+        row.appendChild(slider);
+        row.appendChild(out);
+        simpleBox.insertBefore(row, simpleBox.children[idx] || null);
+        simpleInputs[key] = { input: slider, out: out };
+        slider.addEventListener('input', function () {
+          simpleMoved(key, Number(slider.value));
+        });
+      });
+
+      function setKnob(name, value) {
+        var el = document.getElementById(name);
+        el.value = String(value);
+        document.getElementById(name + '-out').textContent = format(name, Number(el.value));
+      }
+
+      function simpleMoved(key, value) {
+        var f = HuhPresets.applySlider({}, key, value);
+        HuhPresets.CONTROLS[key].forEach(function (name) { setKnob(name, f[name]); });
+        activeSimple = key;
+        draw();
+        scheduleRender();
+        updateUi();
+        activeSimple = null;
+      }
+
+      // Nearest Pitch / Length / Question for the knobs, and whether exact.
+      function syncSimple() {
+        var n = HuhPresets.nearest(knobValues());
+        SIMPLE.forEach(function (sdef) {
+          var key = sdef[0];
+          var ui = simpleInputs[key];
+          if (key !== activeSimple) ui.input.value = String(n[key]);
+          var exact = key === activeSimple || n.exact[key];
+          var shown = key === activeSimple ? Number(ui.input.value) : n[key];
+          ui.out.textContent = (exact ? '' : '\u2248 ') + fmtSlider(shown);
+          ui.out.className = exact ? '' : 'approx';
+          ui.out.title = exact ? '' : 'The detailed knobs are beyond this slider; this is the nearest ' + key + '.';
+        });
+        return n;
+      }
+
+      function format(name, value) {
+        var digits = 1;
+        for (var i = 0; i < FIELDS.length; i++) {
+          if (FIELDS[i][0] === name) digits = FIELDS[i][1];
+        }
+        return Number(value).toFixed(digits);
+      }
+
+      function readParams() {
+        var params = {};
+        FIELDS.forEach(function (field) {
+          params[field[0]] = Number(document.getElementById(field[0]).value);
+        });
+        params.keepVowel = document.getElementById('keepVowel').checked;
+        if (v2d) {
+          params.vowelX = v2d.x;
+          params.vowelY = v2d.y;
+          params.vowelStrength = v2d.s;
+        }
+        return params;
+      }
+
+
+      var renderGen = 0;
+      var pending = null;
+      var latestBuffer = null;
+      var latestKey = '';
+      var lastWave = null;
+
+      function paramsKey(params) {
+        return sampleNow() + '|' + JSON.stringify(params);
+      }
+
+      function keepRender(rendered, key, swapNow) {
+        latestBuffer = rendered;
+        latestKey = key;
+        lastWave = new Float32Array(rendered.getChannelData(0));
+        draw();
+        useBlob(rendered, swapNow);
+      }
+
+      // Play calls this: if the knobs moved since the last render, render
+      // right here inside the tap and load it, so Play is the current sound.
+      function renderForPlay() {
+        if (!rawNow() || !engineReadyFlag) return;
+        var params = readParams();
+        var key = paramsKey(params);
+        if (latestBuffer && key === latestKey) {
+          if (queuedUrl) { var url = queuedUrl; queuedUrl = ''; swapSrc(url); }
+          return;
+        }
+        ++renderGen;
+        pending = null;
+        try {
+          keepRender(HuhAudio.renderHuh(rawNow(), params), key, true);
+        } catch (err) {
+          status.textContent = err && err.message ? err.message : String(err);
+        }
+      }
+
+      function scheduleRender() {
+        if (!rawNow() || !engineReadyFlag) return Promise.resolve(null);
+        var params = readParams();
+        var key = paramsKey(params);
+        if (latestBuffer && key === latestKey) return Promise.resolve(latestBuffer);
+        if (pending && pending.key === key) return pending.promise;
+        var gen = ++renderGen;
+        var promise = engineReady.then(function () {
+          var raw = rawNow();
+          if (!raw || gen !== renderGen) return null;
+          var rendered = HuhAudio.renderHuh(raw, params);
+          if (gen !== renderGen) return null;
+          keepRender(rendered, key, false);
+          return rendered;
+        });
+        pending = { key: key, promise: promise };
+        promise.then(function () {
+          if (pending && pending.key === key) pending = null;
+        }, function () {
+          if (pending && pending.key === key) pending = null;
+        });
+        return promise;
+      }
+
+      function draw() {
+        var canvas = document.getElementById('diagram');
+        var cssW = canvas.clientWidth || 640;
+        var cssH = canvas.clientHeight || 220;
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.round(cssW * dpr));
+        canvas.height = Math.max(1, Math.round(cssH * dpr));
+        var g = canvas.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var w = cssW;
+        var h = cssH;
+        g.clearRect(0, 0, w, h);
+        var C = colours();
+        g.fillStyle = C.bg;
+        g.fillRect(0, 0, w, h);
+
+        var params = readParams();
+        var steps = 240;
+        var ys = new Array(steps + 1);
+        var yMin = 0;
+        var yMax = 0;
+        for (var i = 0; i <= steps; i++) {
+          var t = i / steps;
+          var y = params.pitchSemitones + HuhAudio.contourAt(t, params);
+          ys[i] = y;
+          if (y < yMin) yMin = y;
+          if (y > yMax) yMax = y;
+        }
+        var pad = Math.max(1, (yMax - yMin) * 0.12);
+        yMin -= pad;
+        yMax += pad;
+        var span = yMax - yMin || 1;
+        var left = 36;
+        var right = 10;
+        var top = 16;
+        var bottom = 16;
+        var plotW = Math.max(1, w - left - right);
+        var plotH = Math.max(1, h - top - bottom);
+        var mid = top + plotH / 2;
+
+        function xOf(t) { return left + t * plotW; }
+        function yOf(v) { return top + (yMax - v) / span * plotH; }
+
+        if (lastWave && lastWave.length) {
+          var n = lastWave.length;
+          g.strokeStyle = C.wave;
+          g.lineWidth = 1;
+          g.beginPath();
+          for (var x = 0; x < plotW; x++) {
+            var i0 = Math.floor(x / plotW * n);
+            var i1 = Math.max(i0 + 1, Math.floor((x + 1) / plotW * n));
+            var lo = 0, hi = 0;
+            for (var s = i0; s < i1 && s < n; s++) {
+              var sample = lastWave[s];
+              if (sample < lo) lo = sample;
+              if (sample > hi) hi = sample;
+            }
+            var px = left + x + 0.5;
+            g.moveTo(px, mid - hi * (plotH * 0.48));
+            g.lineTo(px, mid - lo * (plotH * 0.48));
+          }
+          g.stroke();
+        }
+
+        g.strokeStyle = C.grid;
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(left, yOf(0));
+        g.lineTo(left + plotW, yOf(0));
+        g.stroke();
+
+        g.fillStyle = C.mute;
+        g.font = '600 11px "DM Sans", system-ui, sans-serif';
+        g.textAlign = 'right';
+        g.textBaseline = 'middle';
+        g.fillText(yMax.toFixed(1), left - 4, yOf(yMax));
+        g.fillText(yMin.toFixed(1), left - 4, yOf(yMin));
+
+        g.strokeStyle = C.on;
+        g.lineWidth = 2;
+        g.beginPath();
+        for (var k = 0; k <= steps; k++) {
+          var px2 = xOf(k / steps);
+          var py = yOf(ys[k]);
+          if (k === 0) g.moveTo(px2, py);
+          else g.lineTo(px2, py);
+        }
+        g.stroke();
+
+        g.strokeStyle = C.fg;
+        g.lineWidth = 1.5;
+        g.setLineDash([5, 4]);
+        g.beginPath();
+        var dur = Math.max(0.05, (lastWave ? lastWave.length / 44100 : 0.39));
+        for (var e = 0; e <= steps; e++) {
+          var et = e / steps;
+          var env = HuhAudio.envelopeAt(et, params, dur);
+          var ex = xOf(et);
+          var ey = top + (1 - env) * plotH;
+          if (e === 0) g.moveTo(ex, ey);
+          else g.lineTo(ex, ey);
+        }
+        g.stroke();
+        g.setLineDash([]);
+
+        var vowelName = vowelLabel(params);
+        if (vowelName) {
+          g.fillStyle = C.fg;
+          g.font = '600 12px "DM Sans", system-ui, sans-serif';
+          g.textAlign = 'left';
+          g.textBaseline = 'top';
+          g.fillText('vowel ' + vowelName, left + 4, 2);
+        }
+
+        var peakX = xOf(params.peakAt);
+        var peakY = yOf(params.pitchSemitones + HuhAudio.contourAt(params.peakAt, params));
+        g.fillStyle = C.fg;
+        g.beginPath();
+        g.arc(peakX, peakY, 3.5, 0, Math.PI * 2);
+        g.fill();
+        drawVowelPad();
+      }
+
+      // ---- Colours: the theme's (css/theme.css), read once per draw.
+      var V = window.HuhVowel;
+      function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#000'; }
+      function alpha(hex, a) {
+        var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+        if (!m) return hex;
+        return 'rgba(' + parseInt(m[1], 16) + ',' + parseInt(m[2], 16) + ',' + parseInt(m[3], 16) + ',' + a + ')';
+      }
+      function colours() {
+        var bg = cssVar('--b2'), fg = cssVar('--b2-fg'), mute = cssVar('--b2-mute');
+        return { bg: bg, fg: fg, mute: mute, on: cssVar('--on'), warn: cssVar('--b3'), wave: alpha(mute, 0.55), grid: alpha(mute, 0.3) };
+      }
+      function clamp01(v) { return Math.min(1, Math.max(0, v)); }
+
+      // ---- Vowel: the IPA chart pad (close at the top, open at the bottom,
+      // front left, back right). Pad coordinates are HuhVowel chart points
+      // (x 0 front .. 1 back, y 0 close .. 1 open); the ring is the huh's own
+      // vowel. The dashed line is the 1D Vowel knob (schwa .. huh .. a).
+      var padCanvas = document.getElementById('vowel-pad');
+      var vowelReadout = document.getElementById('vowel-readout');
+      var vowelWarn = document.getElementById('vowel-warn');
+      var vowelResetButton = document.getElementById('vowel-reset');
+      var strengthInput = document.getElementById('vowelStrength');
+      var strengthOut = document.getElementById('vowelStrength-out');
+      var padTimer = 0;
+      var padDrag = false;
+      var SNAP_PX = 12;
+      var WEAK_F1 = 580;
+      var WEAK_F2 = 1500;
+      var OPEN_INSET = 0.5;
+
+      function padSize() {
+        var w = padCanvas.clientWidth || 400;
+        var h = padCanvas.clientHeight || Math.round(w / 1.45);
+        return { w: w, h: h, ml: 28, mr: 24, mt: 18, mb: 24 };
+      }
+      function chartPx(x, y, size) {
+        var pw = size.w - size.ml - size.mr;
+        var ph = size.h - size.mt - size.mb;
+        var left = OPEN_INSET * y;
+        return { x: size.ml + (left + x * (1 - left)) * pw, y: size.mt + y * ph };
+      }
+      function chartOfPx(px, py, size) {
+        var pw = size.w - size.ml - size.mr;
+        var ph = size.h - size.mt - size.mb;
+        var y = clamp01((py - size.mt) / ph);
+        var left = OPEN_INSET * y;
+        var x = clamp01(((px - size.ml) / pw - left) / (1 - left));
+        return { x: x, y: y };
+      }
+      // Where the sound is on the chart: the dot, pulled toward the ring by strength.
+      function heardPoint(params) {
+        if (!V) return null;
+        var pt = HuhAudio.vowelPoint(params, HOME);
+        if (!pt) return null;
+        if (!(pt.s < 1)) return { x: pt.x, y: pt.y };
+        var f = V.chartAt(pt.x, pt.y);
+        var h = V.chartAt(HOME.x, HOME.y);
+        var q = V.chartPoint(h[0] * Math.pow(f[0] / h[0], pt.s), h[1] * Math.pow(f[1] / h[1], pt.s));
+        return { x: clamp01(q.x), y: clamp01(q.y) };
+      }
+      // Nearest reference vowel to the point that is rendered.
+      function vowelLabel(params) {
+        var pt = heardPoint(params);
+        if (!pt) return '';
+        var f = V.chartAt(pt.x, pt.y);
+        var best = '';
+        var bd = Infinity;
+        for (var sym in V.VOWELS) {
+          var r = V.VOWELS[sym];
+          var d = Math.pow(Math.log(f[0] / r[0]), 2) + Math.pow(Math.log(f[1] / r[1]), 2);
+          if (d < bd) { bd = d; best = sym; }
+        }
+        return '\u2248 ' + best;
+      }
+      function weakAt(x, y) {
+        var f = V.chartAt(x, y);
+        return f[0] >= WEAK_F1 && f[1] >= WEAK_F2;
+      }
+      // The handle: the 2D point, or the 1D knob's point on the line.
+      function dotPoint() {
+        if (v2d) return { x: v2d.x, y: v2d.y };
+        return HuhAudio.vowelLinePoint(Number(document.getElementById('vowel').value), HOME);
+      }
+
+      function drawVowelPad() {
+        if (!V) return;
+        var size = padSize();
+        var dpr = window.devicePixelRatio || 1;
+        padCanvas.width = Math.max(1, Math.round(size.w * dpr));
+        padCanvas.height = Math.max(1, Math.round(size.h * dpr));
+        var g = padCanvas.getContext('2d');
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var C = colours();
+        g.fillStyle = C.bg;
+        g.fillRect(0, 0, size.w, size.h);
+        var params = readParams();
+
+        // Breathier zone (open front: F1 and F2 both high), shaded.
+        var rows = 48;
+        var edge = [];
+        for (var ry = 0; ry <= rows; ry++) {
+          var yy = ry / rows;
+          var lo = 0;
+          var hi = 1;
+          if (!weakAt(0, yy)) continue;
+          if (weakAt(1, yy)) lo = 1;
+          else {
+            for (var it = 0; it < 20; it++) {
+              var mid = (lo + hi) / 2;
+              if (weakAt(mid, yy)) lo = mid; else hi = mid;
+            }
+          }
+          edge.push([lo, yy]);
+        }
+        if (edge.length > 1) {
+          g.fillStyle = alpha(C.warn, 0.28);
+          g.beginPath();
+          var first = chartPx(0, edge[0][1], size);
+          g.moveTo(first.x, first.y);
+          for (var ei = 0; ei < edge.length; ei++) {
+            var ep = chartPx(edge[ei][0], edge[ei][1], size);
+            g.lineTo(ep.x, ep.y);
+          }
+          var last = chartPx(0, edge[edge.length - 1][1], size);
+          g.lineTo(last.x, last.y);
+          g.closePath();
+          g.fill();
+        }
+
+        function line(x0, y0, x1, y1, color, width) {
+          var p0 = chartPx(x0, y0, size);
+          var p1 = chartPx(x1, y1, size);
+          g.strokeStyle = color;
+          g.lineWidth = width;
+          g.beginPath();
+          g.moveTo(p0.x, p0.y);
+          g.lineTo(p1.x, p1.y);
+          g.stroke();
+        }
+        line(0, 1 / 3, 1, 1 / 3, C.grid, 1);
+        line(0, 2 / 3, 1, 2 / 3, C.grid, 1);
+        line(0.5, 0, 0.5, 1, C.grid, 1);
+        line(0, 0, 1, 0, C.fg, 2);
+        line(1, 0, 1, 1, C.fg, 2);
+        line(1, 1, 0, 1, C.fg, 2);
+        line(0, 1, 0, 0, C.fg, 2);
+
+        g.font = '15px "DM Sans", system-ui, sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillStyle = C.mute;
+        for (var sym in V.VOWELS) {
+          var r = V.VOWELS[sym];
+          var cp = V.chartPoint(r[0], r[1]);
+          var q = chartPx(clamp01(cp.x), clamp01(cp.y), size);
+          var nudge = cp.x < -0.03 ? -11 : cp.x > 1.03 ? 11 : 0;
+          g.fillText(sym, q.x + nudge, q.y);
+        }
+        g.font = '600 10px "DM Sans", system-ui, sans-serif';
+        g.textAlign = 'left';
+        g.fillText('front', size.ml, size.h - 8);
+        g.textAlign = 'right';
+        g.fillText('back', size.w - size.mr, size.h - 8);
+        g.save();
+        g.translate(10, size.h / 2);
+        g.rotate(-Math.PI / 2);
+        g.textAlign = 'center';
+        g.fillText('close \u2014 open', 0, 0);
+        g.restore();
+
+        // The 1D Vowel line: schwa .. huh .. a.
+        g.strokeStyle = alpha(C.fg, 0.45);
+        g.lineWidth = 1.5;
+        g.setLineDash([3, 4]);
+        g.beginPath();
+        for (var li = -20; li <= 20; li++) {
+          var lp = HuhAudio.vowelLinePoint(li / 20, HOME);
+          var lq = chartPx(lp.x, lp.y, size);
+          if (li === -20) g.moveTo(lq.x, lq.y); else g.lineTo(lq.x, lq.y);
+        }
+        g.stroke();
+        g.setLineDash([]);
+
+        // The ring: the huh's own vowel (unchanged).
+        var home = chartPx(HOME.x, HOME.y, size);
+        var d = dotPoint();
+        var dot = chartPx(d.x, d.y, size);
+        g.strokeStyle = C.fg;
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(home.x, home.y, 13, 0, Math.PI * 2);
+        g.stroke();
+        g.fillStyle = C.fg;
+        g.font = '700 11px "DM Sans", system-ui, sans-serif';
+        g.textAlign = 'left';
+        g.fillText(HOME === HuhAudio.VOWEL_HOME ? 'huh' : 'blaaah', home.x + 12, home.y + 17);
+
+        var heard = heardPoint(params);
+        if (heard && v2d && v2d.s < 1) {
+          var hp = chartPx(heard.x, heard.y, size);
+          g.strokeStyle = alpha(C.on, 0.7);
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.moveTo(home.x, home.y);
+          g.lineTo(dot.x, dot.y);
+          g.stroke();
+          g.fillStyle = C.fg;
+          g.beginPath();
+          g.arc(hp.x, hp.y, 4.5, 0, Math.PI * 2);
+          g.fill();
+        }
+        g.fillStyle = C.on;
+        g.strokeStyle = C.bg;
+        g.lineWidth = 3;
+        g.beginPath();
+        g.arc(dot.x, dot.y, padDrag ? 11 : 9, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+
+        var label = vowelLabel(params);
+        if (label) {
+          var fr = V.chartAt(heard.x, heard.y);
+          vowelReadout.textContent = label + '  \u00b7  F1 ' + Math.round(fr[0]) + ' / F2 ' + Math.round(fr[1]) + ' Hz' + (v2d ? '' : '  \u00b7  on the line');
+        } else {
+          vowelReadout.textContent = 'huh (unchanged)';
+        }
+        vowelWarn.hidden = !(heard && weakAt(heard.x, heard.y));
+        vowelResetButton.disabled = !v2d && Number(document.getElementById('vowel').value) === 0 && Number(strengthInput.value) === 1;
+      }
+
+      function setStrengthInput(s) {
+        strengthInput.value = String(s);
+        strengthOut.textContent = Number(strengthInput.value).toFixed(2);
+      }
+      // The Simple Vowel knob: exact on the line, ~ nearest when the 2D dot is off it.
+      function syncVowelKnob() {
+        var out = document.getElementById('vowel-out');
+        var v = Number(document.getElementById('vowel').value);
+        out.textContent = (v2d ? '\u2248 ' : '') + format('vowel', v);
+        out.className = v2d ? 'approx' : '';
+        out.title = v2d ? 'The 2D vowel is off the line; this is the nearest point on it.' : '';
+      }
+      function setVowel2D(x, y) {
+        var two = HuhAudio.vowel2D({ vowelX: x, vowelY: y, vowelStrength: Number(strengthInput.value) });
+        v2d = two ? { x: two.x, y: two.y, s: two.s } : null;
+        var near = two ? HuhAudio.legacyVowel({ vowelX: two.x, vowelY: two.y, vowelStrength: two.s }) : 0;
+        setKnob('vowel', near);
+      }
+      function vowelFromEvent(e) {
+        var rect = padCanvas.getBoundingClientRect();
+        var size = padSize();
+        var px = (e.clientX - rect.left) * (size.w / (rect.width || size.w));
+        var py = (e.clientY - rect.top) * (size.h / (rect.height || size.h));
+        var home = chartPx(HOME.x, HOME.y, size);
+        if (Math.abs(px - home.x) <= SNAP_PX && Math.abs(py - home.y) <= SNAP_PX) {
+          if (HOME !== HuhAudio.VOWEL_HOME) { v2d = null; setKnob('vowel', 0); return; } // the blaaah's own vowel
+          setVowel2D(HOME.x, HOME.y);
+          return;
+        }
+        var pt = chartOfPx(px, py, size);
+        setVowel2D(pt.x, pt.y);
+      }
+      function vowelMoved(final) {
+        draw();
+        updateUi();
+        if (final) {
+          clearTimeout(padTimer);
+          padTimer = 0;
+          scheduleRender();
+          return;
+        }
+        // While dragging, render at most every ~60 ms so the dot keeps up.
+        if (!padTimer) {
+          padTimer = setTimeout(function () {
+            padTimer = 0;
+            scheduleRender();
+          }, 60);
+        }
+      }
+
+      if (V) {
+        padCanvas.addEventListener('pointerdown', function (e) {
+          if (e.button !== undefined && e.button > 0) return;
+          padDrag = true;
+          if (padCanvas.setPointerCapture) {
+            try { padCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+          }
+          if (e.cancelable) e.preventDefault();
+          vowelFromEvent(e);
+          vowelMoved(false);
+        });
+        padCanvas.addEventListener('pointermove', function (e) {
+          if (!padDrag) return;
+          vowelFromEvent(e);
+          vowelMoved(false);
+        });
+        var endPad = function (e) {
+          if (!padDrag) return;
+          padDrag = false;
+          if (e && e.type === 'pointerup') vowelFromEvent(e);
+          vowelMoved(true);
+        };
+        padCanvas.addEventListener('pointerup', endPad);
+        padCanvas.addEventListener('pointercancel', endPad);
+        padCanvas.addEventListener('lostpointercapture', endPad);
+        padCanvas.addEventListener('keydown', function (e) {
+          var dx = 0;
+          var dy = 0;
+          if (e.key === 'ArrowLeft') dx = -0.02;
+          else if (e.key === 'ArrowRight') dx = 0.02;
+          else if (e.key === 'ArrowUp') dy = -0.02;
+          else if (e.key === 'ArrowDown') dy = 0.02;
+          else return;
+          e.preventDefault();
+          var cur = dotPoint();
+          setVowel2D(clamp01(cur.x + dx), clamp01(cur.y + dy));
+          vowelMoved(true);
+        });
+        strengthInput.addEventListener('input', function () {
+          var s = Number(strengthInput.value);
+          strengthOut.textContent = s.toFixed(2);
+          var cur = dotPoint();
+          setVowel2D(cur.x, cur.y);
+          vowelMoved(false);
+        });
+        strengthInput.addEventListener('change', function () { vowelMoved(true); });
+        vowelResetButton.addEventListener('click', function () {
+          v2d = null;
+          setKnob('vowel', 0);
+          setStrengthInput(1);
+          vowelMoved(true);
+        });
+      } else {
+        document.getElementById('vowel-card').hidden = true;
+      }
+
+      document.getElementById('keepVowel').addEventListener('change', function () {
+        draw();
+        scheduleRender();
+      });
+
+      function swapSrc(url) {
+        var previous = blobUrl;
+        audio.src = url;
+        blobUrl = url;
+        if (previous) URL.revokeObjectURL(previous);
+      }
+
+      function useBlob(rendered, swapNow) {
+        if (!rendered) return;
+        var url = URL.createObjectURL(HuhAudio.encodeWav(rendered));
+        if (swapNow && queuedUrl) {
+          URL.revokeObjectURL(queuedUrl);
+          queuedUrl = '';
+        }
+        if (!swapNow && !audio.paused && !audio.ended) {
+          if (queuedUrl) URL.revokeObjectURL(queuedUrl);
+          queuedUrl = url;
+          return;
+        }
+        swapSrc(url);
+      }
+
+      audio.addEventListener('ended', function () {
+        if (!queuedUrl) return;
+        var url = queuedUrl;
+        queuedUrl = '';
+        swapSrc(url);
+      });
+
+      function onPlayClick() {
+        var now = Date.now();
+        if (now - playStamp < 350) return;
+        playStamp = now;
+        renderForPlay();
+        audio.currentTime = 0;
+        var p;
+        try {
+          p = audio.play();
+        } catch (err) {
+          status.textContent = err && err.message ? err.message : String(err);
+          return;
+        }
+        status.textContent = 'playing';
+        if (p && typeof p.catch === 'function') {
+          p.catch(function (err) {
+            status.textContent = err && err.message ? err.message : String(err);
+          });
+        }
+      }
+
+      var playButton = document.getElementById('play');
+      playButton.addEventListener('click', onPlayClick);
+      playButton.addEventListener('touchend', function (e) {
+        if (e.cancelable) e.preventDefault();
+        onPlayClick();
+      });
+
+      HuhPresets.spaceToPlay(onPlayClick);
+
+      var SELECT_KEY = 'huh-lab-preset';
+      var selected = DEFAULT_ID;
+      var baseline = blankCorner();
+      var saveButton = document.getElementById('save');
+      var revertButton = document.getElementById('revert');
+      var dirtyMark = document.getElementById('dirty');
+      var editingName = document.getElementById('editing-name');
+      var editingNote = document.getElementById('editing-note');
+      var picker = document.getElementById('picker');
+      var compareBox = document.getElementById('compare');
+      var tuningBadge = document.getElementById('tuning-badge');
+      var useImportedButton = document.getElementById('use-imported');
+      [].forEach.call(compareBox.querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function () { switchSource(b.getAttribute('data-src')); });
+      });
+
+      function labelOf(id) {
+        if (id === DEFAULT_ID) return PLAIN + ' (plain, fixed)';
+        var p = presetMeta(id);
+        return p ? p.label : id;
+      }
+
+      function buildPicker() {
+        picker.innerHTML = '';
+        var list = [{ id: DEFAULT_ID, label: PLAIN }].concat(presetList);
+        list.forEach(function (p) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'tile' + (p.id === DEFAULT_ID ? ' fixed' : '');
+          b.setAttribute('data-preset', p.id);
+          b.setAttribute('aria-pressed', 'false');
+          b.innerHTML = '<span class="name"></span><span class="state"></span>';
+          b.querySelector('.name').textContent = p.label;
+          b.addEventListener('click', function () { select(p.id); });
+          picker.appendChild(b);
+        });
+      }
+
+      var V2D_KEYS = ['vowelX', 'vowelY', 'vowelStrength'];
+      function sameValues(a, b) {
+        for (var i = 0; i < FIELDS.length; i++) {
+          var key = FIELDS[i][0];
+          if (Math.abs(Number(a[key]) - Number(b[key])) > 1e-9) return false;
+        }
+        for (var j = 0; j < V2D_KEYS.length; j++) {
+          var k2 = V2D_KEYS[j];
+          if ((k2 in a) !== (k2 in b)) return false;
+          if ((k2 in a) && Math.abs(a[k2] - b[k2]) > 1e-9) return false;
+        }
+        return true;
+      }
+
+      function knobValues() {
+        var current = readParams();
+        var out = {};
+        FIELDS.forEach(function (field) {
+          out[field[0]] = current[field[0]];
+        });
+        // Saved presets store the full 2D vowel when there is one (vowel is
+        // then its nearest 1D value, for readers that only know the line).
+        var two = HuhAudio.vowel2D(current);
+        if (two) {
+          out.vowel = HuhAudio.legacyVowel(current);
+          out.vowelX = two.x;
+          out.vowelY = two.y;
+          out.vowelStrength = two.s;
+        }
+        return out;
+      }
+
+      function storedValues(id) { return sourceValues(view(), id); }
+
+      function isDirty() {
+        return !sameValues(knobValues(), baseline);
+      }
+
+      function setKnobs(values) {
+        FIELDS.forEach(function (field) {
+          var name = field[0];
+          document.getElementById(name).value = String(values[name]);
+          document.getElementById(name + '-out').textContent = format(name, Number(document.getElementById(name).value));
+        });
+        var two = HuhAudio.vowel2D(values);
+        v2d = two ? { x: two.x, y: two.y, s: two.s } : null;
+        setStrengthInput(two ? two.s : 1);
+        draw();
+        scheduleRender();
+      }
+
+      function loadStored() {
+        syncHome();
+        setKnobs(storedValues(selected));
+        // What the sliders show after loading (steps and ranges applied) is the clean state.
+        baseline = knobValues();
+        updateUi();
+      }
+
+      function fmtSlider(v) {
+        return (v > 0 ? '+' : v < 0 ? '\u2212' : '') + Math.abs(v).toFixed(2);
+      }
+
+      function updateUi() {
+        var dirty = isDirty();
+        var fixed = selected === DEFAULT_ID;
+        [].forEach.call(picker.querySelectorAll('.tile'), function (tile) {
+          var id = tile.getAttribute('data-preset');
+          var on = id === selected;
+          tile.setAttribute('aria-pressed', on ? 'true' : 'false');
+          var state = tile.querySelector('.state');
+          var text;
+          if (id === DEFAULT_ID) {
+            text = 'plain huh, fixed';
+            state.className = 'state';
+          } else if (presetMeta(id) && !sameValues(sourceValues(view(), id), baseParams(id))) {
+            text = view() === 'local' ? 'local edit' : 'imported \u00b7 differs';
+            state.className = 'state tuned';
+          } else {
+            text = view() === 'default' ? 'presets.json' : 'same as default';
+            state.className = 'state';
+          }
+          if (on && dirty) text += ' \u00b7 unsaved';
+          state.textContent = text;
+        });
+        editingName.textContent = labelOf(selected);
+        dirtyMark.hidden = !dirty;
+        dirtyMark.textContent = fixed ? 'Experiment, not saved' : 'Unsaved changes';
+        editingNote.textContent = fixed
+          ? PLAIN + ' is always the plain, unmodified huh (the meme page\'s ' + PLAIN + '). You can move the knobs to experiment, but it cannot be saved.'
+          : view() === 'local'
+            ? 'Knob changes are not saved until you press Save. Save keeps them in this browser (Local); Export to share.'
+            : 'Viewing ' + SOURCES[view()] + ' (read-only). Edits here are only kept if you press Save, which makes this mood a Local edit and switches to Local.';
+        saveButton.textContent = fixed ? 'Save (' + PLAIN + ' is fixed)' : (view() === 'local' ? 'Save ' : 'Save as Local: ') + labelOf(selected);
+        saveButton.disabled = fixed || !dirty;
+        revertButton.disabled = !dirty;
+        syncSimple();
+        syncVowelKnob();
+        syncTuning();
+      }
+
+      // The compare switch, the badge and the source actions.
+      function syncTuning() {
+        var v = view();
+        [].forEach.call(compareBox.querySelectorAll('button'), function (b) {
+          var s = b.getAttribute('data-src');
+          b.disabled = !hasSource(s);
+          b.setAttribute('aria-pressed', s === v ? 'true' : 'false');
+          b.title = s === 'local' && !hasLocal() ? 'No local edits yet (Save a mood first)' : s === 'imported' && !imported ? 'Nothing imported yet' : s === 'imported' ? 'Imported: ' + imported.name + ' (read-only)' : b.title;
+        });
+        useImportedButton.disabled = !imported;
+        var n = 0;
+        presetList.forEach(function (p) { if (!sameValues(sourceValues(v, p.id), baseParams(p.id))) n++; });
+        document.getElementById('picker-hint').textContent = v === 'default'
+          ? 'Default: presets.json, the deployed tuning (read-only)'
+          : (v === 'local' ? 'Local: this browser\'s saved edits on presets.json' : 'Imported: ' + imported.name + ' (read-only)') + ', ' + n + ' mood(s) differ from Default';
+        if (selected === DEFAULT_ID) { tuningBadge.hidden = true; return; }
+        tuningBadge.hidden = false;
+        var k = knobValues();
+        var differs = !sameValues(k, baseParams(selected));
+        tuningBadge.textContent = isDirty() ? 'edited, not saved' : SOURCES[v] + (v === 'default' ? '' : differs ? ' \u00b7 differs' : ' \u00b7 same as default');
+        tuningBadge.className = 'badge set' + (v !== 'default' && differs ? ' old' : '');
+      }
+
+      function switchSource(s) {
+        if (!SOURCES[s] || !hasSource(s) || s === view()) return;
+        if (isDirty() && !window.confirm('Discard unsaved changes to ' + labelOf(selected) + ' and switch to ' + SOURCES[s] + '?')) return;
+        source = s;
+        try { localStorage.setItem(SOURCE_KEY, s); } catch (e) {}
+        overrides = HuhPresets.readOverrides();
+        loadStored();
+        status.textContent = 'Comparing: ' + SOURCES[s] + (s === 'local' ? '' : ' (read-only)');
+      }
+      function setSource(s) {
+        source = s;
+        try { localStorage.setItem(SOURCE_KEY, s); } catch (e) {}
+      }
+
+      function select(id) {
+        if (id !== DEFAULT_ID && !presetMeta(id)) id = DEFAULT_ID;
+        if (id === selected) return;
+        if (isDirty()) {
+          var question = selected === DEFAULT_ID
+            ? 'Discard your default experiment and switch to ' + labelOf(id) + '?'
+            : 'Discard unsaved changes to ' + labelOf(selected) + ' and switch to ' + labelOf(id) + '?';
+          if (!window.confirm(question)) return;
+        }
+        selected = id;
+        try {
+          localStorage.setItem(SELECT_KEY, id);
+        } catch (e) {}
+        overrides = HuhPresets.readOverrides();
+        loadStored();
+      }
+
+      saveButton.addEventListener('click', function () {
+        if (selected === DEFAULT_ID || !isDirty()) return;
+        var id = selected;
+        var values = knobValues();
+        var next = HuhPresets.readOverrides();
+        next[id] = values;
+        try {
+          HuhPresets.writeOverrides(next);
+          overrides = next;
+          var was = view();
+          setSource('local');
+          status.textContent = 'Saved ' + labelOf(id) + ' in this browser' + (was === 'local' ? '' : ' as a Local edit (now comparing Local)');
+        } catch (err) {
+          overrides = HuhPresets.readOverrides();
+          status.textContent = 'Could not save ' + labelOf(id);
+          updateUi();
+          return;
+        }
+        baseline = knobValues();
+        updateUi();
+      });
+
+      revertButton.addEventListener('click', function () {
+        overrides = HuhPresets.readOverrides();
+        loadStored();
+        status.textContent = 'Reverted to saved ' + labelOf(selected);
+      });
+
+      document.getElementById('reset').addEventListener('click', function () {
+        setKnobs(blankCorner());
+        updateUi();
+        if (selected !== DEFAULT_ID && isDirty()) status.textContent = PLAIN + ' values loaded. Press Save to apply them to ' + labelOf(selected) + '.';
+      });
+
+      document.getElementById('export').addEventListener('click', function () {
+        if (!basePresets) { status.textContent = 'presets.json has not loaded'; return; }
+        var text = HuhPresets.exportJson(basePresets, HuhPresets.readOverrides());
+        var a = document.createElement('a');
+        var url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+        a.href = url;
+        a.download = 'presets.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        window.__exported = text;
+        status.textContent = 'Exported presets.json (downloaded)';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            status.textContent = 'Exported presets.json (downloaded and copied to the clipboard)';
+          }, function () {});
+        }
+      });
+
+      // ---- Import: a presets.json-format file becomes local edits ----
+      var importPreview = document.getElementById('import-preview');
+      var importMsg = document.getElementById('import-msg');
+      var importList = document.getElementById('import-list');
+      var importActions = document.getElementById('import-actions');
+      var importFile = document.getElementById('import-file');
+      var fileCard = document.querySelector('.card.file');
+      var pendingImport = null;
+
+      function effectiveParams(id) { return storedValues(id); }
+
+      function showImport(text, source) {
+        pendingImport = null;
+        importPreview.hidden = false;
+        importList.innerHTML = '';
+        importActions.hidden = true;
+        importPreview.className = 'import-preview';
+        if (!basePresets) { importMsg.textContent = 'presets.json has not loaded yet; try again in a moment.'; importPreview.className += ' bad'; return; }
+        var data;
+        try { data = JSON.parse(text); } catch (err) {
+          importMsg.textContent = 'Could not import ' + source + ': not valid JSON (' + (err && err.message ? err.message : err) + ').';
+          importPreview.className += ' bad';
+          return;
+        }
+        var r = HuhPresets.validate(data, basePresets);
+        if (!r.ok) {
+          importMsg.textContent = 'Could not import ' + source + ':';
+          importPreview.className += ' bad';
+          r.errors.slice(0, 12).forEach(function (e) { var li = document.createElement('li'); li.textContent = e; importList.appendChild(li); });
+          if (r.errors.length > 12) { var more = document.createElement('li'); more.textContent = '\u2026 and ' + (r.errors.length - 12) + ' more'; importList.appendChild(more); }
+          return;
+        }
+        var changed = [];
+        Object.keys(r.params).forEach(function (id) {
+          if (!sameValues(copyCorner(r.params[id]), effectiveParams(id))) changed.push(id);
+        });
+        pendingImport = r.params;
+        imported = { name: source, params: JSON.parse(JSON.stringify(r.params)) };
+        try { localStorage.setItem(IMPORTED_KEY, JSON.stringify(imported)); } catch (e) {}
+        updateUi();
+        importMsg.textContent = source + ': valid, kept as Imported (compare it with the switch). ' + (changed.length ? changed.length + ' mood(s) differ from what you are viewing:' : 'No mood differs from what you are viewing.');
+        changed.forEach(function (id) {
+          var li = document.createElement('li');
+          var now = effectiveParams(id);
+          var next = copyCorner(r.params[id]);
+          var diffs = FIELDS.map(function (f) { return f[0]; }).filter(function (k) { return Math.abs(now[k] - next[k]) > 1e-9; })
+            .map(function (k) { return k + ' ' + now[k] + '\u2192' + next[k]; });
+          li.innerHTML = '<strong></strong> <span></span>';
+          li.firstChild.textContent = labelOf(id);
+          li.lastChild.textContent = diffs.length ? diffs.join(', ') : '2D vowel';
+          importList.appendChild(li);
+        });
+        r.warnings.forEach(function (w) { var li = document.createElement('li'); li.className = 'warn'; li.textContent = w; importList.appendChild(li); });
+        importActions.hidden = false;
+      }
+
+      // Merge: moods in the file take its values (a mood equal to presets.json
+      // drops its local edit); other local edits stay. Replace: other local
+      // edits are cleared too. Params are stored exactly as in the file, so
+      // Export gives the same bytes back.
+      function applyImport(replace) {
+        if (!pendingImport) return;
+        if (isDirty() && !window.confirm('Discard unsaved changes to ' + labelOf(selected) + ' and import?')) return;
+        var next = replace ? {} : HuhPresets.readOverrides();
+        var n = 0;
+        Object.keys(pendingImport).forEach(function (id) {
+          if (sameValues(copyCorner(pendingImport[id]), baseParams(id)) && JSON.stringify(pendingImport[id]) === JSON.stringify(presetMeta(id).params)) delete next[id];
+          else { next[id] = JSON.parse(JSON.stringify(pendingImport[id])); n++; }
+        });
+        try { HuhPresets.writeOverrides(next); } catch (err) { status.textContent = 'Could not save the import'; return; }
+        overrides = HuhPresets.readOverrides();
+        pendingImport = null;
+        importPreview.hidden = true;
+        setSource('local');
+        loadStored();
+        status.textContent = (replace ? 'Replaced all local edits: ' : 'Merged: ') + n + ' mood(s) now differ from presets.json';
+      }
+
+      function readFile(file) {
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () { showImport(String(reader.result), file.name); };
+        reader.onerror = function () { showImport('', file.name); };
+        reader.readAsText(file);
+      }
+
+      document.getElementById('import').addEventListener('click', function () { importFile.value = ''; importFile.click(); });
+      importFile.addEventListener('change', function () { readFile(importFile.files && importFile.files[0]); });
+      document.getElementById('import-paste').addEventListener('click', function () { showImport(document.getElementById('import-text').value, 'Pasted JSON'); });
+      document.getElementById('import-merge').addEventListener('click', function () { applyImport(false); });
+      document.getElementById('import-replace').addEventListener('click', function () { applyImport(true); });
+      document.getElementById('import-cancel').addEventListener('click', function () { pendingImport = null; importPreview.hidden = true; });
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        fileCard.addEventListener(ev, function (e) { e.preventDefault(); fileCard.classList.add('drop'); });
+      });
+      ['dragleave', 'drop'].forEach(function (ev) {
+        fileCard.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'dragleave' && fileCard.contains(e.relatedTarget)) return; fileCard.classList.remove('drop'); });
+      });
+      fileCard.addEventListener('drop', function (e) { readFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]); });
+      window.HuhLabImport = { text: function (t, name) { showImport(t, name || 'test'); }, merge: function () { applyImport(false); }, replace: function () { applyImport(true); }, pending: function () { return pendingImport; } };
+
+      document.getElementById('clear-local').addEventListener('click', function () {
+        var n = Object.keys(HuhPresets.readOverrides()).length;
+        if (!window.confirm(n ? 'Reset Local to Default? This deletes the ' + n + ' local preset edit(s) in this browser.' : 'There are no local edits. Reload presets.json?')) return;
+        HuhPresets.clearOverrides();
+        overrides = {};
+        loadStored();
+        status.textContent = 'Local reset to Default (presets.json)';
+      });
+
+      // Use imported as local: Local becomes exactly the imported file (moods
+      // equal to presets.json carry no local edit), so Export gives it back.
+      useImportedButton.addEventListener('click', function () {
+        if (!imported) return;
+        var n = Object.keys(HuhPresets.readOverrides()).length;
+        if (!window.confirm('Use ' + imported.name + ' as Local?' + (n ? ' This replaces the ' + n + ' current local edit(s).' : ''))) return;
+        var next = {};
+        Object.keys(imported.params).forEach(function (id) {
+          var p = presetMeta(id);
+          if (!p || JSON.stringify(imported.params[id]) === JSON.stringify(p.params)) return;
+          next[id] = JSON.parse(JSON.stringify(imported.params[id]));
+        });
+        try { HuhPresets.writeOverrides(next); } catch (err) { status.textContent = 'Could not save Local'; return; }
+        overrides = HuhPresets.readOverrides();
+        setSource('local');
+        loadStored();
+        status.textContent = imported.name + ' is now Local: ' + Object.keys(next).length + ' mood(s) differ from Default';
+      });
+
+      buildPicker();
+      loadStored();
+      HuhPresets.load('presets.json').then(function (r) {
+        basePresets = r.base;
+        presetList = (r.base && r.base.presets) || [];
+        overrides = HuhPresets.readOverrides();
+        buildPicker();
+        var saved = null;
+        try {
+          saved = localStorage.getItem(SELECT_KEY);
+        } catch (e) {}
+        var want = saved && (saved === DEFAULT_ID || presetMeta(saved)) ? saved : DEFAULT_ID;
+        if (want !== selected && !isDirty()) {
+          selected = want;
+          loadStored();
+        } else {
+          updateUi();
+        }
+      }, function (err) {
+        status.textContent = 'presets.json did not load: ' + (err && err.message ? err.message : err);
+      });
+
+      // Read-only hooks for the lab tests.
+      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty, newParams: baseParams, view: view, sourceValues: sourceValues, imported: function () { return imported; } };
+      window.addEventListener('resize', draw);
+      draw();
+    })();
+  </script>
+</body>
+</html>
