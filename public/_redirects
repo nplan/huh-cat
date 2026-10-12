@@ -1,4 +1,4 @@
-# Named mood links: /<mood> serves the main page, which selects that mood (js/huh-main.js).
+# Named mood links: /<mood> serves the share page p.html, which plays that mood's unmodified preset.
 # Generated from presets.json (+ classic). Unknown paths still get 404.html.
 /classic/ /classic 301
 /confused/ /confused 301
@@ -12,15 +12,15 @@
 /offended/ /offended 301
 /curious/ /curious 301
 /blaaah/ /blaaah 301
-/classic / 200
-/confused / 200
-/shocked / 200
-/annoyed / 200
-/disgusted / 200
-/suspicious / 200
-/amused / 200
-/scared / 200
-/bored / 200
-/offended / 200
-/curious / 200
-/blaaah / 200
+/classic /p 200
+/confused /p 200
+/shocked /p 200
+/annoyed /p 200
+/disgusted /p 200
+/suspicious /p 200
+/amused /p 200
+/scared /p 200
+/bored /p 200
+/offended /p 200
+/curious /p 200
+/blaaah /p 200

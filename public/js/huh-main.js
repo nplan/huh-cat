@@ -40,10 +40,6 @@
   var custom = HuhPresets.fromSliders({});
   var basedOn = null;
   var incoming = HuhMeme.codeFromLocation();
-  // Named links: /annoyed, /classic, ... (Cloudflare _redirects rewrite them to
-  // this page) or /#annoyed (local servers). A share code (?h=) wins.
-  var named = incoming ? null : namedFromLocation();
-  var userActed = false; // the address bar follows the mood only after a tap
 
   var player = HuhMeme.create({
     video: video,
@@ -62,6 +58,7 @@
     setTimeout(function () { announceEl.textContent = t; }, 30);
   }
 
+  var baseList = []; // presets.json as deployed (no local edits)
   var presetsReady = HuhPresets.load('presets.json').then(function (r) {
     // The plain unmodified huh (same as the lab's fixed Default); its name is HuhPresets.PLAIN_LABEL.
     // Not in presets.json, so Export round-trips stay byte-identical.
@@ -74,6 +71,7 @@
     }].concat((r.data && r.data.presets) || []);
     eggs = presets.filter(function (p) { return p.egg && p.egg.from && p.egg.clip; });
     presets = presets.filter(function (p) { return eggs.indexOf(p) < 0; });
+    baseList = (r.base && r.base.presets) || [];
     player.setClipText((r.data && r.data.clips) || {});
     buildPresets();
     applyIncoming();
@@ -88,22 +86,8 @@
   });
 
   function slugOf(id) { return id === 'original' ? 'classic' : id; }
-  function namedFromLocation() {
-    var m = /^\/([a-z]+)\/?$/.exec(location.pathname) || /^#([a-z]+)$/.exec(location.hash);
-    return m && m[1] !== 'index' && m[1] !== 'p' && m[1] !== 'lab' ? m[1] : null;
-  }
-  function presetBySlug(slug) {
-    return slug === 'classic' ? presetById('original') : slug === 'original' ? null : presetById(slug);
-  }
   function applyIncoming() {
     selected = 'original';
-    if (named) {
-      var np = presetBySlug(named);
-      if (np && np.egg) { selected = np.id; setClipUi(np.egg.clip, false); }
-      else if (np) selected = np.id;
-      if (np) showNearest(np.params);
-      return;
-    }
     if (!incoming) return;
     var p = incoming.presetId ? presetById(incoming.presetId) : null;
     if (p && HuhMeme.sameParams(p.params, incoming.params)) {
@@ -152,7 +136,6 @@
   }
   // A tap on a mood button (the egg's button shows the egg while it is on).
   function tapPreset(id) {
-    userActed = true;
     var e = activeEgg();
     if (e) {
       if (id === e.egg.from) { choosePreset(e.id); return; }
@@ -284,7 +267,6 @@
   }
 
   function sliderMoved(name, value, final) {
-    userActed = true;
     if (Math.abs(value) < 0.03) value = 0;
     var from = currentParams();
     if (selected) {
@@ -305,7 +287,6 @@
   }
 
   $('plain').addEventListener('click', function () {
-    userActed = true;
     basedOn = null;
     custom = HuhPresets.fromSliders({});
     var e = activeEgg();
@@ -338,7 +319,6 @@
     if (p) modeLabel.textContent = 'Preset: ' + p.label;
     else if (isPlainParams(custom)) modeLabel.textContent = HuhPresets.PLAIN_LABEL;
     else modeLabel.textContent = from ? 'Custom (from ' + from.label + ')' : 'Custom';
-    syncAddress();
   }
 
   // ---- share codes
@@ -351,26 +331,20 @@
     if (!history.replaceState || !/[?&]h=/.test(location.search)) return;
     try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
   }
-  // The clean name path for an unmodified preset, else null.
-  function namePath() {
-    var p = selected ? presetById(selected) : null;
-    if (!p) return null;
-    return (local() ? '/#' : '/') + slugOf(p.id);
+  // Copy link: the name link (/annoyed, served by the share page p.html via
+  // _redirects; locally /p.html#annoyed) when the sound is an unmodified
+  // preset (as deployed in presets.json, no local edits) on its usual clip
+  // (A, or the egg's own clip); the /p share code otherwise.
+  function basePresetParams(id) {
+    if (id === 'original') return {};
+    var b = baseList.filter(function (x) { return x.id === id; })[0];
+    return b ? b.params : null;
   }
-  function syncAddress() {
-    if (!userActed || !history.replaceState) return;
-    var want = namePath() || '/';
-    var now = local() ? location.pathname + location.hash : location.pathname;
-    if (local() && want === '/') want = location.pathname;
-    if (want === now) return;
-    try { history.replaceState(null, '', want); } catch (e) {}
-  }
-  // Copy link: the name link when the sound is an unmodified preset on its
-  // default clip (A, or the egg's own clip); the /p share code otherwise.
   function linkUrl() {
     var p = selected ? presetById(selected) : null;
     var defClip = p && p.egg ? p.egg.clip : 'A';
-    if (p && player.clip() === defClip) return location.origin + namePath();
+    var base = p ? basePresetParams(p.id) : null;
+    if (p && base && player.clip() === defClip && HuhMeme.sameParams(p.params, base)) return location.origin + (local() ? '/p.html#' : '/') + slugOf(p.id);
     return shareUrl();
   }
   function local() {
@@ -538,8 +512,7 @@
   }
   picks.forEach(function (b) {
     b.addEventListener('click', function () {
-      userActed = true;
-      var e = activeEgg();
+        var e = activeEgg();
       if (e) {
         // Out of the egg: this cat, and the mood the egg came from.
         var wasPlaying = player.isActive();
