@@ -28,6 +28,8 @@ The defaults the meme page and /p play are `public/presets.json`. The lab (`/lab
 
 **Compare** (editor row, Default / Local / Imported) applies one source to all moods so you can A/B by ear with the same mood selected: **Default** is `presets.json`, **Local** your saved edits (localStorage `huh-presets`), **Imported** the last imported file (kept in localStorage `huh-lab-imported`, survives reload). Sources that do not exist yet are disabled. Default and Imported are read-only: Save while viewing them makes that mood a Local edit and switches to Local. **Use imported as local** replaces Local with the imported file; **Reset local to default** (asks first) deletes the local edits. Picker tiles mark the moods that differ from Default.
 
+**Named links**: every mood has a clean link from its id, `https://huuuh.meme/<mood>` (`/classic`, `/confused`, `/shocked`, `/annoyed`, `/disgusted`, `/suspicious`, `/amused`, `/scared`, `/bored`, `/offended`, `/curious`, and the egg `/blaaah`). `public/_redirects` rewrites each one to the main page (200), which selects that mood on its default clip, ready to Play; unknown paths still get `404.html`. Picking a mood puts its name path in the address bar; Copy link gives the name link for an unmodified mood on its default clip and a `/p?h=` share link otherwise. Locally (no rewrites) use `/#annoyed`. The lab opens a preset with `/lab#annoyed`. When a mood is added to presets.json, add its two lines to `_redirects` and its URL to `sitemap.xml` (the egg stays out of the sitemap).
+
 ## Local
 ```bash
 npx --yes serve public

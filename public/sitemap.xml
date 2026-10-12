@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://huuuh.meme/</loc></url>
+  <url><loc>https://huuuh.meme/classic</loc></url>
+  <url><loc>https://huuuh.meme/confused</loc></url>
+  <url><loc>https://huuuh.meme/shocked</loc></url>
+  <url><loc>https://huuuh.meme/annoyed</loc></url>
+  <url><loc>https://huuuh.meme/disgusted</loc></url>
+  <url><loc>https://huuuh.meme/suspicious</loc></url>
+  <url><loc>https://huuuh.meme/amused</loc></url>
+  <url><loc>https://huuuh.meme/scared</loc></url>
+  <url><loc>https://huuuh.meme/bored</loc></url>
+  <url><loc>https://huuuh.meme/offended</loc></url>
+  <url><loc>https://huuuh.meme/curious</loc></url>
 </urlset>

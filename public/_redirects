@@ -1,0 +1,26 @@
+# Named mood links: /<mood> serves the main page, which selects that mood (js/huh-main.js).
+# Generated from presets.json (+ classic). Unknown paths still get 404.html.
+/classic/ /classic 301
+/confused/ /confused 301
+/shocked/ /shocked 301
+/annoyed/ /annoyed 301
+/disgusted/ /disgusted 301
+/suspicious/ /suspicious 301
+/amused/ /amused 301
+/scared/ /scared 301
+/bored/ /bored 301
+/offended/ /offended 301
+/curious/ /curious 301
+/blaaah/ /blaaah 301
+/classic / 200
+/confused / 200
+/shocked / 200
+/annoyed / 200
+/disgusted / 200
+/suspicious / 200
+/amused / 200
+/scared / 200
+/bored / 200
+/offended / 200
+/curious / 200
+/blaaah / 200

@@ -1170,6 +1170,7 @@
         try {
           localStorage.setItem(SELECT_KEY, id);
         } catch (e) {}
+        try { history.replaceState(null, '', location.pathname + '#' + (id === DEFAULT_ID ? 'classic' : id)); } catch (e) {}
         overrides = HuhPresets.readOverrides();
         loadStored();
       }
@@ -1369,6 +1370,9 @@
           saved = localStorage.getItem(SELECT_KEY);
         } catch (e) {}
         var want = saved && (saved === DEFAULT_ID || presetMeta(saved)) ? saved : DEFAULT_ID;
+        // /lab#annoyed (or #classic) opens that preset.
+        var hm = /^#([a-z]+)$/.exec(location.hash);
+        if (hm) want = hm[1] === 'classic' ? DEFAULT_ID : presetMeta(hm[1]) ? hm[1] : want;
         if (want !== selected && !isDirty()) {
           selected = want;
           loadStored();
