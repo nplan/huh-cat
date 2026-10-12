@@ -2,3 +2,5 @@
 node_modules/
 .wrangler/
 dist/
+# local notes, never committed
+research/
