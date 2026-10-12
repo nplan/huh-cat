@@ -26,7 +26,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/theme.css?v=7" />
-  <link rel="stylesheet" href="css/lab.css?v=10" />
+  <link rel="stylesheet" href="css/lab.css?v=11" />
   <!-- Cloudflare Web Analytics --><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "6153ab5b58da4225b85b1e126b4b4ebd"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body class="lab-page">
@@ -40,16 +40,17 @@
     <div class="col left">
       <section class="card picker-card" aria-labelledby="pick-label">
         <div class="card-head"><h2 id="pick-label">Preset</h2></div>
-        <p class="hint">presets.json (new tuning), with this browser's saved edits on top</p>
+        <p class="hint" id="picker-hint">presets.json, with this browser's saved edits on top</p>
         <div class="picker" id="picker" role="group" aria-labelledby="pick-label"></div>
       </section>
       <section class="card file" aria-labelledby="share-title">
         <div class="card-head"><h2 id="share-title">Presets file</h2></div>
-        <p class="hint" id="share-note">Saved edits live in this browser only. Export writes presets.json with them included; commit that file as public/presets.json to make them the defaults. Import loads a presets.json-format file (pick, drop here, or paste) as local edits.</p>
+        <p class="hint" id="share-note">Local edits live in this browser only (the meme page here plays them too). Export writes presets.json with the Local edits included; commit that file as public/presets.json to make them the defaults. Import (pick, drop here, or paste) keeps the file as the Imported source to compare by ear, and can merge it into Local.</p>
         <div class="file-actions">
           <button type="button" class="stk" id="export">Export presets.json</button>
           <button type="button" class="stk" id="import">Import&hellip;</button>
-          <button type="button" class="stk" id="clear-local">Clear local edits</button>
+          <button type="button" class="stk" id="use-imported" disabled>Use imported as local</button>
+          <button type="button" class="stk" id="clear-local">Reset local to default</button>
           <input type="file" id="import-file" accept=".json,application/json" hidden />
         </div>
         <details class="paste">
@@ -79,10 +80,13 @@
           <button type="button" class="stk primary" id="save" disabled>Save</button>
           <button type="button" class="stk" id="revert" disabled>Revert</button>
           <button type="button" class="stk" id="reset">Reset to plain</button>
-          <div class="tuning" role="group" aria-label="Tuning set">
-            <span class="tuning-label">Tuning</span>
-            <span class="tuning-sets" id="tuning-sets"></span>
-            <button type="button" class="stk" id="ab" title="Play Old (presets-v1.json), then New (presets.json)">A/B</button>
+          <div class="compare" role="group" aria-label="Compare source">
+            <span class="compare-label">Compare</span>
+            <span class="compare-seg" id="compare">
+              <button type="button" class="stk seg" id="src-default" data-src="default" aria-pressed="false" title="presets.json, the deployed defaults (read-only)">Default</button>
+              <button type="button" class="stk seg" id="src-local" data-src="local" aria-pressed="false" title="Your saved edits in this browser">Local</button>
+              <button type="button" class="stk seg" id="src-imported" data-src="imported" aria-pressed="false" title="The last imported file (read-only)">Imported</button>
+            </span>
           </div>
         </div>
         <p class="note" id="editing-note"></p>
@@ -202,25 +206,33 @@
         return p ? copyCorner(p.params) : blankCorner();
       }
 
-      // Tuning sets to load into the knobs, each a file in the presets.json
-      // format. New is presets.json itself (what the meme page plays).
-      var SETS = [
-        { id: 'new', label: 'New', file: 'presets.json', title: 'presets.json: the current defaults' },
-        { id: 'old', label: 'Old', file: 'presets-v1.json', title: 'presets-v1.json: the tuning before 88beedb' },
-        { id: 'v2', label: 'v2', file: 'presets-v2.json', title: 'presets-v2.json: the 88beedb tuning' },
-        { id: 'c1', label: 'C1', file: 'presets-c1.json', title: 'presets-c1.json: candidate 1 (Annoyed, Amused, Scared)' },
-        { id: 'c2', label: 'C2', file: 'presets-c2.json', title: 'presets-c2.json: candidate 2 (Annoyed, Amused, Scared)' },
-        { id: 'c3', label: 'C3', file: 'presets-c3.json', title: 'presets-c3.json: candidate 3 (Annoyed, Amused, Scared)' }
-      ];
-      var setLists = {};
-      function setParams(setId, id) {
-        if (setId === 'new') return presetMeta(id) ? baseParams(id) : null;
-        var list = setLists[setId] || [];
-        for (var i = 0; i < list.length; i++) if (list[i].id === id) return copyCorner(list[i].params);
-        return null;
+      // ---- Compare sources: Default (presets.json), Local (this browser's
+      // saved edits, localStorage 'huh-presets', what the meme page plays
+      // here) and Imported (the last imported file, kept in localStorage
+      // 'huh-lab-imported'). Default and Imported are read-only views: Save
+      // while viewing them writes the mood into Local and switches to Local.
+      var SOURCE_KEY = 'huh-lab-source';
+      var IMPORTED_KEY = 'huh-lab-imported';
+      var SOURCES = { default: 'Default', local: 'Local', imported: 'Imported' };
+      function readImported() {
+        try {
+          var d = JSON.parse(localStorage.getItem(IMPORTED_KEY) || 'null');
+          return d && d.params && typeof d.params === 'object' ? d : null;
+        } catch (e) { return null; }
       }
-      function setOf(setId) { for (var i = 0; i < SETS.length; i++) if (SETS[i].id === setId) return SETS[i]; return null; }
-      function oldParams(id) { return setParams('old', id); }
+      var imported = readImported();
+      var source = 'local';
+      try { var s0 = localStorage.getItem(SOURCE_KEY); if (SOURCES[s0]) source = s0; } catch (e) {}
+      function hasLocal() { return Object.keys(overrides).length > 0; }
+      function hasSource(s) { return s === 'default' || (s === 'local' ? hasLocal() : !!imported); }
+      // The source on show: a chosen source that has nothing yet shows Default.
+      function view() { return hasSource(source) ? source : 'default'; }
+      function sourceValues(s, id) {
+        if (id === DEFAULT_ID) return blankCorner();
+        if (s === 'local' && overrides[id]) return copyCorner(overrides[id]);
+        if (s === 'imported' && imported && imported.params[id]) return copyCorner(imported.params[id]);
+        return baseParams(id);
+      }
 
       var box = document.getElementById('params');
       var simpleBox = document.getElementById('simple');
@@ -978,23 +990,12 @@
       var editingName = document.getElementById('editing-name');
       var editingNote = document.getElementById('editing-note');
       var picker = document.getElementById('picker');
-      var setBox = document.getElementById('tuning-sets');
-      SETS.forEach(function (set) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'stk seg';
-        b.id = 'tune-' + set.id;
-        b.setAttribute('data-set', set.id);
-        b.setAttribute('aria-pressed', 'false');
-        b.title = 'Load this mood from ' + set.title;
-        b.textContent = set.label;
-        b.addEventListener('click', function () { loadSet(set.id); });
-        setBox.appendChild(b);
-      });
-      var abButton = document.getElementById('ab');
+      var compareBox = document.getElementById('compare');
       var tuningBadge = document.getElementById('tuning-badge');
-      var abAudio = new Audio();
-      abButton.addEventListener('click', playAB);
+      var useImportedButton = document.getElementById('use-imported');
+      [].forEach.call(compareBox.querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function () { switchSource(b.getAttribute('data-src')); });
+      });
 
       function labelOf(id) {
         if (id === DEFAULT_ID) return PLAIN + ' (plain, fixed)';
@@ -1050,11 +1051,7 @@
         return out;
       }
 
-      function storedValues(id) {
-        if (id === DEFAULT_ID) return blankCorner();
-        if (overrides[id]) return copyCorner(overrides[id]);
-        return baseParams(id);
-      }
+      function storedValues(id) { return sourceValues(view(), id); }
 
       function isDirty() {
         return !sameValues(knobValues(), baseline);
@@ -1097,12 +1094,11 @@
           if (id === DEFAULT_ID) {
             text = 'plain huh, fixed';
             state.className = 'state';
-          } else if (overrides[id]) {
-            var hit = matchingSets(id, copyCorner(overrides[id])).filter(function (sid) { return sid !== 'new'; });
-            text = hit.length ? 'local edit \u00b7 ' + hit.map(function (sid) { return setOf(sid).label; }).join('/') : 'local edit';
+          } else if (presetMeta(id) && !sameValues(sourceValues(view(), id), baseParams(id))) {
+            text = view() === 'local' ? 'local edit' : 'imported \u00b7 differs';
             state.className = 'state tuned';
           } else {
-            text = 'presets.json';
+            text = view() === 'default' ? 'presets.json' : 'same as default';
             state.className = 'state';
           }
           if (on && dirty) text += ' \u00b7 unsaved';
@@ -1113,8 +1109,10 @@
         dirtyMark.textContent = fixed ? 'Experiment, not saved' : 'Unsaved changes';
         editingNote.textContent = fixed
           ? PLAIN + ' is always the plain, unmodified huh (the meme page\'s ' + PLAIN + '). You can move the knobs to experiment, but it cannot be saved.'
-          : 'Knob changes are not saved until you press Save. Save keeps them in this browser; Export to share.';
-        saveButton.textContent = fixed ? 'Save (' + PLAIN + ' is fixed)' : 'Save ' + labelOf(selected);
+          : view() === 'local'
+            ? 'Knob changes are not saved until you press Save. Save keeps them in this browser (Local); Export to share.'
+            : 'Viewing ' + SOURCES[view()] + ' (read-only). Edits here are only kept if you press Save, which makes this mood a Local edit and switches to Local.';
+        saveButton.textContent = fixed ? 'Save (' + PLAIN + ' is fixed)' : (view() === 'local' ? 'Save ' : 'Save as Local: ') + labelOf(selected);
         saveButton.disabled = fixed || !dirty;
         revertButton.disabled = !dirty;
         syncSimple();
@@ -1122,74 +1120,41 @@
         syncTuning();
       }
 
-      // The sets whose values for this mood equal values (ids).
-      function matchingSets(id, values) {
-        var out = [];
-        SETS.forEach(function (set) {
-          var v = setParams(set.id, id);
-          if (v && sameValues(values, v)) out.push(set.id);
-        });
-        return out;
-      }
-
-      // Which sets the knobs hold right now (compared live, so it is always true).
+      // The compare switch, the badge and the source actions.
       function syncTuning() {
-        var fixed = selected === DEFAULT_ID;
-        var k = knobValues();
-        var hit = fixed ? [] : matchingSets(selected, k);
-        [].forEach.call(setBox.querySelectorAll('button'), function (b) {
-          var sid = b.getAttribute('data-set');
-          b.disabled = fixed || !setParams(sid, selected);
-          b.setAttribute('aria-pressed', hit.indexOf(sid) >= 0 ? 'true' : 'false');
+        var v = view();
+        [].forEach.call(compareBox.querySelectorAll('button'), function (b) {
+          var s = b.getAttribute('data-src');
+          b.disabled = !hasSource(s);
+          b.setAttribute('aria-pressed', s === v ? 'true' : 'false');
+          b.title = s === 'local' && !hasLocal() ? 'No local edits yet (Save a mood first)' : s === 'imported' && !imported ? 'Nothing imported yet' : s === 'imported' ? 'Imported: ' + imported.name + ' (read-only)' : b.title;
         });
-        abButton.disabled = fixed || !setParams('old', selected) || !setParams('new', selected);
-        if (fixed) { tuningBadge.hidden = true; return; }
+        useImportedButton.disabled = !imported;
+        var n = 0;
+        presetList.forEach(function (p) { if (!sameValues(sourceValues(v, p.id), baseParams(p.id))) n++; });
+        document.getElementById('picker-hint').textContent = v === 'default'
+          ? 'Default: presets.json, the deployed tuning (read-only)'
+          : (v === 'local' ? 'Local: this browser\'s saved edits on presets.json' : 'Imported: ' + imported.name + ' (read-only)') + ', ' + n + ' mood(s) differ from Default';
+        if (selected === DEFAULT_ID) { tuningBadge.hidden = true; return; }
         tuningBadge.hidden = false;
-        var isNew = hit.indexOf('new') >= 0;
-        var text;
-        if (hit.length) {
-          var names = hit.map(function (sid) { return setOf(sid).label; });
-          text = isNew ? 'new tuning' : names.join(' = ') + ' tuning';
-        } else {
-          text = overrides[selected] && sameValues(k, copyCorner(overrides[selected])) ? 'local edit' : 'custom';
-        }
-        tuningBadge.textContent = text;
-        tuningBadge.className = 'badge set' + (hit.length && !isNew ? ' old' : '');
+        var k = knobValues();
+        var differs = !sameValues(k, baseParams(selected));
+        tuningBadge.textContent = isDirty() ? 'edited, not saved' : SOURCES[v] + (v === 'default' ? '' : differs ? ' \u00b7 differs' : ' \u00b7 same as default');
+        tuningBadge.className = 'badge set' + (v !== 'default' && differs ? ' old' : '');
       }
 
-      function loadSet(setId) {
-        if (selected === DEFAULT_ID) return;
-        var values = setParams(setId, selected);
-        if (!values) return;
-        setKnobs(values);
-        updateUi();
-        var set = setOf(setId);
-        status.textContent = 'Loaded ' + set.label + ' (' + set.file + ') for ' + labelOf(selected) + (isDirty() ? '. Press Save to keep it as the local edit.' : '');
+      function switchSource(s) {
+        if (!SOURCES[s] || !hasSource(s) || s === view()) return;
+        if (isDirty() && !window.confirm('Discard unsaved changes to ' + labelOf(selected) + ' and switch to ' + SOURCES[s] + '?')) return;
+        source = s;
+        try { localStorage.setItem(SOURCE_KEY, s); } catch (e) {}
+        overrides = HuhPresets.readOverrides();
+        loadStored();
+        status.textContent = 'Comparing: ' + SOURCES[s] + (s === 'local' ? '' : ' (read-only)');
       }
-
-      // A/B: old, a short gap, then new, in one buffer (one play in the tap).
-      function playAB() {
-        var raw = rawNow();
-        var oldP = oldParams(selected);
-        if (!raw || !engineReadyFlag || !oldP) return;
-        var a, b;
-        try {
-          a = HuhAudio.renderHuh(raw, oldP).getChannelData(0);
-          b = HuhAudio.renderHuh(raw, baseParams(selected)).getChannelData(0);
-        } catch (err) { status.textContent = err && err.message ? err.message : String(err); return; }
-        var rate = raw.sampleRate;
-        var gap = Math.round(0.45 * rate);
-        var mono = new Float32Array(a.length + gap + b.length);
-        mono.set(a, 0);
-        mono.set(b, a.length + gap);
-        var url = URL.createObjectURL(HuhAudio.encodeWav({ numberOfChannels: 1, sampleRate: rate, length: mono.length, getChannelData: function () { return mono; } }));
-        abAudio.pause();
-        if (abAudio.src) URL.revokeObjectURL(abAudio.src);
-        abAudio.src = url;
-        audio.pause();
-        var p = abAudio.play();
-        status.textContent = 'A/B ' + labelOf(selected) + ': old, then new';
-        if (p && typeof p.catch === 'function') p.catch(function (err) { status.textContent = err && err.message ? err.message : String(err); });
+      function setSource(s) {
+        source = s;
+        try { localStorage.setItem(SOURCE_KEY, s); } catch (e) {}
       }
 
       function select(id) {
@@ -1218,7 +1183,9 @@
         try {
           HuhPresets.writeOverrides(next);
           overrides = next;
-          status.textContent = 'Saved ' + labelOf(id) + ' in this browser';
+          var was = view();
+          setSource('local');
+          status.textContent = 'Saved ' + labelOf(id) + ' in this browser' + (was === 'local' ? '' : ' as a Local edit (now comparing Local)');
         } catch (err) {
           overrides = HuhPresets.readOverrides();
           status.textContent = 'Could not save ' + labelOf(id);
@@ -1298,7 +1265,10 @@
           if (!sameValues(copyCorner(r.params[id]), effectiveParams(id))) changed.push(id);
         });
         pendingImport = r.params;
-        importMsg.textContent = source + ': valid. ' + (changed.length ? changed.length + ' mood(s) would change:' : 'No mood differs from what this lab has now.');
+        imported = { name: source, params: JSON.parse(JSON.stringify(r.params)) };
+        try { localStorage.setItem(IMPORTED_KEY, JSON.stringify(imported)); } catch (e) {}
+        updateUi();
+        importMsg.textContent = source + ': valid, kept as Imported (compare it with the switch). ' + (changed.length ? changed.length + ' mood(s) differ from what you are viewing:' : 'No mood differs from what you are viewing.');
         changed.forEach(function (id) {
           var li = document.createElement('li');
           var now = effectiveParams(id);
@@ -1331,6 +1301,7 @@
         overrides = HuhPresets.readOverrides();
         pendingImport = null;
         importPreview.hidden = true;
+        setSource('local');
         loadStored();
         status.textContent = (replace ? 'Replaced all local edits: ' : 'Merged: ') + n + ' mood(s) now differ from presets.json';
       }
@@ -1360,11 +1331,30 @@
 
       document.getElementById('clear-local').addEventListener('click', function () {
         var n = Object.keys(HuhPresets.readOverrides()).length;
-        if (!window.confirm(n ? 'Clear the ' + n + ' local preset edit(s) in this browser and use presets.json?' : 'There are no local edits. Reload presets.json?')) return;
+        if (!window.confirm(n ? 'Reset Local to Default? This deletes the ' + n + ' local preset edit(s) in this browser.' : 'There are no local edits. Reload presets.json?')) return;
         HuhPresets.clearOverrides();
         overrides = {};
         loadStored();
-        status.textContent = 'Local overrides cleared; using presets.json (new tuning)';
+        status.textContent = 'Local reset to Default (presets.json)';
+      });
+
+      // Use imported as local: Local becomes exactly the imported file (moods
+      // equal to presets.json carry no local edit), so Export gives it back.
+      useImportedButton.addEventListener('click', function () {
+        if (!imported) return;
+        var n = Object.keys(HuhPresets.readOverrides()).length;
+        if (!window.confirm('Use ' + imported.name + ' as Local?' + (n ? ' This replaces the ' + n + ' current local edit(s).' : ''))) return;
+        var next = {};
+        Object.keys(imported.params).forEach(function (id) {
+          var p = presetMeta(id);
+          if (!p || JSON.stringify(imported.params[id]) === JSON.stringify(p.params)) return;
+          next[id] = JSON.parse(JSON.stringify(imported.params[id]));
+        });
+        try { HuhPresets.writeOverrides(next); } catch (err) { status.textContent = 'Could not save Local'; return; }
+        overrides = HuhPresets.readOverrides();
+        setSource('local');
+        loadStored();
+        status.textContent = imported.name + ' is now Local: ' + Object.keys(next).length + ' mood(s) differ from Default';
       });
 
       buildPicker();
@@ -1389,16 +1379,8 @@
         status.textContent = 'presets.json did not load: ' + (err && err.message ? err.message : err);
       });
 
-      SETS.forEach(function (set) {
-        if (set.id === 'new') return;
-        HuhPresets.load(set.file).then(function (r) {
-          setLists[set.id] = (r.base && r.base.presets) || [];
-          updateUi();
-        }, function (err) { console.warn(set.file + ' did not load', err); });
-      });
-
       // Read-only hooks for the lab tests.
-      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty, oldParams: oldParams, newParams: baseParams, setParams: setParams, sets: function () { return SETS.map(function (x) { return x.id + ':' + x.file; }); } };
+      window.HuhLab = { params: readParams, knobs: knobValues, dot: dotPoint, selected: function () { return selected; }, isDirty: isDirty, newParams: baseParams, view: view, sourceValues: sourceValues, imported: function () { return imported; } };
       window.addEventListener('resize', draw);
       draw();
     })();

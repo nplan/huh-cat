@@ -59,12 +59,13 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 .editor-head h2 { font: 400 14px/1.1 "Archivo Black", sans-serif; text-transform: uppercase; }
 .editor-head h2 strong { font-weight: 400; color: var(--on); }
 .edit-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 0 var(--stk) var(--stk) 0; }
-/* Tuning set: New / Old (presets.json vs presets-v1.json) + A/B, at the right of the action row */
-.tuning { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; max-width: 100%; min-width: 0; }
-.tuning-label { font: 700 11px/1 "DM Sans", sans-serif; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
-.tuning-sets { display: inline-flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
-.tuning .seg { padding: 0 9px; min-width: 36px; }
-.tuning .seg[aria-pressed="true"] { background: var(--on); color: var(--on-fg); }
+/* Compare: Default / Local / Imported segmented switch, at the right of the action row */
+.compare { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; max-width: 100%; min-width: 0; }
+.compare-label { font: 700 11px/1 "DM Sans", sans-serif; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.compare-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.compare .seg { padding: 0 10px; min-width: 36px; }
+.compare .seg[aria-pressed="true"] { background: var(--on); color: var(--on-fg); }
+.compare .seg:disabled { opacity: .45; cursor: not-allowed; }
 .badge.set.old { background: var(--play); color: var(--play-fg); }
 .check { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; color: var(--b2-mute); font-size: 12px; }
 .check input { width: 16px; height: 16px; accent-color: var(--on); margin: 0; }
