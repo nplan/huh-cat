@@ -58,6 +58,7 @@
     setTimeout(function () { announceEl.textContent = t; }, 30);
   }
 
+  var baseList = []; // presets.json as deployed (no local edits)
   var presetsReady = HuhPresets.load('presets.json').then(function (r) {
     // The plain unmodified huh (same as the lab's fixed Default); its name is HuhPresets.PLAIN_LABEL.
     // Not in presets.json, so Export round-trips stay byte-identical.
@@ -70,6 +71,7 @@
     }].concat((r.data && r.data.presets) || []);
     eggs = presets.filter(function (p) { return p.egg && p.egg.from && p.egg.clip; });
     presets = presets.filter(function (p) { return eggs.indexOf(p) < 0; });
+    baseList = (r.base && r.base.presets) || [];
     player.setClipText((r.data && r.data.clips) || {});
     buildPresets();
     applyIncoming();
@@ -83,6 +85,7 @@
     return null;
   });
 
+  function slugOf(id) { return id === 'original' ? 'classic' : id; }
   function applyIncoming() {
     selected = 'original';
     if (!incoming) return;
@@ -328,13 +331,29 @@
     if (!history.replaceState || !/[?&]h=/.test(location.search)) return;
     try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
   }
+  // Copy link: the name link (/annoyed, served by the share page p.html via
+  // _redirects; locally /p.html#annoyed) when the sound is an unmodified
+  // preset (as deployed in presets.json, no local edits) on its usual clip
+  // (A, or the egg's own clip); the /p share code otherwise.
+  function basePresetParams(id) {
+    if (id === 'original') return {};
+    var b = baseList.filter(function (x) { return x.id === id; })[0];
+    return b ? b.params : null;
+  }
+  function linkUrl() {
+    var p = selected ? presetById(selected) : null;
+    var defClip = p && p.egg ? p.egg.clip : 'A';
+    var base = p ? basePresetParams(p.id) : null;
+    if (p && base && player.clip() === defClip && HuhMeme.sameParams(p.params, base)) return location.origin + (local() ? '/p.html#' : '/') + slugOf(p.id);
+    return shareUrl();
+  }
   function local() {
     return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === 'file:';
   }
   function shareUrl() {
     return location.origin + (local() ? '/p.html' : '/p') + '?h=' + HuhMeme.encode(shareState());
   }
-  window.HuhPage = { shareUrl: shareUrl, state: shareState, player: player, soundName: function () { return soundName(); },
+  window.HuhPage = { shareUrl: shareUrl, linkUrl: linkUrl, state: shareState, player: player, soundName: function () { return soundName(); },
     egg: function () { var e = activeEgg(); return e ? e.id : null; }, selected: function () { return selected; } };
 
   // ---- Copy link (Share sheet on phones)
@@ -377,7 +396,7 @@
   }
 
   shareBtn.addEventListener('click', function () {
-    var url = shareUrl();
+    var url = linkUrl();
     if (useSheet) {
       navigator.share({ title: 'HUUUH? \u2014 ' + soundName(), url: url }).catch(function (err) {
         if (err && err.name === 'AbortError') return;
@@ -493,7 +512,7 @@
   }
   picks.forEach(function (b) {
     b.addEventListener('click', function () {
-      var e = activeEgg();
+        var e = activeEgg();
       if (e) {
         // Out of the egg: this cat, and the mood the egg came from.
         var wasPlaying = player.isActive();

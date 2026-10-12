@@ -1,8 +1,8 @@
 /* HUUUH? colours: Neon Alley, the one production palette. Every site colour lives here (main page, /p, /lab).
  * Black Cat base (charcoal blocks, cream outlines, grey fills) with lime and hot-pink "eyes".
- * Rule-checked (huh-design/schemes.py: selected fill != outline/block, fills != block, text >= 4.5:1, Play primary).
+ * Rule-checked: selected fill != outline/block, fills != block, text >= 4.5:1, Play primary.
  * Also hard-coded outside CSS (keep in sync when tweaking): <meta name="theme-color"> in index/p/lab.html (= --b1),
- * favicon.ico / apple-touch-icon.png / og.jpg (generated, huh-design/final/), the export watermark reads --brand. */
+ * favicon.ico / apple-touch-icon.png / og.jpg (generated), the export watermark reads --brand. */
 :root {
   /* Meme block (top): background, and its text/outlines/hard shadows */
   --b1: #17161C;

@@ -22,8 +22,7 @@
   formants kept) and given a falling pitch (TD-PSOLA); vowel moved to an open a
   with the v2 vowel shifter; a b (low-passed voice bar + a weak labial burst)
   and a dark l with an l→a formant glide in front; the huh's own h, recoloured
-  to the a, as the breathy end. Same rights status as A.wav. Generator and
-  alternatives: `huh-design/blaah/` (not in this repo).
+  to the a, as the breathy end. Same rights status as A.wav.
 
 ## Code and fonts
 - Rubber Band (rubberband-wasm 3.3.0, GPL): `public/vendor/rubberband/LICENSE`.

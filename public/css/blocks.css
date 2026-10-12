@@ -131,7 +131,7 @@ a { color: inherit; }
    * leaves after the fixed rest (--rest), at 16:9. Below ~600px high it stops shrinking (400px) and the page scrolls. */
   :root {
     --colmax: 1180px;
-    /* breathing room (Nejc: generous): --pad top, --gap video->controls, --bgap controls->sound block,
+    /* breathing room (generous): --pad top, --gap video->controls, --bgap controls->sound block,
      * --bgr gap between buttons in a row, --cgap between mood rows, --spad sound block padding */
     --pad: 24px; --gap: 24px; --bgap: 28px; --ctrl: 60px; --bgr: 18px;
     --cell: 48px; --cgap: 18px; --spad: 26px;

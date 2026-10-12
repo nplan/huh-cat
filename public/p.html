@@ -26,8 +26,8 @@
   <link rel="icon" href="/favicon.ico?v=4" sizes="any" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="css/theme.css?v=7" />
-  <link rel="stylesheet" href="css/blocks.css?v=26" />
+  <link rel="stylesheet" href="css/theme.css?v=8" />
+  <link rel="stylesheet" href="css/blocks.css?v=27" />
   <!-- Cloudflare Web Analytics --><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "6153ab5b58da4225b85b1e126b4b4ebd"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body class="player">
@@ -39,7 +39,7 @@
         <img class="still" id="still" src="/clips/A.jpg?v=1" width="1280" height="720" alt="" aria-hidden="true">
         <script>
           (function () {
-            var m = /[?&]h=1([A-DG])/.exec(location.search);
+            var m = /[?&]h=1([A-DG])/.exec(location.search) || (!/[?&]h=/.test(location.search) && (/^\/blaaah\/?$/.test(location.pathname) || location.hash === '#blaaah') ? [0, 'G'] : null);
             if (m && m[1] !== 'A') {
               var v = document.getElementById('huh');
               var cv = m[1] === 'G' ? 2 : 1; // per-clip cache-bust, = CLIP_V in huh-meme.js
@@ -57,7 +57,7 @@
     </div>
   </main>
   <script src="vendor/rubberband/rubberband.js?v=10"></script>
-  <script src="js/huh-vowel.js?v=3"></script>
+  <script src="js/huh-vowel.js?v=4"></script>
   <script src="js/huh-audio.js?v=24"></script>
   <script src="js/huh-presets.js?v=6"></script>
   <script src="js/huh-meme.js?v=14"></script>
@@ -65,7 +65,12 @@
     (function () {
       var $ = function (id) { return document.getElementById(id); };
       var shared = HuhMeme.codeFromLocation();
-      var state = shared || { clip: 'A', presetId: 'original', basedOn: null, params: HuhAudio.normalizeParams({}) };
+      // Named links: /annoyed, /classic, /blaaah, ... (_redirects rewrite them
+      // to this page; locally /p.html#annoyed): that mood's unmodified preset
+      // from presets.json on its usual cat. A share code (?h=) wins.
+      var nm = shared ? null : (/^\/([a-z]+)\/?$/.exec(location.pathname) || /^#([a-z]+)$/.exec(location.hash));
+      var named = nm && nm[1] !== 'p' ? nm[1] : null;
+      var state = shared || { clip: named === 'blaaah' ? HuhMeme.EGG_CLIP : 'A', presetId: named && named !== 'classic' ? named : 'original', basedOn: null, params: HuhAudio.normalizeParams({}) };
       var player = HuhMeme.create({
         video: $('huh'),
         audio: $('voice'),
@@ -93,6 +98,18 @@
       }
       var presetsReady = HuhPresets.load('presets.json').then(function (r) {
         var data = r.base || {};
+        if (named && named !== 'classic') {
+          var np = (data.presets || []).filter(function (p) { return p.id === named; })[0];
+          if (np) {
+            state.params = HuhAudio.normalizeParams(np.params);
+            state.clip = np.egg && np.egg.clip ? np.egg.clip : 'A';
+            player.setClip(state.clip);
+          } else {
+            state.presetId = 'original';
+          }
+        }
+        // Make your own: the full page with the same sound and cat selected.
+        if (named) $('make').href = '/?h=' + HuhMeme.encode(state);
         player.setClipText(data.clips || {});
         document.title = 'HUUUH? \u2014 ' + nameFor(data.presets || []);
       }, function (err) {
