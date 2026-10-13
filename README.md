@@ -1,6 +1,6 @@
 # HUUUH?
 
-**[huuuh.meme](https://huuuh.meme)**: Ben the Huh? Cat, but you're the sound engineer.
+**[huuuh.meme](https://huuuh.meme)**: The Huh? Cat, but you're the sound engineer.
 
 1. Pick a cat. 🐱
 2. Pick a mood: confused, shocked, annoyed, suspicious, scared... huh?
