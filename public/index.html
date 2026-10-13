@@ -28,9 +28,14 @@
   <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/theme.css?v=8" />
   <link rel="stylesheet" href="css/blocks.css?v=27" />
+  <link rel="stylesheet" href="css/kym.css?v=1" />
   <!-- Cloudflare Web Analytics --><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "6153ab5b58da4225b85b1e126b4b4ebd"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body class="main-page">
+  <script>
+    // PROTOTYPE: ?kym=1..5 shows one Know Your Meme option (default off).
+    (function () { var m = /[?&]kym=([1-5])\b/.exec(location.search); if (m) document.body.classList.add('kym' + m[1]); })();
+  </script>
   <h1 class="sr-only">HUUUH? The Huh? Cat, on demand</h1>
   <main class="blocks">
     <section class="blk y" aria-label="The meme">
@@ -49,6 +54,9 @@
           })();
         </script>
         <p class="caption meme top right" id="caption" aria-hidden="true"></p>
+        <div class="kym k2"><button type="button" class="kym-q" id="kym-q" aria-label="What is this meme?" aria-expanded="false" aria-controls="kym-pop">?</button>
+          <div class="kym-pop" id="kym-pop" hidden>The Huh? Cat: a confused cat, a perfect "huh?", a meme.<br><a href="https://knowyourmeme.com/memes/huh-cat" target="_blank" rel="noopener">Read it on Know Your Meme &#8599;</a></div></div>
+        <div class="kym k4"><a href="https://knowyourmeme.com/memes/huh-cat" target="_blank" rel="noopener" title="What is this? Know Your Meme">What is this? &#8599;</a></div>
       </div>
       <div class="row">
         <div class="clips" role="group" aria-label="Cat clip">
@@ -63,6 +71,7 @@
         </div>
         <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
       </div>
+      <p class="kym k1">What is this? <a href="https://knowyourmeme.com/memes/huh-cat" target="_blank" rel="noopener">Know Your Meme &#8599;</a></p>
       <p id="status" role="alert"></p>
       <p id="announce" class="sr-only" role="status" aria-live="polite"></p>
     </section>
@@ -74,6 +83,7 @@
       <div id="panel-presets" role="tabpanel" aria-labelledby="tab-presets">
         <div class="presets" id="presets"></div>
       </div>
+      <p class="kym k5"><a href="https://knowyourmeme.com/memes/huh-cat" target="_blank" rel="noopener">The meme &#8599;</a></p>
       <div id="panel-sliders" class="sliders" role="tabpanel" aria-labelledby="tab-sliders" hidden>
         <div id="slider-list"></div>
         <div class="slider-foot">
@@ -81,6 +91,7 @@
           <button type="button" id="plain">Reset</button>
         </div>
       </div>
+      <p class="site-foot"><span class="kym k3"><a href="https://knowyourmeme.com/memes/huh-cat" target="_blank" rel="noopener">About the meme: Know Your Meme</a><span class="sep" aria-hidden="true">&middot;</span></span><a href="https://x.ai/bot" target="_blank" rel="noopener"><span class="mark" aria-hidden="true" title="placeholder mark (no official Grok Bot badge found)"></span>Built with Grok Bot</a></p>
     </section>
   </main>
   <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
@@ -90,5 +101,15 @@
   <script src="js/huh-presets.js?v=6"></script>
   <script src="js/huh-meme.js?v=14"></script>
   <script src="js/huh-main.js?v=15"></script>
+  <script>
+    // PROTOTYPE: the ? chip popover (option 2). Clicks on the chip, popover and stickers never play.
+    (function () {
+      var q = document.getElementById('kym-q'), pop = document.getElementById('kym-pop');
+      [].forEach.call(document.querySelectorAll('.stage .kym'), function (el) { el.addEventListener('click', function (e) { e.stopPropagation(); }); });
+      q.addEventListener('click', function () { pop.hidden = !pop.hidden; q.setAttribute('aria-expanded', pop.hidden ? 'false' : 'true'); });
+      document.addEventListener('click', function (e) { if (!pop.hidden && !e.target.closest('.kym.k2')) { pop.hidden = true; q.setAttribute('aria-expanded', 'false'); } });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) { pop.hidden = true; q.setAttribute('aria-expanded', 'false'); q.focus(); } });
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,54 @@
+/* PROTOTYPE (dev only): Know Your Meme link, 5 options via ?kym=1..5 (default off),
+ * and the "Built with Grok Bot" footer. Remove the options Nejc does not pick. */
+.kym { display: none; }
+.kym1 .kym.k1, .kym2 .kym.k2, .kym3 .kym.k3, .kym4 .kym.k4, .kym5 .kym.k5 { display: revert; }
+.kym a, .site-foot a { color: inherit; }
+
+/* 1: small text link under the video */
+.kym.k1 { margin: 10px 0 0; font-size: 13px; color: var(--b2-mute); }
+.kym.k1 a { color: var(--b1-ink); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+/* 2: "?" info chip on the video corner, opens a tiny popover */
+.kym.k2 { position: absolute; left: 12px; top: 12px; z-index: 3; }
+.kym2 .kym.k2 { display: block; }
+.kym-q { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--b1-ink); background: var(--b1); color: var(--b1-ink);
+  font: 400 16px/1 "Archivo Black", sans-serif; cursor: pointer; padding: 0; box-shadow: 2px 2px 0 var(--b1-ink); }
+.kym-pop { position: absolute; left: 0; top: 44px; width: max-content; max-width: 240px; padding: 10px 12px; border: 3px solid var(--b1-ink);
+  border-radius: 12px; background: var(--b1); color: var(--b1-ink); font-size: 13px; line-height: 1.35; box-shadow: 4px 4px 0 var(--b1-ink); }
+.kym-pop[hidden] { display: none; }
+.kym-pop a { display: inline-block; margin-top: 6px; color: var(--on); font-weight: 700; }
+
+/* 3: footer link (next to Built with Grok Bot) */
+.kym3 .kym.k3 { display: inline; }
+
+/* 4: sticker on the video corner */
+.kym.k4 { position: absolute; left: 14px; bottom: 14px; z-index: 3; }
+.kym4 .kym.k4 { display: block; }
+.kym.k4 a { display: inline-block; padding: 7px 11px; background: var(--b3); color: var(--b3-ink); border: 3px solid var(--b1-ink); border-radius: 10px;
+  box-shadow: 3px 3px 0 var(--b1-ink); transform: rotate(-4deg); text-decoration: none; font: 400 12px/1 "Archivo Black", sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+.kym.k4 a:hover { transform: rotate(-4deg) translate(-1px, -1px); }
+
+/* 5: lab-style pill near the moods */
+.kym.k5 { margin: 18px 0 0; text-align: center; }
+.kym5 .kym.k5 { display: block; }
+.kym.k5 a { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 14px; border: 2px solid var(--b2-mute); border-radius: 999px;
+  color: var(--b2-fg); text-decoration: none; font: 700 12px/1 "DM Sans", sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.kym.k5 a:hover { border-color: var(--b2-fg); }
+
+/* footer: muted, small, never competes with Play */
+.site-foot { margin: 14px 0 0; text-align: center; font-size: 11px; line-height: 1; color: var(--b2-mute); opacity: .8; }
+.site-foot a { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.site-foot a:hover { text-decoration: underline; }
+.site-foot .mark { width: 10px; height: 10px; border: 1.5px dashed currentColor; border-radius: 3px; box-sizing: border-box; flex: none; }
+.site-foot .sep { margin: 0 8px; }
+
+@media (min-width: 960px) {
+  .blk.n { position: relative; }
+  /* footer sits in the sound block's bottom padding: no extra height, no scroll */
+  .site-foot { position: absolute; left: 0; right: 0; bottom: 7px; margin: 0; }
+  /* 1: under the video, overlapping nothing, no added height */
+  .kym.k1 { grid-column: 2; grid-row: 3; justify-self: end; margin: 8px 0 -22px; position: relative; z-index: 1; }
+  /* 5: top-right in the sound block's top padding */
+  .kym.k5 { position: absolute; top: 0; right: calc((100% - var(--low)) / 2); margin: 0; transform: translateY(-50%); }
+  .kym.k5 a { background: var(--b2); }
+}
