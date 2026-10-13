@@ -1,5 +1,7 @@
 # Credits and sources
 
+The project's own code is GPL-2.0-or-later (see LICENSE). Everything below keeps its own terms and is not covered by that licence.
+
 ## Clips (`public/clips/`)
 - **A–D** (`huh-07a`, `huh-07b`, `huh-08a`, `huh-08b`): Ben the Huh? Cat, the
   [Huh? Cat meme](https://knowyourmeme.com/memes/huh-cat). Meme footage, not
