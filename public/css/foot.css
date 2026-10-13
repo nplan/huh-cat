@@ -1,0 +1,11 @@
+/* Footer: Know Your Meme | Built with Grok Bot. Small and muted, never competes with Play. */
+.site-foot { margin: 14px 0 0; text-align: center; font-size: 11px; line-height: 1; color: var(--b2-mute); }
+.site-foot a { color: inherit; text-decoration: none; opacity: .85; }
+.site-foot a:hover, .site-foot a:focus-visible { text-decoration: underline; opacity: 1; }
+.site-foot .sep { margin: 0 6px; opacity: .4; white-space: pre; }
+.player .site-foot { margin-top: 28px; color: var(--b1-ink); opacity: .6; }
+@media (min-width: 960px) {
+  /* main page: in the sound block's bottom padding, so no extra height and no scroll */
+  .main-page .blk.n { position: relative; }
+  .main-page .site-foot { position: absolute; left: 0; right: 0; bottom: 7px; margin: 0; }
+}
