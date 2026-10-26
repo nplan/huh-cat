@@ -3,6 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script>
+    // Share codes (?h=) and the bare /p player are not mood pages. Clean
+    // mood URLs have no query, so this leaves them indexable. /blaaah is
+    // rewritten here and stays crawlable (it is not /p and has no ?h=).
+    (function () {
+      var path = location.pathname.replace(/\/+$/, '') || '/';
+      if (/[?&]h=/.test(location.search) || path === '/p' || path === '/p.html') {
+        var m = document.createElement('meta');
+        m.name = 'robots';
+        m.content = 'noindex,nofollow';
+        document.head.appendChild(m);
+      }
+    })();
+  </script>
   <title>HUUUH?</title>
   <meta name="description" content="Someone sent you a huh. Tap to play." />
   <meta name="theme-color" content="#17161C" />
@@ -11,7 +25,6 @@
   <meta property="og:site_name" content="huuuh.meme" />
   <meta property="og:title" content="HUUUH?" />
   <meta property="og:description" content="Someone sent you a huh. Tap to play." />
-  <meta property="og:url" content="https://huuuh.meme/p" />
   <meta property="og:image" content="https://huuuh.meme/og.jpg?v=3" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
@@ -40,7 +53,7 @@
         <img class="still" id="still" src="/clips/A.jpg?v=1" width="1280" height="720" alt="" aria-hidden="true">
         <script>
           (function () {
-            var m = /[?&]h=1([A-DG])/.exec(location.search) || (!/[?&]h=/.test(location.search) && (/^\/blaaah\/?$/.test(location.pathname) || location.hash === '#blaaah') ? [0, 'G'] : null);
+            var m = /[?&]h=1([A-DG])/.exec(location.search) || (!/[?&]h=/.test(location.search) && (/^\/blaaah(?:\.html)?\/?$/.test(location.pathname) || location.hash === '#blaaah') ? [0, 'G'] : null);
             if (m && m[1] !== 'A') {
               var v = document.getElementById('huh');
               var cv = m[1] === 'G' ? 2 : 1; // per-clip cache-bust, = CLIP_V in huh-meme.js
@@ -67,11 +80,14 @@
     (function () {
       var $ = function (id) { return document.getElementById(id); };
       var shared = HuhMeme.codeFromLocation();
-      // Named links: /annoyed, /classic, /blaaah, ... (_redirects rewrite them
-      // to this page; locally /p.html#annoyed): that mood's unmodified preset
-      // from presets.json on its usual cat. A share code (?h=) wins.
-      var nm = shared ? null : (/^\/([a-z]+)\/?$/.exec(location.pathname) || /^#([a-z]+)$/.exec(location.hash));
-      var named = nm && nm[1] !== 'p' ? nm[1] : null;
+      // Named links: /annoyed, /classic, /blaaah, ... (mood HTML at that path,
+      // /blaaah rewritten here, or locally /p.html#mood). That mood's
+      // unmodified preset from presets.json on its usual cat. A share code
+      // (?h=) wins. /p and /p.html are not moods, so a hash on them still counts.
+      var pathMood = /^\/([a-z]+)(?:\.html)?\/?$/.exec(location.pathname);
+      var hashMood = /^#([a-z]+)$/.exec(location.hash);
+      var nm = shared ? null : (pathMood && pathMood[1] !== 'p' ? pathMood : hashMood);
+      var named = nm ? nm[1] : null;
       var state = shared || { clip: named === 'blaaah' ? HuhMeme.EGG_CLIP : 'A', presetId: named && named !== 'classic' ? named : 'original', basedOn: null, params: HuhAudio.normalizeParams({}) };
       var player = HuhMeme.create({
         video: $('huh'),

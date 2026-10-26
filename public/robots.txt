@@ -1,4 +1,7 @@
 User-agent: *
 Disallow: /lab
+# Bare /p only. /p?h= stays crawlable so the noindex meta can apply.
+# $ is the end of the URL; this does not match /presets.json or mood paths.
+Disallow: /p$
 
 Sitemap: https://huuuh.meme/sitemap.xml
