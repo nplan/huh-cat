@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script>
+    // A ?h= share code is not this mood. The clean URL stays indexable.
+    (function () {
+      if (!/[?&]h=/.test(location.search)) return;
+      var m = document.createElement('meta');
+      m.name = 'robots';
+      m.content = 'noindex,nofollow';
+      document.head.appendChild(m);
+    })();
+  </script>
+  <title>HUUUH? — Bored</title>
+  <meta name="description" content="The Huh? Cat, Bored mood. Tap to play, or make your own." />
+  <link rel="canonical" href="https://huuuh.meme/bored" />
+  <meta name="theme-color" content="#17161C" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="huuuh.meme" />
+  <meta property="og:title" content="HUUUH? — Bored" />
+  <meta property="og:description" content="The Huh? Cat, Bored mood. Tap to play, or make your own." />
+  <meta property="og:url" content="https://huuuh.meme/bored" />
+  <meta property="og:image" content="https://huuuh.meme/og.jpg?v=3" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="The Huh? Cat with a big HUUUH? caption" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="HUUUH? — Bored" />
+  <meta name="twitter:description" content="The Huh? Cat, Bored mood. Tap to play, or make your own." />
+  <meta name="twitter:image" content="https://huuuh.meme/og.jpg?v=3" />
+  <meta name="twitter:image:alt" content="The Huh? Cat with a big HUUUH? caption" />
+  <link rel="preload" href="fonts/anton/anton-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="/favicon.ico?v=4" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=4" />
+  <link rel="preload" href="fonts/archivo-black/archivo-black-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/theme.css?v=8" />
+  <link rel="stylesheet" href="css/blocks.css?v=27" />
+  <link rel="stylesheet" href="css/foot.css?v=2" />
+  <!-- Cloudflare Web Analytics --><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "6153ab5b58da4225b85b1e126b4b4ebd"}'></script><!-- End Cloudflare Web Analytics -->
+</head>
+<body class="player">
+  <h1 class="sr-only">HUUUH? — Bored</h1>
+  <main class="blk y">
+    <div class="inner">
+      <div class="stage" id="stage" title="Play">
+        <video id="huh" src="/clips/A.mp4" poster="/clips/A.jpg?v=1" width="1280" height="720" playsinline muted preload="auto"></video>
+        <img class="still" id="still" src="/clips/A.jpg?v=1" width="1280" height="720" alt="" aria-hidden="true">
+        <script>
+          (function () {
+            var m = /[?&]h=1([A-DG])/.exec(location.search) || (!/[?&]h=/.test(location.search) && (/^\/blaaah(?:\.html)?\/?$/.test(location.pathname) || location.hash === '#blaaah') ? [0, 'G'] : null);
+            if (m && m[1] !== 'A') {
+              var v = document.getElementById('huh');
+              var cv = m[1] === 'G' ? 2 : 1; // per-clip cache-bust, = CLIP_V in huh-meme.js
+              v.src = '/clips/' + m[1] + '.mp4' + (cv > 1 ? '?v=' + cv : '');
+              v.poster = document.getElementById('still').src = '/clips/' + m[1] + '.jpg?v=' + cv;
+            }
+          })();
+        </script>
+        <p class="caption meme top right" id="caption" aria-hidden="true"></p>
+      </div>
+      <audio id="voice" playsinline webkit-playsinline preload="auto" src="audio/A.wav"></audio>
+      <button id="play" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></svg><span>Play</span></button>
+      <p id="status" role="alert"></p>
+      <p class="make"><a id="make" href="/">Make your own</a></p>
+      <p class="site-foot"><a href="https://knowyourmeme.com/memes/huh-cat" target="_blank" rel="noopener">Know Your Meme</a><span class="sep" aria-hidden="true"> | </span><a href="https://github.com/nplan/huh-cat" target="_blank" rel="noopener">Source</a><span class="sep" aria-hidden="true"> | </span><a href="https://x.ai/bot" target="_blank" rel="noopener">Built with Grok Bot</a></p>
+    </div>
+  </main>
+  <script src="vendor/rubberband/rubberband.js?v=10"></script>
+  <script src="js/huh-vowel.js?v=4"></script>
+  <script src="js/huh-audio.js?v=24"></script>
+  <script src="js/huh-presets.js?v=6"></script>
+  <script src="js/huh-meme.js?v=14"></script>
+  <script>
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var shared = HuhMeme.codeFromLocation();
+      // Named links: /annoyed, /classic, /blaaah, ... (mood HTML at that path,
+      // /blaaah rewritten here, or locally /p.html#mood). That mood's
+      // unmodified preset from presets.json on its usual cat. A share code
+      // (?h=) wins. /p and /p.html are not moods, so a hash on them still counts.
+      var pathMood = /^\/([a-z]+)(?:\.html)?\/?$/.exec(location.pathname);
+      var hashMood = /^#([a-z]+)$/.exec(location.hash);
+      var nm = shared ? null : (pathMood && pathMood[1] !== 'p' ? pathMood : hashMood);
+      var named = nm ? nm[1] : null;
+      var state = shared || { clip: named === 'blaaah' ? HuhMeme.EGG_CLIP : 'A', presetId: named && named !== 'classic' ? named : 'original', basedOn: null, params: HuhAudio.normalizeParams({}) };
+      var player = HuhMeme.create({
+        video: $('huh'),
+        audio: $('voice'),
+        caption: $('caption'),
+        stage: $('stage'),
+        captionBeforePlay: true,
+        getParams: function () { return state.params; },
+        onStatus: function (t) { $('status').textContent = t; },
+        onPlayState: function (on) { document.body.classList.toggle('is-playing', on); }
+      });
+      player.setClip(state.clip);
+      // Back to the full page with the same sound and cat.
+      if (shared) $('make').href = '/?h=' + HuhMeme.encode(state);
+      window.HuhPage = { player: player, state: function () { return state; } };
+
+      function nameFor(presets) {
+        var p = null;
+        var id = state.presetId || state.basedOn;
+        for (var i = 0; i < presets.length; i++) if (presets[i].id === id) p = presets[i];
+        // The egg (gag clip G) is never Classic: its plain sound is the blaaah.
+        if (state.clip === HuhMeme.EGG_CLIP) return state.presetId && p ? p.label : 'Custom blaaah';
+        if (state.presetId === 'original' || HuhMeme.sameParams(state.params, {})) return HuhPresets.PLAIN_LABEL;
+        if (state.presetId && p) return p.label;
+        return 'Custom huh';
+      }
+      var presetsReady = HuhPresets.load('presets.json').then(function (r) {
+        var data = r.base || {};
+        if (named && named !== 'classic') {
+          var np = (data.presets || []).filter(function (p) { return p.id === named; })[0];
+          if (np) {
+            state.params = HuhAudio.normalizeParams(np.params);
+            state.clip = np.egg && np.egg.clip ? np.egg.clip : 'A';
+            player.setClip(state.clip);
+          } else {
+            state.presetId = 'original';
+          }
+        }
+        // Make your own: the full page with the same sound and cat selected.
+        if (named) $('make').href = '/?h=' + HuhMeme.encode(state);
+        player.setClipText(data.clips || {});
+        document.title = 'HUUUH? \u2014 ' + nameFor(data.presets || []);
+      }, function (err) {
+        console.error(err);
+        document.title = 'HUUUH? \u2014 ' + (HuhMeme.sameParams(state.params, {}) ? HuhPresets.PLAIN_LABEL : 'Custom huh');
+      });
+      Promise.all([player.rawReady, presetsReady]).then(function () {
+        player.renderNow(false);
+      }).catch(function (err) {
+        console.error(err);
+        $('status').textContent = err && err.message ? err.message : String(err);
+      });
+
+      var play = function () { player.play(); };
+      var btn = $('play');
+      btn.addEventListener('click', play);
+      btn.addEventListener('touchend', function (e) { if (e.cancelable) e.preventDefault(); play(); });
+      $('stage').addEventListener('click', play);
+      HuhPresets.spaceToPlay(play);
+    })();
+  </script>
+</body>
+</html>

@@ -331,10 +331,10 @@
     if (!history.replaceState || !/[?&]h=/.test(location.search)) return;
     try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
   }
-  // Copy link: the name link (/annoyed, served by the share page p.html via
-  // _redirects; locally /p.html#annoyed) when the sound is an unmodified
-  // preset (as deployed in presets.json, no local edits) on its usual clip
-  // (A, or the egg's own clip); the /p share code otherwise.
+  // Copy link: the name link (/annoyed, the static mood page) when the sound
+  // is an unmodified preset (as deployed in presets.json, no local edits) on
+  // its usual clip (A, or the egg's own clip); the /p share code otherwise.
+  // Locally the name link stays /p.html#annoyed, which the share player accepts.
   function basePresetParams(id) {
     if (id === 'original') return {};
     var b = baseList.filter(function (x) { return x.id === id; })[0];
